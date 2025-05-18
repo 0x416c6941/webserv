@@ -6,7 +6,8 @@ FLAGS = -Wall -Wextra -Wsign-conversion -pedantic -Werror -g -std=c++98
 SRC_DIR  = src
 INC_DIR  = include
 
-SRC_FILES = main.cpp
+SRC_FILES = main.cpp \
+			ConfigFile.cpp
 
 
 SRC_FILES := $(addprefix $(SRC_DIR)/,$(SRC_FILES))
