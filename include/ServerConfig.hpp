@@ -23,19 +23,23 @@ public:
 	~ServerConfig();
 	// Getters
 	uint16_t 			getPort() const;
+	const std::string& 		getHost() const;
 	const std::string& 		getServerName() const;
 	const std::string& 		getRoot() const;
 	const std::string& 		getIndex() const;
 	uint64_t 			getClientMaxBodySize() const;
 	bool 				getAutoindex() const;
+	const std::map<int,std::string>&getErrorPages() const;
 
 
 	// Setters
 	void 				setPort(uint16_t port);
+	void 				setHost(const std::string& host);
 	void 				setServerName(const std::string& name);
 	void 				setRoot(const std::string& root);
 	void 				setIndex(const std::string& index);
 	void 				setClientMaxBodySize(uint64_t size);
 	void 				setAutoindex(bool mode);
+	void 				setErrorPage(int code, const std::string& path);
 };
 

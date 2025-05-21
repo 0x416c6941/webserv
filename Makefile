@@ -11,7 +11,7 @@ SRC_FILES = main.cpp \
 			ConfigParser.cpp \
 			ServerConfig.cpp \
 			utils.cpp	\
-			# ServerBuilder.cpp
+			ServerBuilder.cpp
 
 
 SRC_FILES := $(addprefix $(SRC_DIR)/,$(SRC_FILES))

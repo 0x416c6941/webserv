@@ -40,16 +40,6 @@ void 	ConfigParser::removeComments(std::string &content) {
 	}
 }
 
-// std::string ConfigParser::trim(const std::string& str) {
-// 	std::size_t start = 0;
-// 	while (start < str.size() && std::isspace(str[start])) start++;
-
-// 	std::size_t end = str.size();
-// 	while (end > start && std::isspace(str[end - 1])) end--;
-
-// 	return str.substr(start, end - start);
-// }
-
 
 /* finding a server begin and return the index of { start of server */
 size_t ConfigParser::findStartServer(size_t start, const std::string &content)
@@ -154,25 +144,19 @@ std::vector<std::string> ConfigParser::splitDirectives(const std::string &block)
 }
 
 
-void ConfigParser::processServerBlocksContent() {
-	for (size_t i = 0; i < _serverBlocks.size(); ++i) {
-		std::vector<std::string> directives = splitDirectives(_serverBlocks[i]);
-
-		std::cout << "\nParsed Directives for Server Block #" << i << ":\n";
-		for (size_t j = 0; j < directives.size(); ++j) {
-			std::cout << "  [" << j << "] " << directives[j] << std::endl;
-		}
-
-		// TODO: Integrate with ServerBuilder or pass to parser
-	}
-}
-
-
 
 void ConfigParser::parse() {
 	removeComments(_rawContent);
 	splitIntoServerBlocks(_rawContent);
-	processServerBlocksContent();
+	for (size_t i = 0; i < _serverBlocks.size(); ++i) {
+		std::vector<std::string> directives = splitDirectives(_serverBlocks[i]);
+		// std::cout << "\nParsed Directives for Server Block #" << i << ":\n";
+		// for (size_t j = 0; j < directives.size(); ++j) {
+		// 	std::cout << "  [" << j << "] " << directives[j] << std::endl;
+		// }
+		ServerConfig server = ServerBuilder::build(directives);
+		_servers.push_back(server);
+	}
 }
 
 
@@ -184,4 +168,52 @@ const std::vector<std::string>& ConfigParser::getServerBlocks() const {
 
 const std::vector<ServerConfig>& ConfigParser::getServers() const {
 	return _servers;
+}
+
+void ConfigParser::print()
+{
+	std::cout << "------------- Config -------------" << std::endl;
+	for (size_t i = 0; i < _servers.size(); i++)
+	{
+		std::cout << "Server #" << i + 1 << std::endl;
+		std::cout << "Server name: " << _servers[i].getServerName() << std::endl;
+		std::cout << "Host: " << _servers[i].getHost() << std::endl;
+		std::cout << "Root: " << _servers[i].getRoot() << std::endl;
+		std::cout << "Index: " << _servers[i].getIndex() << std::endl;
+		std::cout << "Port: " << _servers[i].getPort() << std::endl;
+		std::cout << "Max BSize: " << _servers[i].getClientMaxBodySize() << std::endl;
+		std::cout << "Error pages: " << _servers[i].getErrorPages().size() << std::endl;
+		std::map<int, std::string>::const_iterator it = _servers[i].getErrorPages().begin();
+		while (it != _servers[i].getErrorPages().end())
+		{
+			std::cout << it->first << " - " << it->second << std::endl;
+			++it;
+		}
+
+		// std::cout << "Locations: " << _servers[i].getLocations().size() << std::endl;
+		// std::vector<Location>::const_iterator itl = _servers[i].getLocations().begin();
+		// while (itl != _servers[i].getLocations().end())
+		// {
+		// 	std::cout << "name location: " << itl->getPath() << std::endl;
+		// 	std::cout << "methods: " << itl->getPrintMethods() << std::endl;
+		// 	std::cout << "index: " << itl->getIndexLocation() << std::endl;
+		// 	if (itl->getCgiPath().empty())
+		// 	{
+		// 		std::cout << "root: " << itl->getRootLocation() << std::endl;
+		// 		if (!itl->getReturn().empty())
+		// 			std::cout << "return: " << itl->getReturn() << std::endl;
+		// 		if (!itl->getAlias().empty())
+		// 			std::cout << "alias: " << itl->getAlias() << std::endl;
+		// 	}
+		// 	else
+		// 	{
+		// 		std::cout << "cgi root: " << itl->getRootLocation() << std::endl;
+		// 		std::cout << "sgi_path: " << itl->getCgiPath().size() << std::endl;
+		// 		std::cout << "sgi_ext: " << itl->getCgiExtension().size() << std::endl;
+		// 	}
+		// 	++itl;
+		// }
+		// itl = _servers[i].getLocations().begin();
+		std::cout << "-----------------------------" << std::endl;
+	}
 }

@@ -12,6 +12,7 @@ int main(int argc, char **argv)
 		ConfigFile cfg_file(cfg_path);
 		ConfigParser parser(cfg_file.readContent());
 		parser.parse();
+		parser.print();
 	} 
 	catch (const std::exception& e) {
 		std::cerr << "Error: " << e.what() << std::endl;

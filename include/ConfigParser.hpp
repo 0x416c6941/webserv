@@ -2,6 +2,7 @@
 #include "Webserv.hpp"
 #include "ServerConfig.hpp"
 #include "ConfigFile.hpp"
+#include "ServerBuilder.hpp"
 
 /**
  * @class ConfigParser
@@ -38,10 +39,6 @@ class ConfigParser {
 		 */
 		std::vector<std::string> 	splitDirectives(const std::string &block);
 
-		/**
-		 * @brief Parses the content of each server block into directives.
-		 */
-		void 				processServerBlocksContent();
 
 		/**
 		 * @brief Removes empty and whitespace-only lines from a server block.
@@ -82,6 +79,8 @@ class ConfigParser {
 		 */
 		size_t 				findEndServer(size_t start, const std::string &content);
 
+		// Print servers data
+		void 				print();
 		
 		// Getters
 		const std::vector<ServerConfig>	&getServers() const;
