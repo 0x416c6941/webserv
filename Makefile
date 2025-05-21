@@ -7,7 +7,11 @@ SRC_DIR  = src
 INC_DIR  = include
 
 SRC_FILES = main.cpp \
-			ConfigFile.cpp
+			ConfigFile.cpp \
+			ConfigParser.cpp \
+			ServerConfig.cpp \
+			utils.cpp	\
+			# ServerBuilder.cpp
 
 
 SRC_FILES := $(addprefix $(SRC_DIR)/,$(SRC_FILES))

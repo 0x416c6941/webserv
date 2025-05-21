@@ -19,9 +19,8 @@ public:
 	/**
 	 * @brief Validates if the config file exists and is readable.
 	 * 
-	 * @return int 0 if valid, non-zero error code otherwise.
 	 */
-	int 		validateFile();
+	void 		validateFile();
 
 	/**
 	 * @brief Reads the content of the given file.
@@ -29,6 +28,6 @@ public:
 	 * @param path Path to the file to read.
 	 * @return std::string Contents of the file.
 	 */
-	std::string	readFile();
+	std::string	readContent();
 
 };

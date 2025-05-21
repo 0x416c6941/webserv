@@ -1,6 +1,8 @@
 #include "../include/ConfigFile.hpp"
 
-ConfigFile::ConfigFile(std::string path) : _path(path) {}
+ConfigFile::ConfigFile(std::string path) : _path(path) {
+	validateFile();
+}
 
 ConfigFile::~ConfigFile() {}
 
@@ -9,10 +11,9 @@ ConfigFile::~ConfigFile() {}
  * 
  * Uses POSIX `access()` and `stat()` for checking.
  * 
- * @return int 0 if valid, non-zero if not.
  * @throws std::runtime_error If the file does not exist or is not readable.
  */
-int ConfigFile::validateFile() {
+void ConfigFile::validateFile() {
 	// Check if file exists and is readable
 	if (access(_path.c_str(), R_OK) != 0) {
 		throw std::runtime_error("File does not exist or is not readable: " + _path);
@@ -25,7 +26,6 @@ int ConfigFile::validateFile() {
 	if (!S_ISREG(fileStat.st_mode)) {
 		throw std::runtime_error("Path is not a regular file: " + _path);
 	}
-	return 0;
 }
 
 /**
@@ -34,7 +34,7 @@ int ConfigFile::validateFile() {
  * @return std::string Content of the file.
  * @throws std::runtime_error If the file cannot be opened or read.
  */
-std::string ConfigFile::readFile() {
+std::string ConfigFile::readContent() {
 	std::ifstream file(_path.c_str());
 
 	if (!file.is_open()) {

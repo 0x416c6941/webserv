@@ -1,4 +1,4 @@
-#include "../include/Webserv.hpp"
+#include "../include/ConfigParser.hpp"
 
 int main(int argc, char **argv)
 {
@@ -8,16 +8,12 @@ int main(int argc, char **argv)
 	}
 	
 	try {
-		std::string cfg_path;
-		cfg_path  = (argc == 1 ? "configs/default.conf" : argv[1]);
-		ConfigFile config(cfg_path);
-
-		// Will throw if the file is missing or not readable
-		config.validateFile();
-
-		std::string content = config.readFile();
-		std::cout << "Config file content:\n" << content << std::endl;
-	} catch (const std::exception& e) {
+		std::string cfg_path  = (argc == 1 ? "configs/default.conf" : argv[1]);
+		ConfigFile cfg_file(cfg_path);
+		ConfigParser parser(cfg_file.readContent());
+		parser.parse();
+	} 
+	catch (const std::exception& e) {
 		std::cerr << "Error: " << e.what() << std::endl;
 	}
 	return(0);
