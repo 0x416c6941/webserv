@@ -16,8 +16,6 @@ private:
 	std::vector<std::string> 	_cgi_ext;
 	
 	public:
-	std::map<std::string, std::string> _ext_path;
-	
 	Location();
 	~Location();
 	
@@ -43,7 +41,6 @@ private:
 	const std::string 				&getAlias() const;
 	const std::vector<std::string> 			&getCgiPath() const;
 	const std::vector<std::string> 			&getCgiExtension() const;
-	const std::map<std::string, std::string> 	&getExtensionPath() const;
 	const unsigned long 				&getMaxBodySize() const;
 
 	

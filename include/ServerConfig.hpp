@@ -4,6 +4,14 @@
 
 class Location;
 
+/**
+ * @class ServerConfig
+ * @brief Represents the configuration for a single server instance.
+ *
+ * This class encapsulates server-wide configuration details such as
+ * port, host, root directory, index file, client body size limits,
+ * error pages, and route-specific location blocks.
+ */
 class ServerConfig
 {
 private:

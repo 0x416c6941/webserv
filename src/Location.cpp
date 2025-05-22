@@ -35,71 +35,6 @@ void Location::addCgiPath(std::string path) {
 	}
 }
 
-void 	Location::printDebug() const{
-	std::cout << "=== Location Debug Info ===" << std::endl;
-		std::cout << "Path: " << _path << std::endl;
-		std::cout << "Root: " << _root << std::endl;
-		std::cout << "Autoindex: " << (_autoindex ? "on" : "off") << std::endl;
-		std::cout << "Max Body Size: " << _client_max_body_size << std::endl;
-
-		std::cout << "Allowed Methods: ";
-   		 bool first = true;
-   		 for (std::map<std::string, bool>::const_iterator it = _methods.begin(); it != _methods.end(); ++it) {
-   		     if (it->second) {
-   		         if (!first) std::cout << ", ";
-   		         std::cout << it->first;
-   		         first = false;
-   		     }
-   		 }
-   		 if (first) {
-   		     std::cout << "(none)";
-   		 }
-   		 std::cout << std::endl;
-
-
-		std::cout << "Index Files: ";
-		for (size_t i = 0; i < _index.size(); ++i) {
-			std::cout << _index[i];
-			if (i < _index.size() - 1)
-				std::cout << ", ";
-		}
-		std::cout << std::endl;
-
-		if (!_return.empty())
-			std::cout << "Return: " << _return << std::endl;
-		if (!_alias.empty())
-			std::cout << "Alias: " << _alias << std::endl;
-
-		if (!_cgi_path.empty()) {
-			std::cout << "CGI Paths: ";
-			for (size_t i = 0; i < _cgi_path.size(); ++i) {
-				std::cout << _cgi_path[i];
-				if (i < _cgi_path.size() - 1)
-					std::cout << ", ";
-			}
-			std::cout << std::endl;
-		}
-
-		if (!_cgi_ext.empty()) {
-			std::cout << "CGI Extensions: ";
-			for (size_t i = 0; i < _cgi_ext.size(); ++i) {
-				std::cout << _cgi_ext[i];
-				if (i < _cgi_ext.size() - 1)
-					std::cout << ", ";
-			}
-			std::cout << std::endl;
-		}
-
-		if (!_ext_path.empty()) {
-			std::cout << "Extension Path Mapping:" << std::endl;
-			for (std::map<std::string, std::string>::const_iterator it = _ext_path.begin(); it != _ext_path.end(); ++it) {
-				std::cout << "  " << it->first << " => " << it->second << std::endl;
-			}
-		}
-
-		std::cout << "===========================" << std::endl;
-}
-
 void Location::addCgiExtension(std::string extension) {
 	_cgi_ext.push_back(extension);
 }
@@ -162,5 +97,63 @@ const std::string &Location::getReturn() const { return _return; }
 const std::string &Location::getAlias() const { return _alias; }
 const std::vector<std::string> &Location::getCgiPath() const { return _cgi_path; }
 const std::vector<std::string> &Location::getCgiExtension() const { return _cgi_ext; }
-const std::map<std::string, std::string> &Location::getExtensionPath() const { return _ext_path; }
 const unsigned long &Location::getMaxBodySize() const { return _client_max_body_size; }
+
+
+
+void 	Location::printDebug() const{
+	std::cout << "=== Location Debug Info ===" << std::endl;
+		std::cout << "Path: " << _path << std::endl;
+		std::cout << "Root: " << _root << std::endl;
+		std::cout << "Autoindex: " << (_autoindex ? "on" : "off") << std::endl;
+		std::cout << "Max Body Size: " << _client_max_body_size << std::endl;
+
+		std::cout << "Allowed Methods: ";
+   		 bool first = true;
+   		 for (std::map<std::string, bool>::const_iterator it = _methods.begin(); it != _methods.end(); ++it) {
+   		     if (it->second) {
+   		         if (!first) std::cout << ", ";
+   		         std::cout << it->first;
+   		         first = false;
+   		     }
+   		 }
+   		 if (first) {
+   		     std::cout << "(none)";
+   		 }
+   		 std::cout << std::endl;
+
+
+		std::cout << "Index Files: ";
+		for (size_t i = 0; i < _index.size(); ++i) {
+			std::cout << _index[i];
+			if (i < _index.size() - 1)
+				std::cout << ", ";
+		}
+		std::cout << std::endl;
+
+		if (!_return.empty())
+			std::cout << "Return: " << _return << std::endl;
+		if (!_alias.empty())
+			std::cout << "Alias: " << _alias << std::endl;
+
+		if (!_cgi_path.empty()) {
+			std::cout << "CGI Paths: ";
+			for (size_t i = 0; i < _cgi_path.size(); ++i) {
+				std::cout << _cgi_path[i];
+				if (i < _cgi_path.size() - 1)
+					std::cout << ", ";
+			}
+			std::cout << std::endl;
+		}
+
+		if (!_cgi_ext.empty()) {
+			std::cout << "CGI Extensions: ";
+			for (size_t i = 0; i < _cgi_ext.size(); ++i) {
+				std::cout << _cgi_ext[i];
+				if (i < _cgi_ext.size() - 1)
+					std::cout << ", ";
+			}
+			std::cout << std::endl;
+		}
+		std::cout << "===========================" << std::endl;
+}
