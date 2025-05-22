@@ -1,33 +1,16 @@
 #include "../include/Location.hpp"
 
 Location::Location()
-	: _path(""), _root(""), _autoindex(false), _methods(5, 0),
-	  _return(""), _alias(""), _client_max_body_size(MAX_CONTENT_LENGTH) {
-	_methods[0] = 1; // Enable GET by default
+    : _path(""), _root(""), _autoindex(false),
+      _return(""), _alias(""), _client_max_body_size(MAX_CONTENT_LENGTH) 
+{
+    _methods["GET"] = true;     
+    _methods["POST"] = false;
+    _methods["PUT"] = false;
+    _methods["DELETE"] = false;
+    _methods["HEAD"] = false;
 }
 
-Location::Location(const Location &other)
-	: _path(other._path), _root(other._root), _autoindex(other._autoindex),
-	  _index(other._index), _methods(other._methods), _return(other._return),
-	  _alias(other._alias), _client_max_body_size(other._client_max_body_size),
-	  _cgi_path(other._cgi_path), _cgi_ext(other._cgi_ext), _ext_path(other._ext_path) {}
-
-Location &Location::operator=(const Location &src) {
-	if (this != &src) {
-		_path = src._path;
-		_root = src._root;
-		_autoindex = src._autoindex;
-		_index = src._index;
-		_methods = src._methods;
-		_return = src._return;
-		_alias = src._alias;
-		_client_max_body_size = src._client_max_body_size;
-		_cgi_path = src._cgi_path;
-		_cgi_ext = src._cgi_ext;
-		_ext_path = src._ext_path;
-	}
-	return *this;
-}
 
 Location::~Location() {}
 
@@ -44,8 +27,7 @@ void Location::addIndexLocation(std::string param) {_index.push_back(param);}
 void Location::setReturn(std::string param) {_return = param;}
 void Location::setAlias(std::string param) {_alias = param;}
 
-void Location::setCgiPath(std::string path) {
-	_cgi_path.clear();
+void Location::addCgiPath(std::string path) {
 	std::stringstream ss(path);
 	std::string token;
 	while (ss >> token) {
@@ -61,17 +43,19 @@ void 	Location::printDebug() const{
 		std::cout << "Max Body Size: " << _client_max_body_size << std::endl;
 
 		std::cout << "Allowed Methods: ";
-		for (size_t i = 0; i < _methods.size(); ++i) {
-			switch (_methods[i]) {
-				case 0: std::cout << "GET"; break;
-				case 1: std::cout << "POST"; break;
-				case 2: std::cout << "DELETE"; break;
-				default: std::cout << "UNKNOWN"; break;
-			}
-			if (i < _methods.size() - 1)
-				std::cout << ", ";
-		}
-		std::cout << std::endl;
+   		 bool first = true;
+   		 for (std::map<std::string, bool>::const_iterator it = _methods.begin(); it != _methods.end(); ++it) {
+   		     if (it->second) {
+   		         if (!first) std::cout << ", ";
+   		         std::cout << it->first;
+   		         first = false;
+   		     }
+   		 }
+   		 if (first) {
+   		     std::cout << "(none)";
+   		 }
+   		 std::cout << std::endl;
+
 
 		std::cout << "Index Files: ";
 		for (size_t i = 0; i < _index.size(); ++i) {
@@ -152,18 +136,26 @@ void Location::setMaxBodySize(unsigned long param) {
 }
 
 void Location::resetMethode() {
-	_methods.assign(5, 0); // reset to all 0s
+    for (std::map<std::string, bool>::iterator it = _methods.begin(); it != _methods.end(); ++it) {
+        it->second = false;
+    }
 }
 
-void Location::addMethode(size_t index) {
-	_methods[index] = 1;
+
+void Location::addMethode(const std::string& method) {
+    if (_methods.find(method) != _methods.end()) {
+        _methods[method] = true;
+    } else {
+        throw ConfigParser::ErrorException("Unsupported HTTP method: " + method);
+    }
 }
+
 
 // Getters
 
 const std::string &Location::getPath() const { return _path; }
 const std::string &Location::getRootLocation() const { return _root; }
-const std::vector<short> &Location::getMethods() const { return _methods; }
+const std::map<std::string, bool>& Location::getMethods() const { return _methods; }
 const bool &Location::getAutoindex() const { return _autoindex; }
 const std::vector<std::string> &Location::getIndexLocation() const { return _index; }
 const std::string &Location::getReturn() const { return _return; }

@@ -1,11 +1,13 @@
 #include "../include/ServerBuilder.hpp"
 
 /**
- * @brief Splits a directive into individual parameters. Whitespace is used as the main delimiter,
- *        and semicolons are treated as standalone tokens.
- * 
- * @param directive The directive line (e.g., "index index.html;").
- * @return std::vector<std::string> A list of tokens, separating out ";" from other words.
+ * @brief Splits a directive string into individual tokens.
+ *
+ * Tokens are separated by whitespace, and semicolons are treated as independent tokens
+ * (e.g., "index index.html;" → {"index", "index.html", ";"}).
+ *
+ * @param directive A string representing a single configuration line.
+ * @return std::vector<std::string> A list of tokenized strings.
  */
 std::vector<std::string> splitParameters(const std::string &directive) {
     std::vector<std::string> tokens;
@@ -34,7 +36,13 @@ std::vector<std::string> splitParameters(const std::string &directive) {
     return tokens;
 }
 
-// Utility: Validate IP (basic version)
+/**
+ * @brief Validates an IPv4 address format (basic check).
+ * 
+ * @param ip A string representing the IP address.
+ * @return true If the IP is a valid IPv4 address.
+ * @return false Otherwise.
+ */
 static bool isValidIPv4(const std::string& ip) {
 	std::stringstream ss(ip);
 	std::string token;
@@ -48,6 +56,15 @@ static bool isValidIPv4(const std::string& ip) {
 	return segments == 4;
 }
 
+/**
+ * @brief Processes the 'host' directive for a server block.
+ *
+ * Expected format: `host <ip>;`
+ *
+ * @param parameters Tokenized directive line.
+ * @param server_cfg The server configuration object being constructed.
+ * @throws ConfigParser::ErrorException On syntax or IP validation failure.
+ */
 void ServerBuilder::handle_host(const std::vector<std::string>& parameters, ServerConfig& server_cfg) {
 	if (parameters.size() != 3 || parameters[2] != ";")
 		throw ConfigParser::ErrorException("Invalid syntax for host directive");
@@ -59,6 +76,15 @@ void ServerBuilder::handle_host(const std::vector<std::string>& parameters, Serv
 	server_cfg.setHost(ip);
 }
 
+/**
+ * @brief Handles the 'root' directive for server-wide root path.
+ * 
+ * Format: `root <path>;`
+ * 
+ * @param parameters Tokenized directive.
+ * @param server_cfg Server configuration to update.
+ * @throws ConfigParser::ErrorException On incorrect syntax.
+ */
 void ServerBuilder::handle_root(const std::vector<std::string>& parameters, ServerConfig& server_cfg) {
     if (parameters.size() != 3 || parameters[2] != ";")
         throw ConfigParser::ErrorException("Invalid syntax for 'root' directive");
@@ -66,12 +92,30 @@ void ServerBuilder::handle_root(const std::vector<std::string>& parameters, Serv
     server_cfg.setRoot(parameters[1]);
 }
 
+/**
+ * @brief Processes the 'server_name' directive.
+ *
+ * Format: `server_name <name>;`
+ *
+ * @param parameters Tokenized directive.
+ * @param server_cfg Server configuration to update.
+ * @throws ConfigParser::ErrorException On incorrect syntax.
+ */
 void ServerBuilder::handle_server_name(const std::vector<std::string>& parameters, ServerConfig& server_cfg) {
     if (parameters.size() != 3 || parameters[2] != ";")
         throw ConfigParser::ErrorException("Invalid syntax for 'server_name' directive");
     server_cfg.setServerName(parameters[1]);
 }
 
+/**
+ * @brief Handles the 'index' directive specifying default index files.
+ * 
+ * Format: `index <file1> <file2> ... ;`
+ * 
+ * @param parameters Tokenized directive.
+ * @param server_cfg Server configuration to update.
+ * @throws ConfigParser::ErrorException On incorrect syntax.
+ */
 void ServerBuilder::handle_index(const std::vector<std::string>& parameters, ServerConfig& server_cfg) {
     if (parameters.size() < 3 || parameters.back() != ";")
         throw ConfigParser::ErrorException("Invalid syntax for 'index' directive");
@@ -85,6 +129,15 @@ void ServerBuilder::handle_index(const std::vector<std::string>& parameters, Ser
     server_cfg.setIndex(index_files);
 }
 
+/**
+ * @brief Processes the 'autoindex' directive (on/off).
+ *
+ * Format: `autoindex on;` or `autoindex off;`
+ *
+ * @param parameters Tokenized directive.
+ * @param server_cfg Server configuration to update.
+ * @throws ConfigParser::ErrorException On invalid value or syntax.
+ */
 void ServerBuilder::handle_autoindex(const std::vector<std::string>& parameters, ServerConfig& server_cfg) {
 	if (parameters.size() < 3 || parameters.back() != ";")
 		throw ConfigParser::ErrorException("Invalid syntax for autoindex directive");
@@ -98,6 +151,15 @@ void ServerBuilder::handle_autoindex(const std::vector<std::string>& parameters,
 		throw ConfigParser::ErrorException("Invalid value for autoindex: " + value);
 }
 
+/**
+ * @brief Handles 'client_max_body_size' directive.
+ *
+ * Format: `client_max_body_size <size>;`
+ *
+ * @param parameters Tokenized directive.
+ * @param server_cfg Server configuration to update.
+ * @throws ConfigParser::ErrorException On syntax error.
+ */
 void ServerBuilder::handle_mbs(const std::vector<std::string>& parameters, ServerConfig& server_cfg) {
 	if (parameters.size() < 3 || parameters.back() != ";")
 		throw ConfigParser::ErrorException("Invalid syntax for client_max_body_size directive");
@@ -105,6 +167,15 @@ void ServerBuilder::handle_mbs(const std::vector<std::string>& parameters, Serve
 	
 }
 
+/**
+ * @brief Processes 'error_page' directive mapping codes to pages.
+ * 
+ * Format: `error_page <code1> <code2> ... <file>;`
+ * 
+ * @param parameters Tokenized directive.
+ * @param server_cfg Server configuration to update.
+ * @throws ConfigParser::ErrorException On invalid codes or syntax.
+ */
 void ServerBuilder::handle_error_page(const std::vector<std::string>& parameters, ServerConfig& server_cfg) {
 	if (parameters.size() < 3 || parameters.back() != ";")
 		throw ConfigParser::ErrorException("Invalid syntax for error_page directive");
@@ -117,6 +188,15 @@ void ServerBuilder::handle_error_page(const std::vector<std::string>& parameters
 	}
 }
 
+/**
+ * @brief Handles the 'listen' directive defining the port.
+ *
+ * Format: `listen <port>;`
+ *
+ * @param parameters Tokenized directive.
+ * @param server_cfg Server configuration to update.
+ * @throws ConfigParser::ErrorException On invalid port or duplicate.
+ */
 void ServerBuilder::handle_listen(const std::vector<std::string>& parameters, ServerConfig& server_cfg) {
     if (parameters.size() != 3 || parameters[2] != ";")
         throw ConfigParser::ErrorException("Invalid syntax for 'listen': expected format 'listen <port>;'");
@@ -133,128 +213,230 @@ void ServerBuilder::handle_listen(const std::vector<std::string>& parameters, Se
     server_cfg.setPort(static_cast<uint16_t>(port));
 }
 
+/**
+ * @brief Handles the 'root' directive inside a location block.
+ * 
+ * @param loc The Location object being configured.
+ * @param tokens Tokenized directive line.
+ * @param i Current index in tokens; updated to skip parsed elements.
+ * @throws ConfigParser::ErrorException if syntax is invalid.
+ */
+static void handle_location_root(Location& loc, const std::vector<std::string>& tokens, size_t& i) {
+    if (i + 2 >= tokens.size() || tokens[i + 2] != ";")
+        throw ConfigParser::ErrorException("Invalid root directive in location block");
+    loc.setRootLocation(tokens[i + 1]);
+    i += 2;
+}
 
-void ServerBuilder::handle_location(const std::vector<std::string>& parameters, ServerConfig& server_cfg) {
-	if (parameters.size() < 3 || parameters[0] != "location" || parameters[2] != "{")
-		throw ConfigParser::ErrorException("Invalid or missing URI for location block");
+/**
+ * @brief Handles the 'index' directive inside a location block.
+ * 
+ * @param loc The Location object being configured.
+ * @param tokens Tokenized directive line.
+ * @param i Current index in tokens; updated to point to next directive.
+ * @throws ConfigParser::ErrorException if the directive is malformed or terminator is missing.
+ */
+static void handle_location_index(Location& loc, const std::vector<std::string>& tokens, size_t& i) {
+    ++i;
+    while (i < tokens.size() && tokens[i] != ";")
+        loc.addIndexLocation(tokens[i++]);
+    if (i >= tokens.size())
+        throw ConfigParser::ErrorException("Missing ';' after index directive");
+}
 
-	Location location;
-	location.setPath(parameters[1]);
+/**
+ * @brief Handles the 'autoindex' directive inside a location block.
+ * 
+ * @param loc The Location object being configured.
+ * @param tokens Tokenized directive line.
+ * @param i Current index in tokens; updated to skip parsed elements.
+ * @throws ConfigParser::ErrorException if value is missing or syntax is incorrect.
+ */
+static void handle_location_autoindex(Location& loc, const std::vector<std::string>& tokens, size_t& i) {
+    if (i + 1 >= tokens.size())
+        throw ConfigParser::ErrorException("Missing value for autoindex directive");
+    loc.setAutoindex(tokens[i + 1]);
+    i += 2;
+}
 
-	for (size_t i = 3; i < parameters.size(); ++i) {
-		if (parameters[i] == "root" && i + 2 < parameters.size() && parameters[i + 2] == ";") {
-			location.setRootLocation(parameters[i + 1]);
-			i += 2;
-		}
-		else if (parameters[i] == "index") {
-			i++;
-			while (i < parameters.size() && parameters[i] != ";") {
-				location.addIndexLocation(parameters[i++]);
-			}
-			if (i >= parameters.size() ) throw ConfigParser::ErrorException("Missing ';' after index directive");
-		}
-		else if (parameters[i] == "autoindex") {
-			if (i + 1 >= parameters.size())
-				throw ConfigParser::ErrorException("Missing value for autoindex directive");
-			location.setAutoindex(parameters[i + 1]);
-			i += 2;
-		}
-		else if (parameters[i] == "allow_methods") {
-			location.resetMethode();
-			i++;
-			while (i < parameters.size() && parameters[i] != ";") {
-				if (parameters[i] == "GET") location.addMethode(0);
-				else if (parameters[i] == "POST") location.addMethode(1);
-				else if (parameters[i] == "DELETE") location.addMethode(2);
-				else if (parameters[i] == "PUT") location.addMethode(3);
-				else if (parameters[i] == "HEAD") location.addMethode(4);
-				else throw ConfigParser::ErrorException("Unknown method: " + parameters[i]);
-				i++;
-			}
-			if (i >= parameters.size()) throw ConfigParser::ErrorException("Missing ';' after allow_methods directive");
-		}
-		else if (parameters[i] == "return" && i + 2 < parameters.size() && parameters[i + 2] == ";") {
-			location.setReturn(parameters[i + 1]);
-			i += 2;
-		}
-		else if (parameters[i] == "alias" && i + 2 < parameters.size() && parameters[i + 2] == ";") {
-			location.setAlias(parameters[i + 1]);
-			i += 2;
-		}
-		else if (parameters[i] == "cgi_path") {
-			i++;
-			location.setCgiPath(parameters[i + 1]);
-			i += 2;
-		}
-		else if (parameters[i] == "cgi_ext") {
-			i++;
-			while (i < parameters.size() && parameters[i] != ";") {
-				location.addCgiExtension(parameters[i++]);
-			}
-			if (i >= parameters.size()) throw ConfigParser::ErrorException("Missing ';' after cgi_ext directive");
-		}
-		else if (parameters[i] == "client_max_body_size" && i + 2 < parameters.size() && parameters[i + 2] == ";") {
-			location.setMaxBodySize(parameters[i+1]);
-			i += 2;	
-		}
-		else if (parameters[i] == "}") {
-			break;
-		}
-		else {
-			throw ConfigParser::ErrorException("Unknown directive: " + parameters[i]);
-		}
-	}
-	server_cfg.addLocation(location);
+/**
+ * @brief Handles the 'allow_methods' directive inside a location block.
+ * 
+ * @param loc The Location object being configured.
+ * @param tokens Tokenized directive line.
+ * @param i Current index in tokens; updated to point to the next directive.
+ * @throws ConfigParser::ErrorException if an unknown method is encountered or ';' is missing.
+ */
+static void handle_location_allow_methods(Location& loc, const std::vector<std::string>& tokens, size_t& i) {
+    loc.resetMethode();  
+
+    ++i;
+    while (i < tokens.size() && tokens[i] != ";") {
+        const std::string& method = tokens[i];
+        if (method == "GET" || method == "POST" || method == "DELETE" || method == "PUT" || method == "HEAD") {
+            loc.addMethode(method);
+        } else {
+            throw ConfigParser::ErrorException("Unknown method: " + method);
+        }
+        ++i;
+    }
+    if (i >= tokens.size())
+        throw ConfigParser::ErrorException("Missing ';' after allow_methods directive");
+}
+
+/**
+ * @brief Handles the 'return' directive inside a location block.
+ * 
+ * @param loc The Location object being configured.
+ * @param tokens Tokenized directive line.
+ * @param i Current index in tokens; updated to skip parsed elements.
+ * @throws ConfigParser::ErrorException if syntax is invalid.
+ */
+static void handle_location_return(Location& loc, const std::vector<std::string>& tokens, size_t& i) {
+    if (i + 2 >= tokens.size() || tokens[i + 2] != ";")
+        throw ConfigParser::ErrorException("Invalid return directive in location block");
+    loc.setReturn(tokens[i + 1]);
+    i += 2;
+}
+
+/**
+ * @brief Handles the 'alias' directive inside a location block.
+ * 
+ * @param loc The Location object being configured.
+ * @param tokens Tokenized directive line.
+ * @param i Current index in tokens; updated to skip parsed elements.
+ * @throws ConfigParser::ErrorException if syntax is invalid.
+ */
+static void handle_location_alias(Location& loc, const std::vector<std::string>& tokens, size_t& i) {
+    if (i + 2 >= tokens.size() || tokens[i + 2] != ";")
+        throw ConfigParser::ErrorException("Invalid alias directive in location block");
+    loc.setAlias(tokens[i + 1]);
+    i += 2;
+}
+
+/**
+ * @brief Handles the 'cgi_path' directive inside a location block.
+ * 
+ * @param loc The Location object being configured.
+ * @param tokens Tokenized directive line.
+ * @param i Current index in tokens; updated to point to the next directive.
+ * @throws ConfigParser::ErrorException if the path or terminator is missing.
+ */
+static void handle_location_cgi_path(Location& loc, const std::vector<std::string>& tokens, size_t& i) {
+    ++i;   
+    if (i >= tokens.size())
+        throw ConfigParser::ErrorException("Missing value(s) for cgi_path directive");
+
+    while (i < tokens.size() && tokens[i] != ";") {
+        loc.addCgiPath(tokens[i]);
+        ++i;
+    }
+
+    if (i >= tokens.size() || tokens[i] != ";")
+        throw ConfigParser::ErrorException("Missing ';' after cgi_path directive");
+}
+
+/**
+ * @brief Handles the 'cgi_ext' directive inside a location block.
+ * 
+ * @param loc The Location object being configured.
+ * @param tokens Tokenized directive line.
+ * @param i Current index in tokens; updated to point to the next directive.
+ * @throws ConfigParser::ErrorException if ';' is missing after the extensions.
+ */
+static void handle_location_cgi_ext(Location& loc, const std::vector<std::string>& tokens, size_t& i) {
+    ++i;
+    while (i < tokens.size() && tokens[i] != ";") {
+        loc.addCgiExtension(tokens[i++]);
+    }
+    if (i >= tokens.size()) throw ConfigParser::ErrorException("Missing ';' after cgi_ext directive");
+}
+
+/**
+ * @brief Handles the 'client_max_body_size' directive inside a location block.
+ * 
+ * @param loc The Location object being configured.
+ * @param tokens Tokenized directive line.
+ * @param i Current index in tokens; updated to skip parsed elements.
+ * @throws ConfigParser::ErrorException if syntax is invalid.
+ */
+static void handle_location_client_max_body_size(Location& loc, const std::vector<std::string>& tokens, size_t& i) {
+    if (i + 2 >= tokens.size() || tokens[i + 2] != ";")
+        throw ConfigParser::ErrorException("Invalid client_max_body_size directive in location block");
+    loc.setMaxBodySize(tokens[i + 1]);
+    i += 2;
+}
+
+/**
+ * @brief Returns a map of supported location directive handlers.
+ * 
+ * @return const std::map<std::string, LocationHandler>& 
+ *         A static map linking directive names to their handler functions.
+ */
+typedef void (*LocationHandler)(Location&, const std::vector<std::string>&, size_t&);
+
+static const std::map<std::string, LocationHandler>& getLocationHandlers() {
+    static std::map<std::string, LocationHandler> handlers;
+    if (handlers.empty()) {
+        handlers["root"] = handle_location_root;
+        handlers["index"] = handle_location_index;
+        handlers["autoindex"] = handle_location_autoindex;
+        handlers["allow_methods"] = handle_location_allow_methods;
+        handlers["return"] = handle_location_return;
+        handlers["alias"] = handle_location_alias;
+        handlers["cgi_path"] = handle_location_cgi_path;
+        handlers["cgi_ext"] = handle_location_cgi_ext;
+        handlers["client_max_body_size"] = handle_location_client_max_body_size;
+    }
+    return handlers;
 }
 
 
+/**
+ * @brief Handles a 'location' block and its nested directives.
+ *
+ * Format:
+ * ```
+ * location <path> {
+ *     directive1 ...
+ *     directive2 ...
+ * }
+ * ```
+ * 
+ * @param parameters Full token list for the location block.
+ * @param server_cfg Server configuration to update.
+ * @throws ConfigParser::ErrorException On unknown directive or syntax error.
+ */
+void ServerBuilder::handle_location(const std::vector<std::string>& parameters, ServerConfig& server_cfg) {
+    if (parameters.size() < 3 || parameters[0] != "location" || parameters[2] != "{")
+        throw ConfigParser::ErrorException("Invalid or missing URI for location block");
 
-// ServerConfig ServerBuilder::build(const std::vector<std::string>& directives) {
-// 	ServerConfig server_cfg;
+    Location location;
+    location.setPath(parameters[1]);
 
-// 	for (size_t line = 0; line < directives.size(); ++line) {
-// 		std::vector<std::string> tokens = splitParameters(directives[line]);
-// 		if (tokens.empty())
-// 			continue;
+    const std::map<std::string, LocationHandler>& handlers = getLocationHandlers();
 
-// 		const std::string& directive = tokens[0];
+    for (size_t i = 3; i < parameters.size(); ++i) {
+        if (parameters[i] == "}") break;
 
-// 		if (directive == "listen") {
-// 			handle_listen(tokens, server_cfg);
-// 		}
-// 		else if (directive == "host") {
-// 			handle_host(tokens, server_cfg);
-// 		}
-// 		else if (directive == "server_name") {
-// 			handle_server_name(tokens, server_cfg);
-// 		}
-// 		else if (directive == "root") {
-// 			handle_root(tokens, server_cfg);
-// 		}
-// 		else if (directive == "client_max_body_size") {
-// 			handle_mbs(tokens, server_cfg);
-// 		}
-// 		else if (directive == "autoindex") {
-// 			handle_autoindex(tokens, server_cfg);
-// 		}
-// 		else if (directive == "index") {
-// 			handle_index(tokens, server_cfg);
-// 		}
-// 		else if (directive == "error_page") {
-// 			handle_error_page(tokens, server_cfg);
-// 		}
-// 		else if (directive == "location") {
-// 			handle_location(tokens, server_cfg);
-// 		}
-// 		else {
-// 			throw ConfigParser::ErrorException("Unknown directive: '" + directive);
-// 		}
-// 	}
+        std::map<std::string, LocationHandler>::const_iterator it = handlers.find(parameters[i]);
+        if (it == handlers.end()) {
+            throw ConfigParser::ErrorException("Unknown directive: " + parameters[i]);
+        }
 
-// 	return server_cfg;
-// }
+        LocationHandler handler = it->second;
+        handler(location, parameters, i);
+    }
 
+    server_cfg.addLocation(location);
+}
 
+/**
+ * @brief Retrieves the handler function for a directive.
+ *
+ * @param directive Directive keyword (e.g., "listen", "host").
+ * @return HandlerFunc Corresponding member function pointer, or NULL if not found.
+ */
 HandlerFunc ServerBuilder::getHandler(const std::string& directive) {
 	static std::map<std::string, HandlerFunc> handlers;
 	if (handlers.empty()) {
@@ -273,6 +455,14 @@ HandlerFunc ServerBuilder::getHandler(const std::string& directive) {
 	return (it != handlers.end()) ? it->second : NULL;
 }
 
+
+/**
+ * @brief Main entry point to build a ServerConfig from parsed directive lines.
+ *
+ * @param directives List of raw configuration lines (one line = one directive block).
+ * @return ServerConfig Fully populated server configuration object.
+ * @throws ConfigParser::ErrorException On unrecognized directive or malformed lines.
+ */
 ServerConfig ServerBuilder::build(const std::vector<std::string>& directives) {
 	ServerConfig server_cfg;
 
