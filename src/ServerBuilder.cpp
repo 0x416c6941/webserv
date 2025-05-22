@@ -101,13 +101,8 @@ void ServerBuilder::handle_autoindex(const std::vector<std::string>& parameters,
 void ServerBuilder::handle_mbs(const std::vector<std::string>& parameters, ServerConfig& server_cfg) {
 	if (parameters.size() < 3 || parameters.back() != ";")
 		throw ConfigParser::ErrorException("Invalid syntax for client_max_body_size directive");
-
-	try {
-		uint64_t size = std::strtoull(parameters[1].c_str(), NULL, 10);
-		server_cfg.setClientMaxBodySize(size);
-	} catch (...) {
-		throw ConfigParser::ErrorException("Invalid client_max_body_size value: " + parameters[1]);
-	}
+	server_cfg.setClientMaxBodySize(parameters[1]);
+	
 }
 
 void ServerBuilder::handle_error_page(const std::vector<std::string>& parameters, ServerConfig& server_cfg) {
@@ -188,10 +183,8 @@ void ServerBuilder::handle_location(const std::vector<std::string>& parameters, 
 		}
 		else if (parameters[i] == "cgi_path") {
 			i++;
-			while (i < parameters.size() && parameters[i] != ";") {
-				location.setCgiPath(parameters[i++]);
-			}
-			if (i >= parameters.size() ) throw ConfigParser::ErrorException("Missing ';' after index directive");
+			location.setCgiPath(parameters[i + 1]);
+			i += 2;
 		}
 		else if (parameters[i] == "cgi_ext") {
 			i++;

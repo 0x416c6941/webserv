@@ -31,7 +31,7 @@ public:
 	uint64_t 			getClientMaxBodySize() const;
 	bool 				getAutoindex() const;
 	const std::map<int,std::string>&getErrorPages() const;
-	const std::vector<Location>	&getLocations() const;
+	const std::vector<Location>&	getLocations() const;
 
 
 	// Setters
@@ -41,6 +41,7 @@ public:
 	void 				setRoot(const std::string& root);
 	void 				setIndex(const std::string& index);
 	void 				setClientMaxBodySize(uint64_t size);
+	void 				setClientMaxBodySize(std::string param);
 	void 				setAutoindex(bool mode);
 	void 				setErrorPage(int code, const std::string& path);
 	void				addLocation(const Location &loc_section);

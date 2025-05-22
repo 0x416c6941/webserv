@@ -6,7 +6,10 @@ ConfigParser::ConfigParser(const std::string& content)
 
 ConfigParser::~ConfigParser() {}
 
-
+/**
+ * @brief Cleans a block of configuration by trimming lines and removing empty ones.
+ * @param block The configuration block to clean (modified in place).
+ */
 void 	ConfigParser::cleanLinesInPlace(std::string& block) {
 	std::istringstream iss(block);
 	std::ostringstream cleaned;
@@ -23,9 +26,9 @@ void 	ConfigParser::cleanLinesInPlace(std::string& block) {
 
 
 /**
- * @brief Remove all comments in the config file from # until a new line.
- * @warning New line isn't deleted to save the proper indentation
- * @param content - readed config file 
+ * @brief Removes all comments (starting with '#') from the configuration content.
+ * @warning Preserves newline characters for line structure integrity.
+ * @param content Configuration content to clean (modified in place).
  */
 void 	ConfigParser::removeComments(std::string &content) {
 	size_t pos = content.find('#');
@@ -41,7 +44,13 @@ void 	ConfigParser::removeComments(std::string &content) {
 }
 
 
-/* finding a server begin and return the index of { start of server */
+/**
+ * @brief Finds the opening brace of a server block in the config.
+ * @param start Starting index to begin searching.
+ * @param content Full configuration content.
+ * @return Index of the '{' starting the server block.
+ * @throws ErrorException If "server" directive is missing or improperly formatted.
+ */
 size_t ConfigParser::findStartServer(size_t start, const std::string &content)
 {
     size_t i = start;
@@ -67,7 +76,13 @@ size_t ConfigParser::findStartServer(size_t start, const std::string &content)
     throw ErrorException("Expected '{' after 'server' directive");
 }
 
-/* Finds the matching closing '}' for a server block starting at '{' */
+/**
+ * @brief Finds the closing brace of a server block.
+ * @param start Index of the opening '{'.
+ * @param content Full configuration content.
+ * @return Index of the corresponding '}'.
+ * @throws ErrorException If braces are unmatched.
+ */
 size_t ConfigParser::findEndServer(size_t start, const std::string &content)
 {
     if (start >= content.size() || content[start] != '{')
@@ -90,8 +105,11 @@ size_t ConfigParser::findEndServer(size_t start, const std::string &content)
     throw ErrorException("Unmatched '{' in server block");
 }
 
-
-
+/**
+ * @brief Splits the raw configuration content into individual server blocks.
+ * @param content Full configuration content.
+ * @throws ErrorException If no server blocks are found or malformed blocks exist.
+ */
 void ConfigParser::splitIntoServerBlocks(const std::string &content) {
 	size_t start = 0;
 
@@ -114,8 +132,12 @@ void ConfigParser::splitIntoServerBlocks(const std::string &content) {
 	}
 }
 
-
-
+/**
+ * @brief Splits a server block into individual directives, respecting nested blocks.
+ * @param block The cleaned content of a server block.
+ * @return A vector of directive strings.
+ * @throws ErrorException If directives are malformed or improperly terminated.
+ */
 std::vector<std::string> ConfigParser::splitDirectives(const std::string &block) {
 	std::vector<std::string> directives;
 	std::string current;
@@ -143,8 +165,11 @@ std::vector<std::string> ConfigParser::splitDirectives(const std::string &block)
 	return directives;
 }
 
-
-
+/**
+ * @brief Parses the configuration content into structured ServerConfig objects.
+ *        Removes comments, splits server blocks, parses directives, and builds servers.
+ * @throws ErrorException On any parsing or structural errors.
+ */
 void ConfigParser::parse() {
 	removeComments(_rawContent);
 	splitIntoServerBlocks(_rawContent);
@@ -164,15 +189,27 @@ void ConfigParser::parse() {
 
 
 
-
+/**
+ * @brief Returns parsed server blocks as raw strings.
+ * @return A const reference to the vector of server block strings.
+ */
 const std::vector<std::string>& ConfigParser::getServerBlocks() const {
 	return _serverBlocks;
 }
 
+/**
+ * @brief Returns parsed ServerConfig objects.
+ * @return A const reference to the vector of ServerConfig instances.
+ */
 const std::vector<ServerConfig>& ConfigParser::getServers() const {
 	return _servers;
 }
 
+
+/**
+ * @brief Print all servers for debug
+ * 
+ */
 void ConfigParser::print()
 {
 	std::cout << "------------- Config -------------" << std::endl;

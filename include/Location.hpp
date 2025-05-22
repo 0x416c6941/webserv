@@ -23,31 +23,31 @@ private:
 	Location &operator=(const Location &rhs);
 	~Location();
 	
-	void 				setPath(std::string);
-	void 				setRootLocation(std::string);
-	void 				setAutoindex(std::string);
-	void 				addIndexLocation(std::string);
-	void 				setReturn(std::string);  
-	void 				setAlias(std::string);
-	void 				setCgiPath(std::string);  
-	void 				addCgiExtension(std::string);
-	void 				setMaxBodySize(std::string);
-	void 				setMaxBodySize(unsigned long);
-	void 				resetMethode();
-	void 				addMethode(size_t index);
+	void 						setPath(std::string);
+	void 						setRootLocation(std::string);
+	void 						setAutoindex(std::string);
+	void 						addIndexLocation(std::string);
+	void 						setReturn(std::string);  
+	void 						setAlias(std::string);
+	void 						setCgiPath(std::string);  
+	void 						addCgiExtension(std::string);
+	void 						setMaxBodySize(std::string);
+	void 						setMaxBodySize(unsigned long);
+	void 						resetMethode();
+	void 						addMethode(size_t index);
 	
-	const std::string &getPath() const;
-	const std::string &getRootLocation() const;
-	const std::vector<short> &getMethods() const;
-	const bool &getAutoindex() const;
-	const std::vector<std::string> &getIndexLocation() const;
-	const std::string &getReturn() const;
-	const std::string &getAlias() const;
-	const std::vector<std::string> &getCgiPath() const;
-	const std::vector<std::string> &getCgiExtension() const;
-	const std::map<std::string, std::string> &getExtensionPath() const;
-	const unsigned long &getMaxBodySize() const;
+	const std::string 				&getPath() const;
+	const std::string 				&getRootLocation() const;
+	const std::vector<short> 			&getMethods() const;
+	const bool 					&getAutoindex() const;
+	const std::vector<std::string> 			&getIndexLocation() const;
+	const std::string 				&getReturn() const;
+	const std::string 				&getAlias() const;
+	const std::vector<std::string> 			&getCgiPath() const;
+	const std::vector<std::string> 			&getCgiExtension() const;
+	const std::map<std::string, std::string> 	&getExtensionPath() const;
+	const unsigned long 				&getMaxBodySize() const;
 
 	
-	void 				printDebug() const;
+	void 						printDebug() const;
 };
