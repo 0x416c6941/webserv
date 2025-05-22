@@ -209,48 +209,84 @@ void ServerBuilder::handle_location(const std::vector<std::string>& parameters, 
 
 
 
+// ServerConfig ServerBuilder::build(const std::vector<std::string>& directives) {
+// 	ServerConfig server_cfg;
+
+// 	for (size_t line = 0; line < directives.size(); ++line) {
+// 		std::vector<std::string> tokens = splitParameters(directives[line]);
+// 		if (tokens.empty())
+// 			continue;
+
+// 		const std::string& directive = tokens[0];
+
+// 		if (directive == "listen") {
+// 			handle_listen(tokens, server_cfg);
+// 		}
+// 		else if (directive == "host") {
+// 			handle_host(tokens, server_cfg);
+// 		}
+// 		else if (directive == "server_name") {
+// 			handle_server_name(tokens, server_cfg);
+// 		}
+// 		else if (directive == "root") {
+// 			handle_root(tokens, server_cfg);
+// 		}
+// 		else if (directive == "client_max_body_size") {
+// 			handle_mbs(tokens, server_cfg);
+// 		}
+// 		else if (directive == "autoindex") {
+// 			handle_autoindex(tokens, server_cfg);
+// 		}
+// 		else if (directive == "index") {
+// 			handle_index(tokens, server_cfg);
+// 		}
+// 		else if (directive == "error_page") {
+// 			handle_error_page(tokens, server_cfg);
+// 		}
+// 		else if (directive == "location") {
+// 			handle_location(tokens, server_cfg);
+// 		}
+// 		else {
+// 			throw ConfigParser::ErrorException("Unknown directive: '" + directive);
+// 		}
+// 	}
+
+// 	return server_cfg;
+// }
+
+
+HandlerFunc ServerBuilder::getHandler(const std::string& directive) {
+	static std::map<std::string, HandlerFunc> handlers;
+	if (handlers.empty()) {
+		handlers["listen"] = &ServerBuilder::handle_listen;
+		handlers["host"] = &ServerBuilder::handle_host;
+		handlers["server_name"] = &ServerBuilder::handle_server_name;
+		handlers["root"] = &ServerBuilder::handle_root;
+		handlers["client_max_body_size"] = &ServerBuilder::handle_mbs;
+		handlers["autoindex"] = &ServerBuilder::handle_autoindex;
+		handlers["index"] = &ServerBuilder::handle_index;
+		handlers["error_page"] = &ServerBuilder::handle_error_page;
+		handlers["location"] = &ServerBuilder::handle_location;
+	}
+
+	std::map<std::string, HandlerFunc>::const_iterator it = handlers.find(directive);
+	return (it != handlers.end()) ? it->second : NULL;
+}
+
 ServerConfig ServerBuilder::build(const std::vector<std::string>& directives) {
 	ServerConfig server_cfg;
 
 	for (size_t line = 0; line < directives.size(); ++line) {
 		std::vector<std::string> tokens = splitParameters(directives[line]);
-		if (tokens.empty())
+		if (tokens.empty()) {
 			continue;
-
+		}
 		const std::string& directive = tokens[0];
-
-		if (directive == "listen") {
-			handle_listen(tokens, server_cfg);
+		HandlerFunc handler = getHandler(directive);
+		if (!handler) {
+			throw ConfigParser::ErrorException("Unknown directive: '" + directive + "'");
 		}
-		else if (directive == "host") {
-			handle_host(tokens, server_cfg);
-		}
-		else if (directive == "server_name") {
-			handle_server_name(tokens, server_cfg);
-		}
-		else if (directive == "root") {
-			handle_root(tokens, server_cfg);
-		}
-		else if (directive == "client_max_body_size") {
-			handle_mbs(tokens, server_cfg);
-		}
-		else if (directive == "autoindex") {
-			handle_autoindex(tokens, server_cfg);
-		}
-		else if (directive == "index") {
-			handle_index(tokens, server_cfg);
-		}
-		else if (directive == "error_page") {
-			handle_error_page(tokens, server_cfg);
-		}
-		else if (directive == "location") {
-			handle_location(tokens, server_cfg);
-		}
-		else {
-			throw ConfigParser::ErrorException("Unknown directive: '" + directive);
-		}
+		handler(tokens, server_cfg);
 	}
-
 	return server_cfg;
 }
-

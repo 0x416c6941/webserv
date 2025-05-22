@@ -129,7 +129,7 @@ void Location::setMaxBodySize(std::string param) {
     unsigned long multiplier = 1;
 
     if (suffix == 'K' || suffix == 'M' || suffix == 'G') {
-        param = param.substr(0, param.size() - 1); // remove suffix
+        param = param.substr(0, param.size() - 1);
         if (suffix == 'K') multiplier = 1024UL;
         else if (suffix == 'M') multiplier = 1024UL * 1024;
         else if (suffix == 'G') multiplier = 1024UL * 1024 * 1024;
