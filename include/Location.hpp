@@ -2,6 +2,13 @@
 #include "Webserv.hpp"
 #include "ConfigParser.hpp"
 
+/**
+ * @class Location
+ * @brief Represents configuration settings for a specific URI path within a server block.
+ *
+ * The Location class defines the behavior and rules for a particular location or route on the server,
+ * including its root path, allowed HTTP methods, directory listing, index files, CGI handling, and more.
+ */
 class Location {
 private:
 	std::string 			_path;
