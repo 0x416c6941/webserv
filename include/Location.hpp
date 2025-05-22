@@ -1,0 +1,53 @@
+#pragma once
+#include "Webserv.hpp"
+#include "ConfigParser.hpp"
+
+class Location {
+private:
+	std::string 			_path;
+	std::string 			_root;
+	bool 				_autoindex;
+	std::vector<std::string> 	_index;
+	std::vector<short> 		_methods;
+	std::string 			_return;
+	std::string 			_alias;
+	unsigned long 			_client_max_body_size;
+	std::vector<std::string> 	_cgi_path;
+	std::vector<std::string> 	_cgi_ext;
+	
+	public:
+	std::map<std::string, std::string> _ext_path;
+	
+	Location();
+	Location(const Location &other);
+	Location &operator=(const Location &rhs);
+	~Location();
+	
+	void 				setPath(std::string);
+	void 				setRootLocation(std::string);
+	void 				setAutoindex(std::string);
+	void 				addIndexLocation(std::string);
+	void 				setReturn(std::string);  
+	void 				setAlias(std::string);
+	void 				setCgiPath(std::string);  
+	void 				addCgiExtension(std::string);
+	void 				setMaxBodySize(std::string);
+	void 				setMaxBodySize(unsigned long);
+	void 				resetMethode();
+	void 				addMethode(size_t index);
+	
+	const std::string &getPath() const;
+	const std::string &getRootLocation() const;
+	const std::vector<short> &getMethods() const;
+	const bool &getAutoindex() const;
+	const std::vector<std::string> &getIndexLocation() const;
+	const std::string &getReturn() const;
+	const std::string &getAlias() const;
+	const std::vector<std::string> &getCgiPath() const;
+	const std::vector<std::string> &getCgiExtension() const;
+	const std::map<std::string, std::string> &getExtensionPath() const;
+	const unsigned long &getMaxBodySize() const;
+
+	
+	void 				printDebug() const;
+};

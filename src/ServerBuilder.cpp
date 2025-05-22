@@ -138,11 +138,82 @@ void ServerBuilder::handle_listen(const std::vector<std::string>& parameters, Se
     server_cfg.setPort(static_cast<uint16_t>(port));
 }
 
+
 void ServerBuilder::handle_location(const std::vector<std::string>& parameters, ServerConfig& server_cfg) {
-	(void) parameters; 
-	(void) server_cfg;
-	return;
+	if (parameters.size() < 3 || parameters[0] != "location" || parameters[2] != "{")
+		throw ConfigParser::ErrorException("Invalid or missing URI for location block");
+
+	Location location;
+	location.setPath(parameters[1]);
+
+	for (size_t i = 3; i < parameters.size(); ++i) {
+		if (parameters[i] == "root" && i + 2 < parameters.size() && parameters[i + 2] == ";") {
+			location.setRootLocation(parameters[i + 1]);
+			i += 2;
+		}
+		else if (parameters[i] == "index") {
+			i++;
+			while (i < parameters.size() && parameters[i] != ";") {
+				location.addIndexLocation(parameters[i++]);
+			}
+			if (i >= parameters.size() ) throw ConfigParser::ErrorException("Missing ';' after index directive");
+		}
+		else if (parameters[i] == "autoindex") {
+			if (i + 1 >= parameters.size())
+				throw ConfigParser::ErrorException("Missing value for autoindex directive");
+			location.setAutoindex(parameters[i + 1]);
+			i += 2;
+		}
+		else if (parameters[i] == "allow_methods") {
+			location.resetMethode();
+			i++;
+			while (i < parameters.size() && parameters[i] != ";") {
+				if (parameters[i] == "GET") location.addMethode(0);
+				else if (parameters[i] == "POST") location.addMethode(1);
+				else if (parameters[i] == "DELETE") location.addMethode(2);
+				else if (parameters[i] == "PUT") location.addMethode(3);
+				else if (parameters[i] == "HEAD") location.addMethode(4);
+				else throw ConfigParser::ErrorException("Unknown method: " + parameters[i]);
+				i++;
+			}
+			if (i >= parameters.size()) throw ConfigParser::ErrorException("Missing ';' after allow_methods directive");
+		}
+		else if (parameters[i] == "return" && i + 2 < parameters.size() && parameters[i + 2] == ";") {
+			location.setReturn(parameters[i + 1]);
+			i += 2;
+		}
+		else if (parameters[i] == "alias" && i + 2 < parameters.size() && parameters[i + 2] == ";") {
+			location.setAlias(parameters[i + 1]);
+			i += 2;
+		}
+		else if (parameters[i] == "cgi_path") {
+			i++;
+			while (i < parameters.size() && parameters[i] != ";") {
+				location.setCgiPath(parameters[i++]);
+			}
+			if (i >= parameters.size() ) throw ConfigParser::ErrorException("Missing ';' after index directive");
+		}
+		else if (parameters[i] == "cgi_ext") {
+			i++;
+			while (i < parameters.size() && parameters[i] != ";") {
+				location.addCgiExtension(parameters[i++]);
+			}
+			if (i >= parameters.size()) throw ConfigParser::ErrorException("Missing ';' after cgi_ext directive");
+		}
+		else if (parameters[i] == "client_max_body_size" && i + 2 < parameters.size() && parameters[i + 2] == ";") {
+			location.setMaxBodySize(parameters[i+1]);
+			i += 2;	
+		}
+		else if (parameters[i] == "}") {
+			break;
+		}
+		else {
+			throw ConfigParser::ErrorException("Unknown directive: " + parameters[i]);
+		}
+	}
+	server_cfg.addLocation(location);
 }
+
 
 
 ServerConfig ServerBuilder::build(const std::vector<std::string>& directives) {

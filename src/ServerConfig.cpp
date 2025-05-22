@@ -5,7 +5,7 @@ ServerConfig::ServerConfig()
 	  _host(""),
 	  _server_name(""),
 	  _root(""),
-	  _client_max_body_size(0),
+	  _client_max_body_size(MAX_CONTENT_LENGTH),
 	  _index(""),
 	  _autoindex(false),
 	  _listen_fd(-1)
@@ -23,6 +23,7 @@ const std::string& 			ServerConfig::getIndex() const { return _index; }
 uint64_t 				ServerConfig::getClientMaxBodySize() const { return _client_max_body_size; }
 bool 					ServerConfig::getAutoindex() const { return _autoindex; }
 const std::map<int, std::string>& 	ServerConfig::getErrorPages() const {return _error_pages;}
+const std::vector<Location>		&ServerConfig::getLocations() const {return _locations;}
 
 void 			ServerConfig::setPort(uint16_t port) { _port = port; }
 void 			ServerConfig::setHost(const std::string& host) { _host = host; }
@@ -32,3 +33,4 @@ void 			ServerConfig::setIndex(const std::string& index) { _index = index; }
 void 			ServerConfig::setClientMaxBodySize(uint64_t size) { _client_max_body_size = size; }
 void 			ServerConfig::setAutoindex(bool mode) { _autoindex = mode; }
 void 			ServerConfig::setErrorPage(int code, const std::string& path) {	this->_error_pages[code] = path;}
+void 			ServerConfig::addLocation(const Location& loc_section){_locations.push_back(loc_section);}

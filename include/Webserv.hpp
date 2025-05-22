@@ -13,6 +13,9 @@
 #include <cstdlib>
 
 
+#define MAX_CONTENT_LENGTH 30000000
+#define DEBUG false
+
 /// Utils
 
 /**

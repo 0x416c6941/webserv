@@ -1,7 +1,8 @@
 #pragma once
 #include "Webserv.hpp"
+#include "Location.hpp"
 
-// class Location; 
+class Location;
 
 class ServerConfig
 {
@@ -14,7 +15,7 @@ private:
 	std::string			_index;			// Default index file
 	bool				_autoindex;		// Directory listing toggle
 	std::map<int, std::string>	_error_pages;		// Error code to custom page mapping
-	// std::vector<Location>		_locations;		// List of route-specific configurations
+	std::vector<Location>		_locations;		// List of route-specific configurations
 	sockaddr_in			_server_address;	// Full IPv4 socket address struct
 	int				_listen_fd;		// Socket file descriptor
 	
@@ -30,6 +31,7 @@ public:
 	uint64_t 			getClientMaxBodySize() const;
 	bool 				getAutoindex() const;
 	const std::map<int,std::string>&getErrorPages() const;
+	const std::vector<Location>	&getLocations() const;
 
 
 	// Setters
@@ -41,5 +43,6 @@ public:
 	void 				setClientMaxBodySize(uint64_t size);
 	void 				setAutoindex(bool mode);
 	void 				setErrorPage(int code, const std::string& path);
+	void				addLocation(const Location &loc_section);
 };
 

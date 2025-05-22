@@ -150,10 +150,13 @@ void ConfigParser::parse() {
 	splitIntoServerBlocks(_rawContent);
 	for (size_t i = 0; i < _serverBlocks.size(); ++i) {
 		std::vector<std::string> directives = splitDirectives(_serverBlocks[i]);
-		// std::cout << "\nParsed Directives for Server Block #" << i << ":\n";
-		// for (size_t j = 0; j < directives.size(); ++j) {
-		// 	std::cout << "  [" << j << "] " << directives[j] << std::endl;
-		// }
+		if (DEBUG)
+		{
+			std::cout << "\nParsed Directives for Server Block #" << i << ":\n";
+			for (size_t j = 0; j < directives.size(); ++j) {
+				std::cout << "  [" << j << "] " << directives[j] << std::endl;
+			}
+		}
 		ServerConfig server = ServerBuilder::build(directives);
 		_servers.push_back(server);
 	}
@@ -189,31 +192,16 @@ void ConfigParser::print()
 			std::cout << it->first << " - " << it->second << std::endl;
 			++it;
 		}
-
-		// std::cout << "Locations: " << _servers[i].getLocations().size() << std::endl;
-		// std::vector<Location>::const_iterator itl = _servers[i].getLocations().begin();
-		// while (itl != _servers[i].getLocations().end())
-		// {
-		// 	std::cout << "name location: " << itl->getPath() << std::endl;
-		// 	std::cout << "methods: " << itl->getPrintMethods() << std::endl;
-		// 	std::cout << "index: " << itl->getIndexLocation() << std::endl;
-		// 	if (itl->getCgiPath().empty())
-		// 	{
-		// 		std::cout << "root: " << itl->getRootLocation() << std::endl;
-		// 		if (!itl->getReturn().empty())
-		// 			std::cout << "return: " << itl->getReturn() << std::endl;
-		// 		if (!itl->getAlias().empty())
-		// 			std::cout << "alias: " << itl->getAlias() << std::endl;
-		// 	}
-		// 	else
-		// 	{
-		// 		std::cout << "cgi root: " << itl->getRootLocation() << std::endl;
-		// 		std::cout << "sgi_path: " << itl->getCgiPath().size() << std::endl;
-		// 		std::cout << "sgi_ext: " << itl->getCgiExtension().size() << std::endl;
-		// 	}
-		// 	++itl;
-		// }
-		// itl = _servers[i].getLocations().begin();
+		const std::vector<Location>& locations = _servers[i].getLocations();
+		std::cout << "Locations: " << locations.size() << std::endl;
+		for (size_t j = 0; j < locations.size(); ++j)
+		{
+			std::cout << "--- Location #" << j + 1 << " ---" << std::endl;
+			locations[j].printDebug();
+		}
 		std::cout << "-----------------------------" << std::endl;
+
+			
+	
 	}
 }

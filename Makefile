@@ -1,7 +1,7 @@
 NAME = webserv
 
 CC = c++
-FLAGS = -Wall -Wextra -Wsign-conversion -pedantic -Werror -g -std=c++98
+FLAGS = -Wall -Wextra -Wsign-conversion -pedantic -Werror -Wreorder -g -std=c++98
 
 SRC_DIR  = src
 INC_DIR  = include
@@ -10,8 +10,9 @@ SRC_FILES = main.cpp \
 			ConfigFile.cpp \
 			ConfigParser.cpp \
 			ServerConfig.cpp \
+			ServerBuilder.cpp \
+			Location.cpp \
 			utils.cpp	\
-			ServerBuilder.cpp
 
 
 SRC_FILES := $(addprefix $(SRC_DIR)/,$(SRC_FILES))

@@ -1,7 +1,9 @@
 #pragma once
 #include "Webserv.hpp"
-#include "ServerConfig.hpp"
+// #include "ServerConfig.hpp"
 #include "ConfigParser.hpp"
+
+class ServerConfig;
 
 /**
  * @class ServerBuilder
