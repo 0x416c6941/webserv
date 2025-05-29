@@ -15,10 +15,10 @@ private:
 	std::string 			_root;
 	bool 				_autoindex;
 	std::vector<std::string> 	_index;
-	std::map<std::string, bool> 	_methods;
-	std::string 			_return;
+	std::set<std::string>	 	_methods;
+	std::pair<int, std::string> 	_return;
 	std::string 			_alias;
-	unsigned long 			_client_max_body_size;
+	uint64_t 			_client_max_body_size;
 	std::vector<std::string> 	_cgi_path;
 	std::vector<std::string> 	_cgi_ext;
 	
@@ -26,29 +26,29 @@ private:
 	Location();
 	~Location();
 	
-	void 						setPath(std::string);
-	void 						setRootLocation(std::string);
-	void 						setAutoindex(std::string);
-	void 						addIndexLocation(std::string);
-	void 						setReturn(std::string);  
-	void 						setAlias(std::string);
-	void 						addCgiPath(std::string);  
-	void 						addCgiExtension(std::string);
-	void 						setMaxBodySize(std::string);
-	void 						setMaxBodySize(unsigned long);
-	void 						resetMethode();
-	void 						addMethode(const std::string& method);
+	// Setters
+	void 						setPath(const std::string& path);
+	void 						setRootLocation(const std::string& root);
+	void 						setAutoindex(bool value);  
+	void 						addIndexLocation(const std::string& index);
+	void 						setReturn(const std::pair<int, std::string> _returnvalue);
+	void 						setAlias(const std::string& alias);
+	void 						addCgiPath(const std::string& path);
+	void 						addCgiExtension(const std::string& ext);
+	void 						setMaxBodySize(uint64_t size);
+	void 						resetMethods();
+	void 						addMethod(const std::string& method);
 	
 	const std::string 				&getPath() const;
 	const std::string 				&getRootLocation() const;
-	const std::map<std::string, bool>		&getMethods() const;
+	const std::set<std::string>			&getMethods() const;
 	const bool 					&getAutoindex() const;
 	const std::vector<std::string> 			&getIndexLocation() const;
-	const std::string 				&getReturn() const;
+	std::pair<int, std::string> 			getReturn() const;
 	const std::string 				&getAlias() const;
 	const std::vector<std::string> 			&getCgiPath() const;
 	const std::vector<std::string> 			&getCgiExtension() const;
-	const unsigned long 				&getMaxBodySize() const;
+	const uint64_t	 				&getMaxBodySize() const;
 
 	
 	void 						printDebug() const;

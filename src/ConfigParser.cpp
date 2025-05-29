@@ -175,13 +175,13 @@ void ConfigParser::parse() {
 	splitIntoServerBlocks(_rawContent);
 	for (size_t i = 0; i < _serverBlocks.size(); ++i) {
 		std::vector<std::string> directives = splitDirectives(_serverBlocks[i]);
-		if (DEBUG)
-		{
-			std::cout << "\nParsed Directives for Server Block #" << i << ":\n";
-			for (size_t j = 0; j < directives.size(); ++j) {
-				std::cout << "  [" << j << "] " << directives[j] << std::endl;
-			}
-		}
+		// if (DEBUG)
+		// {
+		// 	std::cout << "\nParsed Directives for Server Block #" << i << ":\n";
+		// 	for (size_t j = 0; j < directives.size(); ++j) {
+		// 		std::cout << "  [" << j << "] " << directives[j] << std::endl;
+		// 	}
+		// }
 		ServerConfig server = ServerBuilder::build(directives);
 		_servers.push_back(server);
 	}
@@ -205,40 +205,3 @@ const std::vector<ServerConfig>& ConfigParser::getServers() const {
 	return _servers;
 }
 
-
-/**
- * @brief Print all servers for debug
- * 
- */
-void ConfigParser::print()
-{
-	std::cout << "------------- Config -------------" << std::endl;
-	for (size_t i = 0; i < _servers.size(); i++)
-	{
-		std::cout << "Server #" << i + 1 << std::endl;
-		std::cout << "Server name: " << _servers[i].getServerName() << std::endl;
-		std::cout << "Host: " << _servers[i].getHost() << std::endl;
-		std::cout << "Root: " << _servers[i].getRoot() << std::endl;
-		std::cout << "Index: " << _servers[i].getIndex() << std::endl;
-		std::cout << "Port: " << _servers[i].getPort() << std::endl;
-		std::cout << "Max BSize: " << _servers[i].getClientMaxBodySize() << std::endl;
-		std::cout << "Error pages: " << _servers[i].getErrorPages().size() << std::endl;
-		std::map<int, std::string>::const_iterator it = _servers[i].getErrorPages().begin();
-		while (it != _servers[i].getErrorPages().end())
-		{
-			std::cout << it->first << " - " << it->second << std::endl;
-			++it;
-		}
-		const std::vector<Location>& locations = _servers[i].getLocations();
-		std::cout << "Locations: " << locations.size() << std::endl;
-		for (size_t j = 0; j < locations.size(); ++j)
-		{
-			std::cout << "--- Location #" << j + 1 << " ---" << std::endl;
-			locations[j].printDebug();
-		}
-		std::cout << "-----------------------------" << std::endl;
-
-			
-	
-	}
-}

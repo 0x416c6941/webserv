@@ -36,25 +36,6 @@ std::vector<std::string> splitParameters(const std::string &directive) {
     return tokens;
 }
 
-/**
- * @brief Validates an IPv4 address format (basic check).
- * 
- * @param ip A string representing the IP address.
- * @return true If the IP is a valid IPv4 address.
- * @return false Otherwise.
- */
-static bool isValidIPv4(const std::string& ip) {
-	std::stringstream ss(ip);
-	std::string token;
-	int segments = 0;
-
-	while (std::getline(ss, token, '.')) {
-		if (++segments > 4) return false;
-		int val = std::atoi(token.c_str());
-		if (val < 0 || val > 255) return false;
-	}
-	return segments == 4;
-}
 
 /**
  * @brief Processes the 'host' directive for a server block.
@@ -70,11 +51,21 @@ void ServerBuilder::handle_host(const std::vector<std::string>& parameters, Serv
 		throw ConfigParser::ErrorException("Invalid syntax for host directive");
 
 	const std::string& ip = parameters[1];
-	if (!isValidIPv4(ip))
+
+	struct in_addr addr;
+	if (ip != "localhost" && inet_pton(AF_INET, ip.c_str(), &addr) != 1)
 		throw ConfigParser::ErrorException("Invalid IPv4 address: " + ip);
 
-	server_cfg.setHost(ip);
+	// Optional: map "localhost" to 127.0.0.1
+	std::string resolvedIp = (ip == "localhost") ? "127.0.0.1" : ip;
+
+	if (server_cfg.alreadyAddedHost(resolvedIp))
+		throw ConfigParser::ErrorException("Duplicate host: " + resolvedIp);
+
+	server_cfg.addHost(resolvedIp);
 }
+
+
 
 /**
  * @brief Handles the 'root' directive for server-wide root path.
@@ -86,10 +77,12 @@ void ServerBuilder::handle_host(const std::vector<std::string>& parameters, Serv
  * @throws ConfigParser::ErrorException On incorrect syntax.
  */
 void ServerBuilder::handle_root(const std::vector<std::string>& parameters, ServerConfig& server_cfg) {
-    if (parameters.size() != 3 || parameters[2] != ";")
-        throw ConfigParser::ErrorException("Invalid syntax for 'root' directive");
-
-    server_cfg.setRoot(parameters[1]);
+    	if (parameters.size() != 3 || parameters[2] != ";")
+        	throw ConfigParser::ErrorException("Invalid syntax for 'root' directive");
+	if (!pathExists(parameters[1])) {
+		print_warning ("Warning: root path '", parameters[1], "' does not exist at parse time.");
+	}
+    	server_cfg.setRoot(parameters[1]);
 }
 
 /**
@@ -102,32 +95,47 @@ void ServerBuilder::handle_root(const std::vector<std::string>& parameters, Serv
  * @throws ConfigParser::ErrorException On incorrect syntax.
  */
 void ServerBuilder::handle_server_name(const std::vector<std::string>& parameters, ServerConfig& server_cfg) {
-    if (parameters.size() != 3 || parameters[2] != ";")
-        throw ConfigParser::ErrorException("Invalid syntax for 'server_name' directive");
-    server_cfg.setServerName(parameters[1]);
+	if (parameters.size() < 3 || parameters.back() != ";")
+		throw ConfigParser::ErrorException("Invalid syntax for 'server_name' directive");
+
+	// Add each name (parameters[1] to parameters[n - 2])
+	for (size_t i = 1; i < parameters.size() - 1; ++i) {
+		const std::string& name = parameters[i];
+
+		// Must not be empty, no spaces
+		if (name.empty() || name.find(' ') != std::string::npos)
+			throw ConfigParser::ErrorException("Invalid server_name: '" + name + "'");
+
+		server_cfg.addServerName(name);
+	}
 }
+
 
 /**
  * @brief Handles the 'index' directive specifying default index files.
- * 
+ *
  * Format: `index <file1> <file2> ... ;`
- * 
+ *
  * @param parameters Tokenized directive.
  * @param server_cfg Server configuration to update.
  * @throws ConfigParser::ErrorException On incorrect syntax.
  */
 void ServerBuilder::handle_index(const std::vector<std::string>& parameters, ServerConfig& server_cfg) {
-    if (parameters.size() < 3 || parameters.back() != ";")
-        throw ConfigParser::ErrorException("Invalid syntax for 'index' directive");
+	if (parameters.size() < 3 || parameters.back() != ";")
+		throw ConfigParser::ErrorException("Invalid syntax for 'index' directive");
 
-    std::string index_files;
-    for (size_t i = 1; i < parameters.size() - 1; ++i) {
-        if (!index_files.empty()) index_files += " ";
-        index_files += parameters[i];
-    }
+	// Clear existing index list
+	server_cfg.resetIndex();
 
-    server_cfg.setIndex(index_files);
+	// Add all index files
+	for (size_t i = 1; i < parameters.size() - 1; ++i) {
+		if (parameters[i].empty())
+			throw ConfigParser::ErrorException("Empty value in 'index' directive");
+		server_cfg.addIndex(parameters[i]);
+	}
 }
+
+
 
 /**
  * @brief Processes the 'autoindex' directive (on/off).
@@ -139,7 +147,7 @@ void ServerBuilder::handle_index(const std::vector<std::string>& parameters, Ser
  * @throws ConfigParser::ErrorException On invalid value or syntax.
  */
 void ServerBuilder::handle_autoindex(const std::vector<std::string>& parameters, ServerConfig& server_cfg) {
-	if (parameters.size() < 3 || parameters.back() != ";")
+	if (parameters.size() < 3 || parameters[2] != ";")
 		throw ConfigParser::ErrorException("Invalid syntax for autoindex directive");
 
 	const std::string& value = parameters[1];
@@ -163,9 +171,14 @@ void ServerBuilder::handle_autoindex(const std::vector<std::string>& parameters,
 void ServerBuilder::handle_mbs(const std::vector<std::string>& parameters, ServerConfig& server_cfg) {
 	if (parameters.size() < 3 || parameters.back() != ";")
 		throw ConfigParser::ErrorException("Invalid syntax for client_max_body_size directive");
-	server_cfg.setClientMaxBodySize(parameters[1]);
-	
+
+	const std::string& param = parameters[1];
+	if (param.empty())
+		throw ConfigParser::ErrorException("client_max_body_size cannot be empty");
+	uint64_t 	finalSize = validateGetMbs(param);
+	server_cfg.setClientMaxBodySize(finalSize);
 }
+
 
 /**
  * @brief Processes 'error_page' directive mapping codes to pages.
@@ -198,19 +211,46 @@ void ServerBuilder::handle_error_page(const std::vector<std::string>& parameters
  * @throws ConfigParser::ErrorException On invalid port or duplicate.
  */
 void ServerBuilder::handle_listen(const std::vector<std::string>& parameters, ServerConfig& server_cfg) {
-    if (parameters.size() != 3 || parameters[2] != ";")
-        throw ConfigParser::ErrorException("Invalid syntax for 'listen': expected format 'listen <port>;'");
+    	if (parameters.size() != 3 || parameters[2] != ";") {
+        	throw ConfigParser::ErrorException("Invalid syntax for 'listen': expected format 'listen <port>;' or 'listen <ip:port>;'");
+   	}
 
-    if (server_cfg.getPort() != 0)
-        throw ConfigParser::ErrorException("Duplicate 'listen' directive");
+    	std::string listen_value = parameters[1];
+    	std::string host = "0.0.0.0"; // default host if not specified
+    	std::string port_str;
 
-    char* end;
-    unsigned long port = std::strtoul(parameters[1].c_str(), &end, 10);
+    	size_t colon_pos = listen_value.find(':');
+    	if (colon_pos != std::string::npos) {
+        	// Case: host:port
+        	host = listen_value.substr(0, colon_pos);
+		port_str = listen_value.substr(colon_pos + 1);
+		if (host == "localhost") {
+			host = "127.0.0.1";
+		} else {
+			struct in_addr addr;
+			if (inet_pton(AF_INET, host.c_str(), &addr) != 1) {
+				throw ConfigParser::ErrorException("Invalid IPv4 address in 'listen' directive: " + host);
+			}
+		}
 
-    if (*end != '\0' || port > 65535)
-        throw ConfigParser::ErrorException("Invalid port number in 'listen' directive");
+		if (!server_cfg.alreadyAddedHost(host)) {
+			server_cfg.addHost(host);
+		}
+    	} 
+    	else {
+        // Case: just port
+        	port_str = listen_value;
+    	}
 
-    server_cfg.setPort(static_cast<uint16_t>(port));
+    	// Validate and convert port
+    	char* end;
+    	unsigned long port = std::strtoul(port_str.c_str(), &end, 10);
+
+    	if (*end != '\0' || port == 0 || port > 65535) {
+    	    	throw ConfigParser::ErrorException("Invalid port number in 'listen' directive: " + port_str);
+    	}
+
+    	server_cfg.addPort(static_cast<uint16_t>(port));
 }
 
 /**
@@ -222,10 +262,10 @@ void ServerBuilder::handle_listen(const std::vector<std::string>& parameters, Se
  * @throws ConfigParser::ErrorException if syntax is invalid.
  */
 static void handle_location_root(Location& loc, const std::vector<std::string>& tokens, size_t& i) {
-    if (i + 2 >= tokens.size() || tokens[i + 2] != ";")
-        throw ConfigParser::ErrorException("Invalid root directive in location block");
-    loc.setRootLocation(tokens[i + 1]);
-    i += 2;
+    	if (i + 2 >= tokens.size() || tokens[i + 2] != ";")
+        	throw ConfigParser::ErrorException("Invalid root directive in location block");
+    	loc.setRootLocation(tokens[i + 1]);
+    	i += 2;
 }
 
 /**
@@ -237,11 +277,14 @@ static void handle_location_root(Location& loc, const std::vector<std::string>& 
  * @throws ConfigParser::ErrorException if the directive is malformed or terminator is missing.
  */
 static void handle_location_index(Location& loc, const std::vector<std::string>& tokens, size_t& i) {
-    ++i;
-    while (i < tokens.size() && tokens[i] != ";")
-        loc.addIndexLocation(tokens[i++]);
-    if (i >= tokens.size())
-        throw ConfigParser::ErrorException("Missing ';' after index directive");
+	++i;
+	while (i < tokens.size()) {
+		if (tokens[i] == ";")
+			return;
+		loc.addIndexLocation(tokens[i]);
+		++i;
+	}
+	throw ConfigParser::ErrorException("Missing ';' after index directive in location block");
 }
 
 /**
@@ -253,11 +296,19 @@ static void handle_location_index(Location& loc, const std::vector<std::string>&
  * @throws ConfigParser::ErrorException if value is missing or syntax is incorrect.
  */
 static void handle_location_autoindex(Location& loc, const std::vector<std::string>& tokens, size_t& i) {
-    if (i + 1 >= tokens.size())
-        throw ConfigParser::ErrorException("Missing value for autoindex directive");
-    loc.setAutoindex(tokens[i + 1]);
-    i += 2;
+	if (i + 2 >= tokens.size() || tokens[i + 2] != ";")
+		throw ConfigParser::ErrorException("Invalid syntax for autoindex directive in location block");
+
+	const std::string& value = tokens[i + 1];
+	if (value == "on")
+		loc.setAutoindex(true);
+	else if (value == "off")
+		loc.setAutoindex(false);
+	else
+		throw ConfigParser::ErrorException("Invalid value for autoindex: " + value);
+	i += 2;
 }
+
 
 /**
  * @brief Handles the 'allow_methods' directive inside a location block.
@@ -268,20 +319,27 @@ static void handle_location_autoindex(Location& loc, const std::vector<std::stri
  * @throws ConfigParser::ErrorException if an unknown method is encountered or ';' is missing.
  */
 static void handle_location_allow_methods(Location& loc, const std::vector<std::string>& tokens, size_t& i) {
-    loc.resetMethode();  
+	static std::set<std::string> kAllowedMethods;
+	if (kAllowedMethods.empty()) {
+		kAllowedMethods.insert("GET");
+		kAllowedMethods.insert("POST");
+		kAllowedMethods.insert("DELETE");
+	}
 
-    ++i;
-    while (i < tokens.size() && tokens[i] != ";") {
-        const std::string& method = tokens[i];
-        if (method == "GET" || method == "POST" || method == "DELETE" || method == "PUT" || method == "HEAD") {
-            loc.addMethode(method);
-        } else {
-            throw ConfigParser::ErrorException("Unknown method: " + method);
-        }
-        ++i;
-    }
-    if (i >= tokens.size())
-        throw ConfigParser::ErrorException("Missing ';' after allow_methods directive");
+	loc.resetMethods();  
+
+	++i;
+	while (i < tokens.size() && tokens[i] != ";") {
+		if (kAllowedMethods.find(tokens[i]) == kAllowedMethods.end()) {
+			throw ConfigParser::ErrorException("Invalid HTTP method: " + tokens[i]);
+		}
+		loc.addMethod(tokens[i]);
+		++i;
+	}
+
+	if (i >= tokens.size() || tokens[i] != ";") {
+			throw ConfigParser::ErrorException("Missing ';' after allow_methods directive");
+	}
 }
 
 /**
@@ -293,11 +351,30 @@ static void handle_location_allow_methods(Location& loc, const std::vector<std::
  * @throws ConfigParser::ErrorException if syntax is invalid.
  */
 static void handle_location_return(Location& loc, const std::vector<std::string>& tokens, size_t& i) {
-    if (i + 2 >= tokens.size() || tokens[i + 2] != ";")
-        throw ConfigParser::ErrorException("Invalid return directive in location block");
-    loc.setReturn(tokens[i + 1]);
-    i += 2;
+	if (i + 2 >= tokens.size())
+		throw ConfigParser::ErrorException("Invalid return directive in location block");
+
+	char* end;
+	long code = std::strtol(tokens[i+1].c_str(), &end, 10);
+	if (*end != '\0')
+		throw ConfigParser::ErrorException("Invalid status code: " + tokens[i+1]);
+
+	if (code < 100 || code > 599)
+		throw ConfigParser::ErrorException("Invalid HTTP status code in return directive");
+
+	std::string url;
+	if (tokens[i + 2] == ";") {
+		url = "";
+		i += 2;
+	} else if (i + 3 < tokens.size() && tokens[i + 3] == ";") {
+		url = tokens[i + 2];
+		i += 3;
+	} else {
+		throw ConfigParser::ErrorException("Invalid return directive syntax; expected: return <code> [url] ;");
+	}
+	loc.setReturn(std::make_pair(code, url));
 }
+
 
 /**
  * @brief Handles the 'alias' directive inside a location block.
@@ -308,11 +385,20 @@ static void handle_location_return(Location& loc, const std::vector<std::string>
  * @throws ConfigParser::ErrorException if syntax is invalid.
  */
 static void handle_location_alias(Location& loc, const std::vector<std::string>& tokens, size_t& i) {
-    if (i + 2 >= tokens.size() || tokens[i + 2] != ";")
-        throw ConfigParser::ErrorException("Invalid alias directive in location block");
-    loc.setAlias(tokens[i + 1]);
-    i += 2;
+	if (i + 2 >= tokens.size())
+		throw ConfigParser::ErrorException("Incomplete alias directive in location block");
+
+	if (tokens[i + 2] != ";")
+		throw ConfigParser::ErrorException("Missing ';' after alias directive");
+
+	const std::string& aliasPath = tokens[i + 1];
+	if (aliasPath.empty())
+		throw ConfigParser::ErrorException("Alias path cannot be empty");
+
+	loc.setAlias(aliasPath);
+	i += 2;
 }
+
 
 /**
  * @brief Handles the 'cgi_path' directive inside a location block.
@@ -345,11 +431,24 @@ static void handle_location_cgi_path(Location& loc, const std::vector<std::strin
  * @throws ConfigParser::ErrorException if ';' is missing after the extensions.
  */
 static void handle_location_cgi_ext(Location& loc, const std::vector<std::string>& tokens, size_t& i) {
-    ++i;
-    while (i < tokens.size() && tokens[i] != ";") {
-        loc.addCgiExtension(tokens[i++]);
-    }
-    if (i >= tokens.size()) throw ConfigParser::ErrorException("Missing ';' after cgi_ext directive");
+    	++i;
+	if (i >= tokens.size())
+		throw ConfigParser::ErrorException("Missing value(s) for cgi_path directive");
+    	bool valueAdded = false;
+	while (i < tokens.size()) {
+		if (tokens[i] == ";")
+			break;
+
+		loc.addCgiPath(tokens[i]);
+		valueAdded = true;
+		++i;
+	}
+
+	if (!valueAdded)
+		throw ConfigParser::ErrorException("cgi_path directive requires at least one value");
+
+	if (i >= tokens.size() || tokens[i] != ";")
+		throw ConfigParser::ErrorException("Missing ';' after cgi_path directive");
 }
 
 /**
@@ -361,10 +460,11 @@ static void handle_location_cgi_ext(Location& loc, const std::vector<std::string
  * @throws ConfigParser::ErrorException if syntax is invalid.
  */
 static void handle_location_client_max_body_size(Location& loc, const std::vector<std::string>& tokens, size_t& i) {
-    if (i + 2 >= tokens.size() || tokens[i + 2] != ";")
-        throw ConfigParser::ErrorException("Invalid client_max_body_size directive in location block");
-    loc.setMaxBodySize(tokens[i + 1]);
-    i += 2;
+    	if (i + 2 >= tokens.size() || tokens[i + 2] != ";")
+        	throw ConfigParser::ErrorException("Invalid client_max_body_size directive in location block");
+	uint64_t value = validateGetMbs(tokens[i+1]);
+    	loc.setMaxBodySize(value);
+    	i += 2;
 }
 
 /**
@@ -408,24 +508,27 @@ static const std::map<std::string, LocationHandler>& getLocationHandlers() {
  * @throws ConfigParser::ErrorException On unknown directive or syntax error.
  */
 void ServerBuilder::handle_location(const std::vector<std::string>& parameters, ServerConfig& server_cfg) {
-    if (parameters.size() < 3 || parameters[0] != "location" || parameters[2] != "{")
-        throw ConfigParser::ErrorException("Invalid or missing URI for location block");
+    	if (parameters.size() < 3 || parameters[0] != "location" || parameters[2] != "{")
+        	throw ConfigParser::ErrorException("Invalid or missing URI for location block");
 
-    Location location;
-    location.setPath(parameters[1]);
+    	Location location;
+    	if (!pathExists(parameters[1])) 
+		print_warning("Warning: location path '", parameters[1], "' does not exist at parse time.");
+	
+    	location.setPath(parameters[1]);
 
-    const std::map<std::string, LocationHandler>& handlers = getLocationHandlers();
+    	const std::map<std::string, LocationHandler>& handlers = getLocationHandlers();
 
-    for (size_t i = 3; i < parameters.size(); ++i) {
-        if (parameters[i] == "}") break;
+    	for (size_t i = 3; i < parameters.size(); ++i) {
+        	if (parameters[i] == "}") break;
 
-        std::map<std::string, LocationHandler>::const_iterator it = handlers.find(parameters[i]);
-        if (it == handlers.end()) {
-            throw ConfigParser::ErrorException("Unknown directive: " + parameters[i]);
-        }
+        	std::map<std::string, LocationHandler>::const_iterator it = handlers.find(parameters[i]);
+        	if (it == handlers.end()) {
+            		throw ConfigParser::ErrorException("Unknown directive: " + parameters[i]);
+        	}
 
-        LocationHandler handler = it->second;
-        handler(location, parameters, i);
+        	LocationHandler handler = it->second;
+        	handler(location, parameters, i);
     }
 
     server_cfg.addLocation(location);

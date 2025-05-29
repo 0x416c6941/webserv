@@ -13,6 +13,7 @@ SRC_FILES = main.cpp \
 			ServerBuilder.cpp \
 			Location.cpp \
 			utils.cpp	\
+			debug.cpp	\
 
 
 SRC_FILES := $(addprefix $(SRC_DIR)/,$(SRC_FILES))

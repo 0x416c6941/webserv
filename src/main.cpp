@@ -1,4 +1,5 @@
 #include "../include/ConfigParser.hpp"
+#include "../include/Webserv.hpp"
 
 int main(int argc, char **argv)
 {
@@ -12,10 +13,26 @@ int main(int argc, char **argv)
 		ConfigFile cfg_file(cfg_path);
 		ConfigParser parser(cfg_file.readContent());
 		parser.parse();
-		parser.print();
+		std::vector<ServerConfig> servers = parser.getServers();
+		if (DEBUG)
+		{
+			for (std::vector<ServerConfig>::iterator it = servers.begin(); it != servers.end(); ++it)
+			{
+				std::cout << "---- Server ----" << std::endl; 
+				printServerConfig(*it);
+			}
+		}
+		// for (std::vector<ServerConfig>::iterator it = servers.begin(); it != servers.end(); ++it)
+		// {
+		// 	it->initServer();
+		// }
+
+		
 	} 
 	catch (const std::exception& e) {
-		std::cerr << "Error: " << e.what() << std::endl;
+		print_err("Fatal error: ", e.what(), "");
+		return 1;
 	}
+
 	return(0);
 }

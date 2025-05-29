@@ -15,43 +15,80 @@ class Location;
 class ServerConfig
 {
 private:
-	uint16_t			_port;			// Port number
-	std::string			_host;			// IP address (IPv4)
-	std::string			_server_name;		// Server name / domain
+	std::vector<uint16_t> 		_ports;			// Port number
+	std::vector<std::string>	_hosts;			// IP address (IPv4)
+	std::vector<std::string>	_server_names;		// Server name / domain
 	std::string			_root;			// Root directory path
 	uint64_t			_client_max_body_size;	// Max client body size (bytes)
-	std::string			_index;			// Default index file
+	std::vector<std::string>	_index;			// Default index file
 	bool				_autoindex;		// Directory listing toggle
 	std::map<int, std::string>	_error_pages;		// Error code to custom page mapping
 	std::vector<Location>		_locations;		// List of route-specific configurations
-	sockaddr_in			_server_address;	// Full IPv4 socket address struct
-	int				_listen_fd;		// Socket file descriptor
+	std::vector<sockaddr_in>	_server_addresses;	// Full IPv4 socket address struct
+	std::vector<int>		_listen_fds;		// Socket file descriptor
 	
 public:
 	ServerConfig();
+	ServerConfig(const ServerConfig& other);
 	~ServerConfig();
+
 	// Getters
-	uint16_t 			getPort() const;
-	const std::string& 		getHost() const;
-	const std::string& 		getServerName() const;
+	const std::vector<uint16_t>& 	getPorts() const;
+	const std::vector<std::string>& getHosts() const;
+	const std::vector<std::string>& getServerNames() const;
 	const std::string& 		getRoot() const;
-	const std::string& 		getIndex() const;
 	uint64_t 			getClientMaxBodySize() const;
+	const std::vector<std::string>& getIndex() const;
 	bool 				getAutoindex() const;
-	const std::map<int,std::string>&getErrorPages() const;
-	const std::vector<Location>&	getLocations() const;
+	const std::map<int, std::string>&getErrorPages() const;
+	const std::vector<Location>& 	getLocations() const;
+	const std::vector<sockaddr_in>& getServerAddresses() const;
+	const std::vector<int>& 	getListenFds() const;
+
 
 
 	// Setters
-	void 				setPort(uint16_t port);
-	void 				setHost(const std::string& host);
-	void 				setServerName(const std::string& name);
+	void 				setPorts(const std::vector<uint16_t>& ports);
+	void 				addPort(uint16_t port);
+	void 				setHosts(const std::vector<std::string>& hosts);
+	void 				addHost(const std::string& host);
+	void 				setServerNames(const std::vector<std::string>& names);
+	void 				addServerName(const std::string& name);
 	void 				setRoot(const std::string& root);
-	void 				setIndex(const std::string& index);
 	void 				setClientMaxBodySize(uint64_t size);
-	void 				setClientMaxBodySize(std::string param);
-	void 				setAutoindex(bool mode);
+	void 				setIndex(const std::vector<std::string>& index);
+	void 				addIndex(const std::string& file);
+	void 				setAutoindex(bool autoindex);
+	void 				setErrorPages(const std::map<int, std::string>& errorPages);
 	void 				setErrorPage(int code, const std::string& path);
-	void				addLocation(const Location &loc_section);
+	void 				setLocations(const std::vector<Location>& locations);
+	void 				addLocation(const Location& location);
+	void 				setServerAddresses(const std::vector<sockaddr_in>& addresses);
+	void 				addServerAddress(const sockaddr_in& address);
+	void 				setListenFds(const std::vector<int>& fds);
+	void 				addListenFd(int fd);
+
+	bool 				alreadyAddedHost(const std::string& host) const;
+	void 				resetIndex(void);
+	
+
+	void				initServer(void);
+	void 				cleanupSocket(void);
+	
+	public:
+		class ErrorException : public std::exception
+		{
+			private:
+				std::string _message;
+			public:
+				ErrorException(std::string message) throw() {
+					_message = "SERVER INIT ERROR: " + message;
+				}
+				virtual const char* what() const throw() {
+					return (_message.c_str());
+				}
+				virtual ~ErrorException() throw() {}
+		};
+
 };
 

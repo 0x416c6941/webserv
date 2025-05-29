@@ -79,8 +79,6 @@ class ConfigParser {
 		 */
 		size_t 				findEndServer(size_t start, const std::string &content);
 
-		// Print servers data
-		void 				print();
 		
 		// Getters
 		const std::vector<ServerConfig>	&getServers() const;
