@@ -182,8 +182,7 @@ int ServerConfig::createListeningSocket(const std::string& host, uint16_t port, 
 		return -1;
 	}
 
-	// Optional for epoll:
-	// fcntl(fd, F_SETFL, O_NONBLOCK);
+	fcntl(fd, F_SETFL, O_NONBLOCK);
 
 	return fd;
 }
