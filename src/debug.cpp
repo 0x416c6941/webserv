@@ -5,19 +5,29 @@ void printServerConfig(const ServerConfig& config)
 {
 	std::cout << "====== Server Configuration ======" << std::endl;
 
-	// Server names
+	// Server Names
 	const std::vector<std::string>& names = config.getServerNames();
 	std::cout << "Server Names:";
 	if (names.empty()) std::cout << " (none)";
-	for (size_t i = 0; i < names.size(); ++i)
+	else for (size_t i = 0; i < names.size(); ++i)
 		std::cout << " " << names[i];
+	std::cout << std::endl;
+
+	// Listen Endpoints
+	const std::vector<std::pair<std::string, uint16_t> >& endpoints = config.getListenEndpoints();
+	std::cout << "Listen Endpoints:";
+	if (endpoints.empty()) std::cout << " (none)";
+	else {
+		for (size_t i = 0; i < endpoints.size(); ++i)
+			std::cout << " " << endpoints[i].first << ":" << endpoints[i].second;
+	}
 	std::cout << std::endl;
 
 	// Hosts
 	const std::vector<std::string>& hosts = config.getHosts();
-	std::cout << "Hosts:";
+	std::cout << "Hosts";
 	if (hosts.empty()) std::cout << " (none)";
-	for (size_t i = 0; i < hosts.size(); ++i)
+	else for (size_t i = 0; i < hosts.size(); ++i)
 		std::cout << " " << hosts[i];
 	std::cout << std::endl;
 
@@ -25,28 +35,28 @@ void printServerConfig(const ServerConfig& config)
 	const std::vector<uint16_t>& ports = config.getPorts();
 	std::cout << "Ports:";
 	if (ports.empty()) std::cout << " (none)";
-	for (size_t i = 0; i < ports.size(); ++i)
+	else for (size_t i = 0; i < ports.size(); ++i)
 		std::cout << " " << ports[i];
 	std::cout << std::endl;
 
 	// Root
 	std::cout << "Root: " << config.getRoot() << std::endl;
 
-	// Index files
-	const std::vector<std::string>& indexes = config.getIndex();
+	// Index
+	const std::vector<std::string>& index = config.getIndex();
 	std::cout << "Index Files:";
-	if (indexes.empty()) std::cout << " (none)";
-	for (size_t i = 0; i < indexes.size(); ++i)
-		std::cout << " " << indexes[i];
+	if (index.empty()) std::cout << " (none)";
+	else for (size_t i = 0; i < index.size(); ++i)
+		std::cout << " " << index[i];
 	std::cout << std::endl;
 
 	// Autoindex
 	std::cout << "Autoindex: " << (config.getAutoindex() ? "on" : "off") << std::endl;
 
-	// Max body size
+	// Max Body Size
 	std::cout << "Max Client Body Size: " << config.getClientMaxBodySize() << " bytes" << std::endl;
 
-	// Error pages
+	// Error Pages
 	const std::map<int, std::string>& errors = config.getErrorPages();
 	std::cout << "Error Pages: " << errors.size() << std::endl;
 	for (std::map<int, std::string>::const_iterator it = errors.begin(); it != errors.end(); ++it)
@@ -57,10 +67,10 @@ void printServerConfig(const ServerConfig& config)
 	std::cout << "Locations: " << locations.size() << std::endl;
 	for (size_t i = 0; i < locations.size(); ++i) {
 		std::cout << "--- Location #" << (i + 1) << " ---" << std::endl;
-		locations[i].printDebug(); // assumes you implemented printDebug() in Location
+		locations[i].printDebug();
 	}
 
-	// Bound addresses
+	// Bound Addresses
 	const std::vector<sockaddr_in>& addrs = config.getServerAddresses();
 	std::cout << "Bound Addresses: " << addrs.size() << std::endl;
 	for (size_t i = 0; i < addrs.size(); ++i) {
@@ -69,11 +79,11 @@ void printServerConfig(const ServerConfig& config)
 		std::cout << "  " << ip << ":" << ntohs(addrs[i].sin_port) << std::endl;
 	}
 
-	// Listen file descriptors
+	// Listen File Descriptors
 	const std::vector<int>& fds = config.getListenFds();
 	std::cout << "Listen FDs:";
 	if (fds.empty()) std::cout << " (none)";
-	for (size_t i = 0; i < fds.size(); ++i)
+	else for (size_t i = 0; i < fds.size(); ++i)
 		std::cout << " " << fds[i];
 	std::cout << std::endl;
 

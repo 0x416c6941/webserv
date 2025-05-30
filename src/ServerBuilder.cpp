@@ -204,24 +204,23 @@ void ServerBuilder::handle_error_page(const std::vector<std::string>& parameters
 /**
  * @brief Handles the 'listen' directive defining the port.
  *
- * Format: `listen <port>;`
+ * Format: `listen <port>;` or `listen <ip:port>;`
  *
  * @param parameters Tokenized directive.
  * @param server_cfg Server configuration to update.
- * @throws ConfigParser::ErrorException On invalid port or duplicate.
+ * @throws ConfigParser::ErrorException On invalid syntax or value.
  */
 void ServerBuilder::handle_listen(const std::vector<std::string>& parameters, ServerConfig& server_cfg) {
     	if (parameters.size() != 3 || parameters[2] != ";") {
         	throw ConfigParser::ErrorException("Invalid syntax for 'listen': expected format 'listen <port>;' or 'listen <ip:port>;'");
    	}
 
-    	std::string listen_value = parameters[1];
-    	std::string host = "0.0.0.0"; // default host if not specified
-    	std::string port_str;
+	std::string listen_value = parameters[1];
+    	std::string host, port_str; 
 
     	size_t colon_pos = listen_value.find(':');
     	if (colon_pos != std::string::npos) {
-        	// Case: host:port
+        	// Case: explicit host:port
         	host = listen_value.substr(0, colon_pos);
 		port_str = listen_value.substr(colon_pos + 1);
 		if (host == "localhost") {
@@ -232,25 +231,25 @@ void ServerBuilder::handle_listen(const std::vector<std::string>& parameters, Se
 				throw ConfigParser::ErrorException("Invalid IPv4 address in 'listen' directive: " + host);
 			}
 		}
-
-		if (!server_cfg.alreadyAddedHost(host)) {
-			server_cfg.addHost(host);
-		}
     	} 
     	else {
         // Case: just port
         	port_str = listen_value;
     	}
 
-    	// Validate and convert port
-    	char* end;
-    	unsigned long port = std::strtoul(port_str.c_str(), &end, 10);
+    	// Convert and validate port
+	char* end;
+	unsigned long port = std::strtoul(port_str.c_str(), &end, 10);
+	if (*end != '\0' || port == 0 || port > 65535) {
+		throw ConfigParser::ErrorException("Invalid port number in 'listen' directive: " + port_str);
+	}
+	uint16_t port_val = static_cast<uint16_t>(port);
 
-    	if (*end != '\0' || port == 0 || port > 65535) {
-    	    	throw ConfigParser::ErrorException("Invalid port number in 'listen' directive: " + port_str);
-    	}
-
-    	server_cfg.addPort(static_cast<uint16_t>(port));
+	if (colon_pos != std::string::npos) {
+		server_cfg.addListenEndpoint(std::make_pair(host, port_val));
+	} else {
+		server_cfg.addPort(port_val);
+	}
 }
 
 /**

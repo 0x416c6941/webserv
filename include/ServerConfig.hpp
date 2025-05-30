@@ -15,6 +15,7 @@ class Location;
 class ServerConfig
 {
 private:
+	std::vector< std::pair<std::string, uint16_t> > _listen_endpoints; // host + port option
 	std::vector<uint16_t> 		_ports;			// Port number
 	std::vector<std::string>	_hosts;			// IP address (IPv4)
 	std::vector<std::string>	_server_names;		// Server name / domain
@@ -26,6 +27,9 @@ private:
 	std::vector<Location>		_locations;		// List of route-specific configurations
 	std::vector<sockaddr_in>	_server_addresses;	// Full IPv4 socket address struct
 	std::vector<int>		_listen_fds;		// Socket file descriptor
+
+	// Internal helper for init server
+	int createListeningSocket(const std::string& host, uint16_t port, sockaddr_in& out_addr);
 	
 public:
 	ServerConfig();
@@ -33,6 +37,7 @@ public:
 	~ServerConfig();
 
 	// Getters
+	const std::vector<std::pair<std::string, uint16_t> >& getListenEndpoints() const;
 	const std::vector<uint16_t>& 	getPorts() const;
 	const std::vector<std::string>& getHosts() const;
 	const std::vector<std::string>& getServerNames() const;
@@ -45,9 +50,8 @@ public:
 	const std::vector<sockaddr_in>& getServerAddresses() const;
 	const std::vector<int>& 	getListenFds() const;
 
-
-
 	// Setters
+	void 				addListenEndpoint(const std::pair<std::string, uint16_t>& endpoint);
 	void 				setPorts(const std::vector<uint16_t>& ports);
 	void 				addPort(uint16_t port);
 	void 				setHosts(const std::vector<std::string>& hosts);
@@ -68,6 +72,7 @@ public:
 	void 				setListenFds(const std::vector<int>& fds);
 	void 				addListenFd(int fd);
 
+	// helpers
 	bool 				alreadyAddedHost(const std::string& host) const;
 	void 				resetIndex(void);
 	

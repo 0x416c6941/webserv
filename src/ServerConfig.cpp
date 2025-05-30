@@ -14,7 +14,8 @@
 // }
 
 ServerConfig::ServerConfig()
-	: _ports(),
+	: _listen_endpoints(),
+	  _ports(),
 	  _hosts(),
 	  _server_names(),
 	  _root(),
@@ -24,11 +25,13 @@ ServerConfig::ServerConfig()
 	  _listen_fds()
 {
 	_server_addresses.clear();
+	_listen_fds.clear();
 }
 
 // Copy constructor
 ServerConfig::ServerConfig(const ServerConfig& other)
-	: _ports(other._ports),
+	: _listen_endpoints(other._listen_endpoints),
+	  _ports(other._ports),
 	  _hosts(other._hosts),
 	  _server_names(other._server_names),
 	  _root(other._root),
@@ -41,9 +44,15 @@ ServerConfig::ServerConfig(const ServerConfig& other)
 	  _listen_fds(other._listen_fds)
 {}
 
-ServerConfig::~ServerConfig(){}
+ServerConfig::~ServerConfig(){
+	cleanupSocket();
+}
 
 // Getters
+const std::vector<std::pair<std::string, uint16_t> >& ServerConfig::getListenEndpoints() const {
+	return _listen_endpoints;
+}
+
 const std::vector<uint16_t>& 		ServerConfig::getPorts() const { return _ports; }
 const std::vector<std::string>& 	ServerConfig::getHosts() const { return _hosts; }
 const std::vector<std::string>& 	ServerConfig::getServerNames() const { return _server_names; }
@@ -57,6 +66,9 @@ const std::vector<sockaddr_in>& 	ServerConfig::getServerAddresses() const { retu
 const std::vector<int>& 		ServerConfig::getListenFds() const { return _listen_fds; }
 
 // Setters
+void ServerConfig::addListenEndpoint(const std::pair<std::string, uint16_t>& endpoint) {
+	_listen_endpoints.push_back(endpoint);
+}
 void 					ServerConfig::setPorts(const std::vector<uint16_t>& ports) { _ports = ports; }
 void 					ServerConfig::addPort(uint16_t port) { _ports.push_back(port); }
 void 					ServerConfig::setHosts(const std::vector<std::string>& hosts) { _hosts = hosts; }
@@ -88,81 +100,70 @@ bool 					ServerConfig::alreadyAddedHost(const std::string& host) const {
 
 void 					ServerConfig::resetIndex() { _index.clear(); }
 
+int ServerConfig::createListeningSocket(const std::string& host, uint16_t port, sockaddr_in& out_addr) {
+	int fd = socket(AF_INET, SOCK_STREAM, 0);
+	if (fd < 0) return -1;
+
+	int opt = 1;
+	setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
+	std::memset(&out_addr, 0, sizeof(out_addr));
+	out_addr.sin_family = AF_INET;
+	out_addr.sin_port = htons(port);
+	if (inet_pton(AF_INET, host.c_str(), &out_addr.sin_addr) <= 0) {
+		close(fd);
+		return -1;
+	}
+
+	if (bind(fd, (struct sockaddr*)&out_addr, sizeof(out_addr)) < 0) {
+		close(fd);
+		return -1;
+	}
+
+	if (listen(fd, SOMAXCONN) < 0) {
+		close(fd);
+		return -1;
+	}
+
+	// Optional for epoll:
+	// fcntl(fd, F_SETFL, O_NONBLOCK);
+
+	return fd;
+}
+
+void ServerConfig::initServer() {
+	if (_hosts.empty()) _hosts.push_back("0.0.0.0");
+	if (_ports.empty()) _ports.push_back(8080);
+
+	std::set<std::string> boundPairs;
+
+	for (size_t i = 0; i < _hosts.size(); ++i) {
+		for (size_t j = 0; j < _ports.size(); ++j) {
+			std::string key = _hosts[i] + ":" + std::string(1, ':') + std::string("0") + std::string(1, '0'); // C++98 doesn't have std::to_string
+			char buf[6];
+			sprintf(buf, "%u", _ports[j]);
+			key = _hosts[i] + ":" + std::string(buf);
+
+			if (boundPairs.find(key) != boundPairs.end())
+				continue;
+
+			sockaddr_in addr;
+			int fd = createListeningSocket(_hosts[i], _ports[j], addr);
+
+			if (fd < 0)
+				continue; // Or log error
+
+			_server_addresses.push_back(addr);
+			_listen_fds.push_back(fd);
+			boundPairs.insert(key);
+		}
+	}
+}
 
 
-
-// void 					ServerConfig::setClientMaxBodySize(std::string param) { 
-// 	if (param.empty()) { throw ConfigParser::ErrorException("client_max_body_size cannot be empty");}
-
-//    	char suffix = param[param.size() - 1];
-//    	unsigned long multiplier = 1;
-
-//    	if (suffix == 'K' || suffix == 'M' || suffix == 'G') {
-//    	    param = param.substr(0, param.size() - 1); // remove suffix
-//    	    if (suffix == 'K') multiplier = 1024UL;
-//    	    else if (suffix == 'M') multiplier = 1024UL * 1024;
-//    	    else if (suffix == 'G') multiplier = 1024UL * 1024 * 1024;
-//    	}
-
-//    	std::stringstream ss(param);
-//    	unsigned long size;
-//    	ss >> size;
-
-//    	if (ss.fail() || !ss.eof()) {
-//    	    throw ConfigParser::ErrorException("Invalid client_max_body_size: " + param + suffix);
-//    	}
-
-//    	_client_max_body_size = size * multiplier; 
-// }
-
-
-
-// void	ServerConfig::initServer(void){
-// 	// Create socket
-//     	_listen_fd = socket(AF_INET, SOCK_STREAM, 0);
-//     	if (_listen_fd == -1)
-//         	throw ErrorException(std::string("socket creation failed: ") + strerror(errno));
-	
-// 	// Enable address reuse
-// 	int option_value = 1;
-//    	if (setsockopt(_listen_fd, SOL_SOCKET, SO_REUSEADDR, &option_value, sizeof(option_value)) == -1)
-//    	{
-//    	    	close(_listen_fd);
-//    	    	throw ErrorException(std::string("setsockopt failed: ") + strerror(errno));
-//    	}
-
-// 	// Configure server address
-// 	memset(&_server_address, 0, sizeof(_server_address));
-//     	_server_address.sin_family = AF_INET;
-// 		// Convert _host string to binary IP address
-//     	if (inet_pton(AF_INET, _host.c_str(), &_server_address.sin_addr) != 1)
-//     	{
-//         	close(_listen_fd);
-//         	throw ErrorException("Invalid IP address: " + _host);
-//     	}
-//     	_server_address.sin_port = htons(_port);
-
-// 	// Bind socket
-//     	if (bind(_listen_fd, (struct sockaddr *)&_server_address, sizeof(_server_address)) == -1)
-//     	{
-//     	    	close(_listen_fd);
-//     	    	throw ErrorException(std::string("bind failed: ") + strerror(errno));
-//     	}
-
-//    	// Start listening
-//    	if (listen(_listen_fd, SOMAXCONN) == -1)
-//    	{
-//    	    close(_listen_fd);
-//    	    throw ErrorException(std::string("listen failed: ") + strerror(errno));
-//    	}
-//     	std::ostringstream oss;
-// 	oss << "webserv: Server " << _server_name << " is listening on port " << _port;
-// 	print_log(oss.str());
-
-// }
-
-// void ServerConfig::cleanupSocket()
-// {
-//     if (_listen_fd != -1)
-//         close(_listen_fd);
-// }
+void ServerConfig::cleanupSocket(){
+	for (size_t i = 0; i < _listen_fds.size(); ++i) {
+		close(_listen_fds[i]);
+	}
+	_listen_fds.clear();
+}
