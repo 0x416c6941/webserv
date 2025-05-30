@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <fstream>
 #include <sstream>
+#include <sys/epoll.h>
 #include <iostream>
 #include <stdexcept>
 #include <sys/stat.h>
@@ -20,7 +21,7 @@
 #include <sys/types.h>
 #include <arpa/inet.h>
 
-#define DEBUG 1
+#define DEBUG 0
 
 
 #define DEFAULT_CONTENT_LENGTH 1048576
