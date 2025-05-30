@@ -14,6 +14,20 @@ int main(int argc, char **argv)
 		ConfigParser parser(cfg_file.readContent());
 		parser.parse();
 		std::vector<ServerConfig> servers = parser.getServers();
+		
+		bool init_failed = false;
+		for (std::vector<ServerConfig>::iterator it = servers.begin(); it != servers.end(); ++it)
+		{
+			try {
+				it->initServer();
+			} catch(const std::exception& e) {
+				it->cleanupSocket();
+				print_err("Fatal error: ", e.what(), "");
+				init_failed = true;
+			}
+		}
+		if (init_failed)
+			return 1;
 		if (DEBUG)
 		{
 			for (std::vector<ServerConfig>::iterator it = servers.begin(); it != servers.end(); ++it)
@@ -22,12 +36,6 @@ int main(int argc, char **argv)
 				printServerConfig(*it);
 			}
 		}
-		// for (std::vector<ServerConfig>::iterator it = servers.begin(); it != servers.end(); ++it)
-		// {
-		// 	it->initServer();
-		// }
-
-		
 	} 
 	catch (const std::exception& e) {
 		print_err("Fatal error: ", e.what(), "");

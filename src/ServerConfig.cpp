@@ -100,6 +100,63 @@ bool 					ServerConfig::alreadyAddedHost(const std::string& host) const {
 
 void 					ServerConfig::resetIndex() { _index.clear(); }
 
+void ServerConfig::setDefaultsIfEmpty() {
+	// Default root
+	if (_root.empty()) {
+		_root = "./";
+	}
+
+	// Default index
+	if (_index.empty()) {
+		_index.push_back("index.html");
+	}
+
+	// Default error pages
+	if (_error_pages.empty()) {
+		_error_pages[404] = "error_pages/404.html";
+		_error_pages[500] = "error_pages/500.html";
+		_error_pages[403] = "error_pages/403.html";
+		_error_pages[400] = "error_pages/400.html";
+	}
+
+	if (_ports.empty() && _listen_endpoints.empty()) {
+		throw ServerConfig::ErrorException("No 'listen' directive provided: server must specify at least one port.");
+	}
+
+	// Default host (if only port is defined and no endpoint provided)
+	if (_hosts.empty() && !_ports.empty() && _listen_endpoints.empty()) {
+		_hosts.push_back("0.0.0.0");
+	}
+}
+
+
+void ServerConfig::validateListenEndpoint(void)
+{
+	std::set<std::pair<std::string, uint16_t> > unique_endpoints;
+
+	// Validate explicitly defined endpoints
+	for (size_t i = 0; i < _listen_endpoints.size(); ++i) {
+		const std::pair<std::string, uint16_t>& ep = _listen_endpoints[i];
+		if (!unique_endpoints.insert(ep).second) {
+			std::ostringstream oss;
+			oss << "Duplicate listen endpoint: " << ep.first << ":" << ep.second;
+			throw ErrorException(oss.str());
+		}
+	}
+
+	// Validate host+port combinations
+	for (size_t i = 0; i < _hosts.size(); ++i) {
+		for (size_t j = 0; j < _ports.size(); ++j) {
+			std::pair<std::string, uint16_t> legacy_pair = std::make_pair(_hosts[i], _ports[j]);
+			if (!unique_endpoints.insert(legacy_pair).second) {
+				std::ostringstream oss;
+				oss << "Duplicate listen host+port combination: " << _hosts[i] << ":" << _ports[j];
+				throw ErrorException(oss.str());
+			}
+		}
+	}
+}
+
 int ServerConfig::createListeningSocket(const std::string& host, uint16_t port, sockaddr_in& out_addr) {
 	int fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (fd < 0) return -1;
@@ -132,38 +189,61 @@ int ServerConfig::createListeningSocket(const std::string& host, uint16_t port, 
 }
 
 void ServerConfig::initServer() {
-	if (_hosts.empty()) _hosts.push_back("0.0.0.0");
-	if (_ports.empty()) _ports.push_back(8080);
+	setDefaultsIfEmpty();
+	validateListenEndpoint();
+	print_log("", "Initializing server sockets...", "");
 
-	std::set<std::string> boundPairs;
+	// 1. Explicit host:port endpoints
+	for (size_t i = 0; i < _listen_endpoints.size(); ++i) {
+		const std::string& host = _listen_endpoints[i].first;
+		uint16_t port = _listen_endpoints[i].second;
 
+		sockaddr_in addr;
+		int fd = createListeningSocket(host, port, addr);
+		if (fd < 0) {
+			std::string err_msg = "Failed to bind: " + host + ":" + to_string(port) + ": " + std::strerror(errno);
+			throw std::runtime_error(err_msg);
+		}
+
+		std::string endpoint = host + ":" + to_string(port);
+		print_log("Successfully listening on ", endpoint, " (fd: " + to_string(fd) + ")");
+		_server_addresses.push_back(addr);
+		_listen_fds.push_back(fd);
+	}
+
+	// 2. All host x port combinations
 	for (size_t i = 0; i < _hosts.size(); ++i) {
 		for (size_t j = 0; j < _ports.size(); ++j) {
-			std::string key = _hosts[i] + ":" + std::string(1, ':') + std::string("0") + std::string(1, '0'); // C++98 doesn't have std::to_string
-			char buf[6];
-			sprintf(buf, "%u", _ports[j]);
-			key = _hosts[i] + ":" + std::string(buf);
-
-			if (boundPairs.find(key) != boundPairs.end())
-				continue;
+			const std::string& host = _hosts[i];
+			uint16_t port = _ports[j];
 
 			sockaddr_in addr;
-			int fd = createListeningSocket(_hosts[i], _ports[j], addr);
+			int fd = createListeningSocket(host, port, addr);
+			if (fd < 0) {
+				std::string err_msg = "Failed to bind: " + host + ":" + to_string(port) + ": " + std::strerror(errno);
+				throw std::runtime_error(err_msg);
+			}
 
-			if (fd < 0)
-				continue; // Or log error
-
+			std::string endpoint = host + ":" + to_string(port);
+			print_log("Successfully listening on ", endpoint, " (fd: " + to_string(fd) + ")");
 			_server_addresses.push_back(addr);
 			_listen_fds.push_back(fd);
-			boundPairs.insert(key);
 		}
 	}
 }
 
 
-void ServerConfig::cleanupSocket(){
+void ServerConfig::cleanupSocket() {
 	for (size_t i = 0; i < _listen_fds.size(); ++i) {
-		close(_listen_fds[i]);
+		int fd = _listen_fds[i];
+		if (close(fd) == 0) {
+			print_log("Closed listening socket", " (fd: " + to_string(fd) + ")", "");
+		} else {
+			print_warning("Failed to close socket", " (fd: " + to_string(fd) + "): " + std::strerror(errno), "");
+		}
 	}
 	_listen_fds.clear();
+	_server_addresses.clear();
 }
+
+

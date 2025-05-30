@@ -25,7 +25,7 @@ std::string 	trim(const std::string& str) {
  */
 void print_log(const std::string &desc, const std::string &line, const std::string &opt_desc)
 {
-	std::cerr << GREEN << "Warning: " << RESET << desc << line << opt_desc << RESET << std::endl;
+	std::cerr << GREEN << "Log: " << RESET << desc << line << opt_desc << RESET << std::endl;
 }
 
 /**
@@ -37,7 +37,7 @@ void print_log(const std::string &desc, const std::string &line, const std::stri
  */
 void print_err(const std::string &desc, const std::string &line, const std::string &opt_desc)
 {
-	std::cerr << RED << "Warning: " << desc << line << opt_desc << RESET << std::endl;
+	std::cerr << RED << "Error: " << desc << line << opt_desc << RESET << std::endl;
 }
 
 /**
@@ -104,4 +104,16 @@ uint64_t 	validateGetMbs(std::string param) {
 	if (finalSize > MAX_CONTENT_LENGTH)
 		throw ConfigParser::ErrorException("client_max_body_size exceeds maximum allowed (1GB): " + param);
 	return (finalSize);
+}
+
+std::string to_string(uint16_t value) {
+	char buf[6];
+	std::sprintf(buf, "%u", value);
+	return std::string(buf);
+}
+
+std::string to_string(int value) {
+	char buf[12];
+	std::sprintf(buf, "%d", value);
+	return std::string(buf);
 }
