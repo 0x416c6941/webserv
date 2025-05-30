@@ -24,6 +24,7 @@ private:
 	
 	public:
 	Location();
+	Location(const Location& other);
 	~Location();
 	
 	// Setters
