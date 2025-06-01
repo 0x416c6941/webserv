@@ -1,0 +1,84 @@
+#pragma once
+
+#include <fstream>
+#include <sstream>
+#include <iostream>
+#include <stdexcept>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <vector>
+#include <map>
+#include <set>
+#include <netinet/in.h>
+#include <cstring>
+#include <climits>
+#include <cstdlib>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+
+#define DEBUG 1
+
+
+#define DEFAULT_CONTENT_LENGTH 1048576
+#define MAX_CONTENT_LENGTH 1073741824 	//1GB
+
+#define RESET   "\033[0m"
+#define RED     "\033[31m"
+#define GREEN   "\033[32m"
+#define YELLOW  "\033[33m"
+
+
+/// Utils
+
+/**
+* @brief Trims whitespace from both ends of the input string.
+* @param str Input string.
+* @return Trimmed result.
+* @note This method could be made static.
+*/
+std::string 	trim(const std::string& str);
+
+/**
+ * @brief Prints a standard log message to std::clog with a green "Warning" label.
+ *
+ * @param desc      Description or prefix for the message.
+ * @param line      Line with issue.
+ * @param opt_desc  Optional description or suffix to append.
+ */
+void print_log(const std::string &desc, const std::string &line, const std::string &opt_desc);
+
+/**
+ * @brief Prints an error message to std::cerr with a red "Warning" label.
+ *
+ * @param desc      Description or prefix for the error.
+ * @param line      Line with issue.
+ * @param opt_desc  Optional description or suffix to append.
+ */
+void print_err(const std::string &desc, const std::string &line, const std::string &opt_desc);
+
+/**
+ * @brief Prints a warning message to std::clog with a yellow "Warning" label.
+ *
+ * @param desc      Description or prefix for the warning.
+ * @param line      Line with issue.
+ * @param opt_desc  Optional description or suffix to append.
+ */
+void print_warning(const std::string &desc, const std::string &line, const std::string &opt_desc);
+
+/**
+ * @brief check if path exists
+ * 
+ * @param path 
+ * @return true 
+ * @return false 
+ */
+bool pathExists(const std::string& path);
+
+
+
+uint64_t 	validateGetMbs(std::string param);
+
+
+//Debug
+class ServerConfig;
+void printServerConfig(const ServerConfig& config);
