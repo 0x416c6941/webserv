@@ -18,7 +18,7 @@ void ServerManager::init() {
 
 	for (size_t i = 0; i < _servers.size(); ++i) {
 		try {
-			_servers[i].initServer();
+			_servers[i].initServerSocket();
 			const std::vector<int>& fds = _servers[i].getListenFds();
 			for (size_t j = 0; j < fds.size(); ++j) {
 				int fd = fds[j];

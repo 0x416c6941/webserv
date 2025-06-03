@@ -1,18 +1,5 @@
 #include "../include/ServerConfig.hpp"
 
-// ServerConfig::ServerConfig()
-// 	: _port(),
-// 	  _hosts(1, "0.0.0.0"),
-// 	  _server_names(),
-// 	  _root("./"),
-// 	  _client_max_body_size(DEFAULT_CONTENT_LENGTH),
-// 	  _index(1, "index.html"),
-// 	  _autoindex(false),
-// 	  _listen_fds()
-// {
-// 	_server_addresses.clear();
-// }
-
 ServerConfig::ServerConfig()
 	: _listen_endpoints(),
 	  _ports(),
@@ -100,6 +87,13 @@ bool 					ServerConfig::alreadyAddedHost(const std::string& host) const {
 
 void 					ServerConfig::resetIndex() { _index.clear(); }
 
+/**
+ * @brief Sets default server configuration values if not explicitly provided.
+ * 
+ * Assigns defaults for root directory, index files, and error pages.
+ * Ensures at least one listening port is configured, and sets a default host 
+ * if none is specified. Throws `ErrorException` if no listen directive is present.
+ */
 void ServerConfig::setDefaultsIfEmpty() {
 	// Default root
 	if (_root.empty()) {
@@ -129,7 +123,13 @@ void ServerConfig::setDefaultsIfEmpty() {
 	}
 }
 
-
+/**
+ * @brief Validates that all configured listen endpoints are unique.
+ * 
+ * Ensures there are no duplicate entries in `_listen_endpoints` or in the 
+ * combinations of `_hosts` and `_ports`. Throws `ErrorException` if duplicates 
+ * are found.
+ */
 void ServerConfig::validateListenEndpoint(void)
 {
 	std::set<std::pair<std::string, uint16_t> > unique_endpoints;
@@ -157,6 +157,17 @@ void ServerConfig::validateListenEndpoint(void)
 	}
 }
 
+/**
+ * @brief Creates, binds, and listens on a TCP socket for the given host and port.
+ * 
+ * Initializes a non-blocking socket, sets socket options, binds it to the
+ * specified IPv4 address and port, and starts listening for incoming connections.
+ * 
+ * @param host The IP address to bind the socket to (as a string).
+ * @param port The port number to bind the socket to.
+ * @param out_addr Reference to a sockaddr_in structure that will be filled with the bound address.
+ * @return int File descriptor of the created socket on success, or -1 on failure.
+ */
 int ServerConfig::createListeningSocket(const std::string& host, uint16_t port, sockaddr_in& out_addr) {
 	int fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (fd < 0) return -1;
@@ -187,7 +198,15 @@ int ServerConfig::createListeningSocket(const std::string& host, uint16_t port, 
 	return fd;
 }
 
-void ServerConfig::initServer() {
+/**
+ * @brief Initializes and binds server sockets to configured host-port pairs.
+ * 
+ * Sets default values for server var if missing, validates the 
+ * `_listen_endpoints`, then creates listening sockets for all specified 
+ * endpoints and host-port combinations. On success, stores socket descriptors 
+ * and addresses. Throws if binding any socket fails.
+ */
+void ServerConfig::initServerSocket() {
 	setDefaultsIfEmpty();
 	validateListenEndpoint();
 	print_log("", "Initializing server sockets...", "");
@@ -231,7 +250,13 @@ void ServerConfig::initServer() {
 	}
 }
 
-
+/**
+ * @brief Closes all listening sockets and clears related server data.
+ * 
+ * Attempts to close each socket in `_listen_fds`, logging success or failure,
+ * then clears `_listen_fds` and `_server_addresses`. Throws an exception if
+ * any socket fails to close.
+ */
 void ServerConfig::cleanupSocket() {
 	for (size_t i = 0; i < _listen_fds.size(); ++i) {
 		int fd = _listen_fds[i];
@@ -239,10 +264,9 @@ void ServerConfig::cleanupSocket() {
 			print_log("Closed listening socket", " (fd: " + to_string(fd) + ")", "");
 		} else {
 			print_warning("Failed to close socket", " (fd: " + to_string(fd) + "): " + std::strerror(errno), "");
+			throw std::runtime_error("Failed to close socket: " + std::string(std::strerror(errno)));
 		}
 	}
 	_listen_fds.clear();
 	_server_addresses.clear();
 }
-
-

@@ -79,7 +79,7 @@ public:
 	void 				resetIndex(void);
 	
 
-	void				initServer(void);
+	void				initServerSocket(void);
 	void 				cleanupSocket(void);
 	
 	public:
