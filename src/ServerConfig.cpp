@@ -196,10 +196,6 @@ int ServerConfig::createListeningSocket(const std::string& host, uint16_t port, 
 		return -1;
 	}
 
-	if (fcntl(fd, F_SETFL, O_NONBLOCK) < 0) {
-    		close(fd);
-    		return -1;
-	}
 	return fd;
 }
 
