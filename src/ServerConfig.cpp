@@ -173,7 +173,10 @@ int ServerConfig::createListeningSocket(const std::string& host, uint16_t port, 
 	if (fd < 0) return -1;
 
 	int opt = 1;
-	setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+	if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+    		close(fd);
+   		return -1;
+	}		
 
 	std::memset(&out_addr, 0, sizeof(out_addr));
 	out_addr.sin_family = AF_INET;
@@ -193,8 +196,10 @@ int ServerConfig::createListeningSocket(const std::string& host, uint16_t port, 
 		return -1;
 	}
 
-	fcntl(fd, F_SETFL, O_NONBLOCK);
-
+	if (fcntl(fd, F_SETFL, O_NONBLOCK) < 0) {
+    		close(fd);
+    		return -1;
+	}
 	return fd;
 }
 
