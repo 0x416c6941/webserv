@@ -8,6 +8,19 @@ Location::Location()
 	  _alias(""),
 	  _client_max_body_size(DEFAULT_CONTENT_LENGTH) {}
 
+Location::Location(const Location& other)
+	: _path(other._path),
+	  _root(other._root),
+	  _autoindex(other._autoindex),
+	  _index(other._index),
+	  _methods(other._methods),
+	  _return(other._return),
+	  _alias(other._alias),
+	  _client_max_body_size(other._client_max_body_size),
+	  _cgi_path(other._cgi_path),
+	  _cgi_ext(other._cgi_ext)
+{}
+
 
 Location::~Location() {}
 

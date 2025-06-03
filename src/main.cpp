@@ -1,38 +1,43 @@
 #include "../include/ConfigParser.hpp"
+#include "../include/ServerManager.hpp"
 #include "../include/Webserv.hpp"
 
 int main(int argc, char **argv)
 {
-	if (argc > 2){
-		std::cerr << "Error: Usage: ./webserv or ./webserv[path to cfg file]" << std::endl;
-		return(1);
+	if (argc > 2) {
+		std::cerr << "Error: Usage: ./webserv [optional: path to config file]" << std::endl;
+		return 1;
 	}
-	
+
 	try {
-		std::string cfg_path  = (argc == 1 ? "configs/default.conf" : argv[1]);
+		std::string cfg_path = (argc == 1 ? "configs/default.conf" : argv[1]);
+
+		// Step 1: Parse configuration
 		ConfigFile cfg_file(cfg_path);
 		ConfigParser parser(cfg_file.readContent());
 		parser.parse();
 		std::vector<ServerConfig> servers = parser.getServers();
-		if (DEBUG)
-		{
-			for (std::vector<ServerConfig>::iterator it = servers.begin(); it != servers.end(); ++it)
-			{
-				std::cout << "---- Server ----" << std::endl; 
-				printServerConfig(*it);
+
+		// Step 2: Initialize ServerManager and servers
+		ServerManager manager;
+		manager.loadServers(servers);
+		manager.init(); // Initializes all sockets and epoll registration
+
+		// Step 3: Optionally print debug info
+		if (DEBUG) {
+			for (size_t i = 0; i < servers.size(); ++i) {
+				std::cout << "---- Server ----" << std::endl;
+				printServerConfig(servers[i]);
 			}
 		}
-		// for (std::vector<ServerConfig>::iterator it = servers.begin(); it != servers.end(); ++it)
-		// {
-		// 	it->initServer();
-		// }
 
-		
-	} 
+		// Step 4: Run the event loop (stub for now)
+		manager.run();
+	}
 	catch (const std::exception& e) {
 		print_err("Fatal error: ", e.what(), "");
 		return 1;
 	}
 
-	return(0);
+	return 0;
 }

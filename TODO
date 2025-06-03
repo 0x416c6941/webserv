@@ -1,0 +1,9 @@
+- move validateFile function to utils to reuse latter
++ write function to validate that there's no duplicated address
+	(any host + port combination + full endpointlisten)
+- write function to add default value to the:
+	- root = "./"
+	- host = "0.0.0.0" (if there's port, but no host and endpointlisten)
+	- index (index.html by default)
+	- default_error_pages (default one)
+- create default error_pages

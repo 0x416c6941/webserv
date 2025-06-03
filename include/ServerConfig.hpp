@@ -30,6 +30,8 @@ private:
 
 	// Internal helper for init server
 	int createListeningSocket(const std::string& host, uint16_t port, sockaddr_in& out_addr);
+	void setDefaultsIfEmpty(void);
+	void validateListenEndpoint(void);
 	
 public:
 	ServerConfig();

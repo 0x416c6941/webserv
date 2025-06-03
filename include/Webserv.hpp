@@ -1,7 +1,9 @@
 #pragma once
 
+#include <fcntl.h>
 #include <fstream>
 #include <sstream>
+#include <sys/epoll.h>
 #include <iostream>
 #include <stdexcept>
 #include <sys/stat.h>
@@ -14,9 +16,12 @@
 #include <climits>
 #include <cstdlib>
 #include <sys/socket.h>
+#include <errno.h>
+#include <string.h>
+#include <sys/types.h>
 #include <arpa/inet.h>
 
-#define DEBUG 1
+#define DEBUG 0
 
 
 #define DEFAULT_CONTENT_LENGTH 1048576
@@ -74,6 +79,8 @@ void print_warning(const std::string &desc, const std::string &line, const std::
  */
 bool pathExists(const std::string& path);
 
+std::string to_string(uint16_t value);
+std::string to_string(int value);
 
 
 uint64_t 	validateGetMbs(std::string param);
