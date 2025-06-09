@@ -13,6 +13,7 @@ SRC_FILES = main.cpp \
 			ServerBuilder.cpp \
 			Location.cpp \
 			ServerManager.cpp \
+			ClientConnection.cpp \
 			utils.cpp	\
 			debug.cpp	\
 

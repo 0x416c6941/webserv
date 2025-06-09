@@ -134,7 +134,6 @@ void ServerManager::handleNewConnection(int server_fd)
 			continue;
 		}
 
-
 		// Register client fd with epoll
 		if (!addFdToEpoll(client_fd, EPOLLIN | EPOLLET)) {
 			::close(client_fd);
@@ -154,6 +153,8 @@ void ServerManager::handleNewConnection(int server_fd)
 		_client_connections[client_fd] = conn;
 
 		print_log("Accepted connection: fd ", to_string(client_fd), "");
+
+		handleClientEvent(client_fd); // Process the new client immediately
 	}
 }
 
@@ -179,6 +180,7 @@ void ServerManager::handleNewConnection(int server_fd)
  */
 void ServerManager::handleClientEvent(int client_fd)
 {
+	print_log("handleClientEvent() called for fd ", to_string(client_fd), "");
 	std::map<int, ClientConnection>::iterator it = _client_connections.find(client_fd);
 	if (it == _client_connections.end()) {
 		print_warning("Event for unknown client fd: ", to_string(client_fd), "");
@@ -218,6 +220,7 @@ bool ServerManager::addFdToEpoll(int fd, uint32_t events)
 		print_err("epoll_ctl(ADD) failed: ", strerror(errno), "");
 		return false;
 	}
+	print_log("Added fd ", to_string(fd), " to epoll");
 	return true;
 }
 
@@ -248,7 +251,7 @@ void ServerManager::run() {
 
                 for (int i = 0; i < n; ++i) {
                         int fd = events[i].data.fd;
-
+			print_log("Event for fd ", to_string(fd), "");
                         if (_fd_to_server.count(fd)) {
                                 handleNewConnection(fd);
                         } else {
