@@ -20,9 +20,14 @@
 #include <string.h>
 #include <sys/types.h>
 #include <arpa/inet.h>
+#include <signal.h>
+#include <ctime>
+
 
 #define DEBUG 0
 
+#define EPOLL_MAX_EVENTS 1024
+#define BUFFER_SIZE 4096
 
 #define DEFAULT_CONTENT_LENGTH 1048576
 #define MAX_CONTENT_LENGTH 1073741824 	//1GB
@@ -81,7 +86,7 @@ bool pathExists(const std::string& path);
 
 std::string to_string(uint16_t value);
 std::string to_string(int value);
-
+std::string to_string(size_t value);
 
 uint64_t 	validateGetMbs(std::string param);
 

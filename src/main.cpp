@@ -10,6 +10,7 @@ int main(int argc, char **argv)
 	}
 
 	try {
+		ServerManager::setupSignalHandlers();
 		std::string cfg_path = (argc == 1 ? "configs/default.conf" : argv[1]);
 
 		// Step 1: Parse configuration
@@ -21,7 +22,7 @@ int main(int argc, char **argv)
 		// Step 2: Initialize ServerManager and servers
 		ServerManager manager;
 		manager.loadServers(servers);
-		manager.init(); // Initializes all sockets and epoll registration
+		manager.initializeSockets(); // Initializes all sockets and epoll registration
 
 		// Step 3: Optionally print debug info
 		if (DEBUG) {

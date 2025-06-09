@@ -5,6 +5,7 @@ static volatile sig_atomic_t g_shutdown_requested = 0;
 extern "C" void handle_signal(int sig)
 {
 	(void)sig;
+	print_log("", "Received shutdown signal, cleaning up...", "");
 	g_shutdown_requested = 1;
 }
 
@@ -40,11 +41,11 @@ void ServerManager::initializeSockets() {
 
 				// Set non-blocking
 				if (fcntl(fd, F_SETFL, O_NONBLOCK) < 0) {
-					throw std::runtime_error("Failed to set non-blocking mode on fd " + to_string(fd));
+					throw std::runtime_error("Failed to set non-blocking mode on fd: " + to_string(fd));
 				}
 
 				if (!addFdToEpoll(fd, EPOLLIN)) {
-					throw std::runtime_error("Failed to add fd to epollЖ " + to_string(fd));
+					throw std::runtime_error("Failed to add fd to epoll: " + to_string(fd));
 				}
 
 				_fd_to_server[fd] = &_servers[i];
@@ -237,9 +238,13 @@ void ServerManager::run() {
         while (!g_shutdown_requested) {
                 int n = epoll_wait(_epoll_fd, events, EPOLL_MAX_EVENTS, -1);
                 if (n < 0) {
-                        perror("epoll_wait");
-                        break;
-                }
+			if (errno == EINTR) {
+				// Interrupted by signal — check shutdown flag and continue
+				continue;
+			}
+			print_err("epoll_wait failed: ", strerror(errno), "");
+			break;
+		}
 
                 for (int i = 0; i < n; ++i) {
                         int fd = events[i].data.fd;
@@ -251,10 +256,10 @@ void ServerManager::run() {
                         }
                 }
         }
+	print_log("", "Shutdown requested. Cleaning up...", "");
+	cleanup();
 	print_log("", "ServerManager event loop finished.", "");
 }
-
-
 
 
 
