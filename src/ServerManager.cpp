@@ -20,6 +20,25 @@ void ServerManager::loadServers(const std::vector<ServerConfig>& servers) {
 	_servers = servers;
 }
 
+/**
+ * @brief Initializes server sockets and registers them with epoll.
+ *
+ * This method sets up the server's listening sockets for all configured `ServerConfig` instances.
+ * It performs the following actions:
+ * - Creates an epoll instance for event-driven I/O.
+ * - Iterates through the list of configured servers.
+ * - Initializes each server's socket(s) by calling `initServerSocket()`.
+ * - Retrieves the list of file descriptors (`getListenFds()`).
+ * - Sets each listening socket to non-blocking mode using `fcntl()`.
+ * - Adds each listening socket to the epoll instance via `addFdToEpoll()`.
+ * - Associates the socket file descriptor with its corresponding server configuration.
+ *
+ * If any error occurs during socket setup or epoll registration, the specific server is cleaned up
+ * and initialization continues with the next server. If no valid server sockets are initialized, 
+ * an exception is thrown to signal critical failure.
+ *
+ * @throws std::runtime_error if epoll creation fails or no valid servers are successfully initialized.
+ */
 void ServerManager::initializeSockets() {
 	_epoll_fd = epoll_create(1);
 	if (_epoll_fd < 0) {
@@ -193,6 +212,22 @@ void ServerManager::handleClientEvent(int client_fd)
 
 }
 
+/**
+ * @brief Closes and cleans up a client connection.
+ *
+ * This function performs the necessary cleanup when a client disconnects or needs
+ * to be forcibly removed. It performs the following steps:
+ * - Looks up the `ClientConnection` associated with the given file descriptor.
+ * - Removes the file descriptor from the epoll instance.
+ * - Calls `ClientConnection::closeConnection()` to close the socket.
+ * - Erases the connection from the internal `_client_connections` map.
+ * - Logs the closure.
+ *
+ * @param client_fd The file descriptor associated with the client connection to close.
+ *
+ * @note If the file descriptor is not found in the client connections map, the function
+ * returns early without action.
+ */
 void ServerManager::closeClientConnection(int client_fd)
 {
 	std::map<int, ClientConnection>::iterator it = _client_connections.find(client_fd);
@@ -209,7 +244,18 @@ void ServerManager::closeClientConnection(int client_fd)
 	print_log("Closed connection: fd ", to_string(client_fd), "");
 }
 
-
+/**
+ * @brief Adds a file descriptor to the epoll instance with the specified event mask.
+ *
+ * This method wraps `epoll_ctl()` with `EPOLL_CTL_ADD` to monitor the provided file
+ * descriptor for specified events (e.g., `EPOLLIN`, `EPOLLOUT`, `EPOLLET`, etc.).
+ *
+ * @param fd The file descriptor to monitor.
+ * @param events Bitmask of epoll events to monitor for the file descriptor.
+ * @return true if the file descriptor was successfully added to epoll, false otherwise.
+ *
+ * @note If the addition fails, an error message is logged and false is returned.
+ */
 bool ServerManager::addFdToEpoll(int fd, uint32_t events)
 {
 	struct epoll_event ev;
@@ -224,6 +270,17 @@ bool ServerManager::addFdToEpoll(int fd, uint32_t events)
 	return true;
 }
 
+/**
+ * @brief Removes a file descriptor from the epoll instance.
+ *
+ * This method wraps `epoll_ctl()` with `EPOLL_CTL_DEL` to stop monitoring the provided
+ * file descriptor. This is typically called when closing or cleaning up a socket.
+ *
+ * @param fd The file descriptor to remove from the epoll instance.
+ * @return true if the file descriptor was successfully removed, false otherwise.
+ *
+ * @note If the removal fails, a warning is logged and false is returned.
+ */
 bool ServerManager::removeFdFromEpoll(int fd)
 {
 	if (epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, fd, NULL) < 0) {
@@ -233,8 +290,32 @@ bool ServerManager::removeFdFromEpoll(int fd)
 	return true;
 }
 
-
-
+/**
+ * @brief Runs the main server event loop using epoll.
+ *
+ * This function is the core of the server’s execution. It enters a loop where it waits
+ * for events using `epoll_wait()` on registered file descriptors, such as server listening
+ * sockets and client connections.
+ *
+ * When an event is detected:
+ * - If the event is on a listening socket (i.e., new connection), it calls
+ *   `handleNewConnection()` to accept and register the new client.
+ * - If the event is on a client socket, it delegates processing to `handleClientEvent()`.
+ *
+ * The loop continues until the global shutdown flag `g_shutdown_requested` is set,
+ * typically via a signal like SIGINT or SIGTERM.
+ *
+ * If `epoll_wait()` is interrupted by a signal (`EINTR`), the loop resumes after checking
+ * the shutdown flag. On other errors, it logs the error and breaks the loop.
+ *
+ * At the end, it performs cleanup by calling `cleanup()` and logs the shutdown process.
+ *
+ * @note This method should only be called after initializing epoll and server sockets.
+ *
+ * @see handleNewConnection()
+ * @see handleClientEvent()
+ * @see cleanup()
+ */
 void ServerManager::run() {
         struct epoll_event events[EPOLL_MAX_EVENTS];
 	print_log("", "ServerManager event loop starting...", "");
@@ -264,8 +345,25 @@ void ServerManager::run() {
 	print_log("", "ServerManager event loop finished.", "");
 }
 
-
-
+/**
+ * @brief Installs signal handlers for graceful shutdown.
+ *
+ * This function sets up handlers for the SIGINT and SIGTERM signals
+ * using `sigaction()`. When one of these signals is received, the
+ * global flag `g_shutdown_requested` is set to `1`, which causes
+ * the server's main event loop to exit gracefully and trigger cleanup.
+ *
+ * The installed signal handler is `handle_signal()`, defined as an
+ * `extern "C"` function, which ensures compatibility with the C-based
+ * signal handling API.
+ *
+ * This function should be called once during server initialization,
+ * before entering the event loop.
+ *
+ * @note The function logs success or failure for each signal registration.
+ *
+ * @see handle_signal()
+ */
 void ServerManager::setupSignalHandlers()
 {
 	struct sigaction sa;
