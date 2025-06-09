@@ -14,8 +14,28 @@ private:
 	// Private methods
 	void 				handleNewConnection(int server_fd);
         void 				handleClientEvent(int client_fd);
+
+
+	/**
+ 	* @brief Registers a file descriptor with the epoll instance.
+ 	*
+ 	* @param fd        File descriptor to monitor.
+ 	* @param events    Events to watch for (e.g., EPOLLIN | EPOLLET).
+ 	* @return true if successful, false if epoll_ctl failed.
+ 	*/
+	bool 				addFdToEpoll(int fd, uint32_t events);
+
+	/**
+	* @brief Removes a file descriptor from the epoll instance.
+	*
+	* @param fd File descriptor to remove.
+	* @return true if successful, false otherwise.
+	*/
+	bool 				removeFdFromEpoll(int fd);
+
+	void 				closeClientConnection(int client_fd);
 	
-	public:
+public:
 	ServerManager();
 	~ServerManager();
 	
@@ -26,6 +46,10 @@ private:
 	void 				initializeSockets();
 	void 				cleanup();
 	int 				getEpollFd() const;
+
+
+	static void 			setupSignalHandlers();
+
 };
 
  
