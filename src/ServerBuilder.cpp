@@ -570,9 +570,6 @@ ServerConfig ServerBuilder::build(const std::vector<std::string>& directives) {
 
 	for (size_t line = 0; line < directives.size(); ++line) {
 		std::vector<std::string> tokens = splitParameters(directives[line]);
-		if (tokens.empty()) {
-			continue;
-		}
 		const std::string& directive = tokens[0];
 		HandlerFunc handler = getHandler(directive);
 		if (!handler) {
