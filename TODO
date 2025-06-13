@@ -7,3 +7,6 @@
 	- index (index.html by default)
 	- default_error_pages (default one)
 - create default error_pages
+- check if all file descriptors, including epoll, are properly closed during:
+	some connection removal;
+	program closing.
