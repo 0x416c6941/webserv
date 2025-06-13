@@ -1,5 +1,7 @@
 #include "../include/Webserv.hpp"
 #include "../include/ConfigParser.hpp"
+#include <inttypes.h>	// <cinttypes> is available from C++11 onwards, but we use C++98.
+
 /**
 * @brief Trims whitespace from both ends of the input string.
 * @param str Input string.
@@ -127,7 +129,7 @@ std::string to_string(int value) {
 std::string to_string(size_t value) {
 #define BUF_SIZE	21	// "18446744073709551615" + '\0'.
 	char buf[BUF_SIZE];
-	std::sprintf(buf, "%ld", value);
+	std::sprintf(buf, "%" PRIu64, value);
 	return std::string(buf);
 #undef BUF_SIZE
 }
