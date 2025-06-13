@@ -161,7 +161,8 @@ void ServerManager::handleNewConnection(int server_fd)
 		}
 
 		// Create and store new client connection
-		ClientConnection conn;
+		_client_connections[client_fd] = ClientConnection();
+		ClientConnection &conn = _client_connections.at(client_fd);
 		conn.setSocket(client_fd);
 		conn.setAddress(client_addr);
 
@@ -169,11 +170,7 @@ void ServerManager::handleNewConnection(int server_fd)
 		if (sit != _fd_to_server.end())
 			conn.setServer(*sit->second);
 
-		_client_connections[client_fd] = conn;
-
 		print_log("Accepted connection: fd ", to_string(client_fd), "");
-
-		handleClientEvent(client_fd); // Process the new client immediately
 	}
 }
 
