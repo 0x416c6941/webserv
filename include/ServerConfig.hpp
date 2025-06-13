@@ -28,7 +28,7 @@ private:
 	std::vector<sockaddr_in>	_server_addresses;	// Full IPv4 socket address struct
 	std::vector<int>		_listen_fds;		// Socket file descriptor
 
-	// Internal helper for init server
+	// Internal helper for initializeSockets server
 	int createListeningSocket(const std::string& host, uint16_t port, sockaddr_in& out_addr);
 	void setDefaultsIfEmpty(void);
 	void validateListenEndpoint(void);

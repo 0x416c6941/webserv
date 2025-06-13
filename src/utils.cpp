@@ -117,3 +117,10 @@ std::string to_string(int value) {
 	std::sprintf(buf, "%d", value);
 	return std::string(buf);
 }
+
+
+std::string to_string(size_t value) {
+	char buf[12];
+	std::sprintf(buf, "%ld", value);
+	return std::string(buf);
+}
