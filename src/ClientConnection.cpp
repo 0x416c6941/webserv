@@ -87,7 +87,7 @@ ServerConfig* ClientConnection::getServer() const
 
 bool ClientConnection::handleRead()
 {
-#define BUFFER_SIZE	1024
+	enum { BUFFER_SIZE = 1024 };
         print_log("handleRead() called for fd ", to_string(_client_socket), "");
 	char buffer[BUFFER_SIZE];
 	while (true) {
@@ -120,7 +120,6 @@ bool ClientConnection::handleRead()
 		return true; // Only one-shot response for now
 	}
 	return true;
-#undef BUFFER_SIZE
 }
 
 

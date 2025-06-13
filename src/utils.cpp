@@ -110,26 +110,23 @@ uint64_t 	validateGetMbs(std::string param) {
 
 
 std::string to_string(uint16_t value) {
-#define BUF_SIZE	6	// "65535" + '\0'.
+	enum { BUF_SIZE = 6 };	// "65535" + '\0'.
 	char buf[BUF_SIZE];
 	std::sprintf(buf, "%u", value);
 	return std::string(buf);
-#undef BUF_SIZE
 }
 
 std::string to_string(int value) {
-#define BUF_SIZE	12	// "-2147483648" + '\0'.
+	enum { BUF_SIZE = 12 };	// "-2147483648" + '\0'.
 	char buf[BUF_SIZE];
 	std::sprintf(buf, "%d", value);
 	return std::string(buf);
-#undef BUF_SIZE
 }
 
 
 std::string to_string(size_t value) {
-#define BUF_SIZE	21	// "18446744073709551615" + '\0'.
+	enum { BUF_SIZE = 21 }; // "18446744073709551615" + '\0'.
 	char buf[BUF_SIZE];
-	std::sprintf(buf, "%" PRIu64, value);
+	std::sprintf(buf, "%" PRIuMAX, value);
 	return std::string(buf);
-#undef BUF_SIZE
 }
