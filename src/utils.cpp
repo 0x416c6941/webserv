@@ -1,5 +1,7 @@
 #include "../include/Webserv.hpp"
 #include "../include/ConfigParser.hpp"
+#include <inttypes.h>	// <cinttypes> is available from C++11 onwards, but we use C++98.
+
 /**
 * @brief Trims whitespace from both ends of the input string.
 * @param str Input string.
@@ -106,21 +108,25 @@ uint64_t 	validateGetMbs(std::string param) {
 	return (finalSize);
 }
 
+
 std::string to_string(uint16_t value) {
-	char buf[6];
+	enum { BUF_SIZE = 6 };	// "65535" + '\0'.
+	char buf[BUF_SIZE];
 	std::sprintf(buf, "%u", value);
 	return std::string(buf);
 }
 
 std::string to_string(int value) {
-	char buf[12];
+	enum { BUF_SIZE = 12 };	// "-2147483648" + '\0'.
+	char buf[BUF_SIZE];
 	std::sprintf(buf, "%d", value);
 	return std::string(buf);
 }
 
 
 std::string to_string(size_t value) {
-	char buf[12];
-	std::sprintf(buf, "%ld", value);
+	enum { BUF_SIZE = 21 }; // "18446744073709551615" + '\0'.
+	char buf[BUF_SIZE];
+	std::sprintf(buf, "%" PRIuMAX, value);
 	return std::string(buf);
 }
