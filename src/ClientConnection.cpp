@@ -87,10 +87,11 @@ ServerConfig* ClientConnection::getServer() const
 
 bool ClientConnection::handleRead()
 {
+#define BUFFER_SIZE	1024
         print_log("handleRead() called for fd ", to_string(_client_socket), "");
-	char buffer[1024];
+	char buffer[BUFFER_SIZE];
 	while (true) {
-		ssize_t n = recv(_client_socket, buffer, sizeof(buffer), 0);
+		ssize_t n = recv(_client_socket, buffer, BUFFER_SIZE, 0);
 		if (n < 0) {
 			if (errno == EAGAIN || errno == EWOULDBLOCK)
 				break; // All data read
@@ -119,6 +120,7 @@ bool ClientConnection::handleRead()
 		return true; // Only one-shot response for now
 	}
 	return true;
+#undef BUFFER_SIZE
 }
 
 
