@@ -154,7 +154,7 @@ void ServerManager::handleNewConnection(int server_fd)
 		}
 
 		// Register client fd with epoll
-		if (!addFdToEpoll(client_fd, EPOLLIN | EPOLLET)) {
+		if (!addFdToEpoll(client_fd, EPOLLIN)) {
 			::close(client_fd);
 			print_err("Failed to add client fd to epoll: ", to_string(client_fd), "");
 			continue;
