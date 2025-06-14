@@ -48,6 +48,35 @@ size_t HTTPRequest::process_info(const std::string &info)
 	}
 }
 
+size_t HTTPRequest::handle_start_line(const std::string &start_line)
+{
+	size_t i;
+	const std::string AFTER_METHOD = " /";
+	const std::string START_LINE_END = " HTTP/1.1"
+
+	i = this->set_method(start_line);
+	// " /" after the request method.
+	if (start_line.length() <= i
+		|| start_line.compare(i, AFTER_METHOD.length(), AFTER_METHOD) != 0)
+	{
+		throw std::invalid_argument("HTTPRequest::handle_start_line(): Start line is malformed.");
+	}
+	i += AFTER_METHOD.length();
+	// Request target and query.
+	if (start_line.length() <= i)
+	{
+		throw std::invalid_argument("HTTPRequest::handle_start_line(): Start line is malformed.");
+	}
+	i += this->set_request_target_and_query(start_line, i);
+	// " HTTP/1.1" after request target and query.
+	if (start_line.length() != i + START_LINE_END.length()
+		|| start_line.compare(i, START_LINE_END.length(), START_LINE_END) != 0)
+	{
+		throw std::invalid_argument("HTTPRequest::handle_start_line(): Start line is malformed.");
+	}
+	return i + START_LINE_END.length();
+}
+
 size_t HTTPRequest::set_method(const std::string &start_line)
 {
 	const std::string GET_STR = "GET", POST_STR = "POST", DELETE_STR = "DELETE";
@@ -73,18 +102,22 @@ size_t HTTPRequest::set_method(const std::string &start_line)
 	throw std::invalid_argument("HTTPRequest::set_method(): Request method isn't supported.");
 }
 
-size_t HTTPRequest::handle_start_line(const std::string &start_line)
+size_t HTTPRequest::set_request_target_and_query(const std::string &start_line,
+		size_t pos)
 {
-	size_t i;
-	const std::string AFTER_METHOD = " /";
+	size_t end;
 
-	i = this->set_method(start_line);
-	// " /" after the request method.
-	if (start_line.length() <= i
-		|| start_line.compare(i, AFTER_METHOD.length(), AFTER_METHOD) != 0)
+	// Finding the end of the request target.
+	end = start_line.find('?', pos);
+	if (end == std::string::npos)
 	{
-		throw std::invalid_argument("HTTPRequest::handle_start_line(): Start line is malformed.");
+		end = start_line.find(' ', pos);
 	}
-	i += AFTER_METHOD.length();
-	return i;
+	if (end == std::string::npos)
+	{
+		end = start_line.length();
+	}
+	while (pos < end)
+	{
+	}
 }

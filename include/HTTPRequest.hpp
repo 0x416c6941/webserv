@@ -103,6 +103,17 @@ class HTTPRequest
 		HTTPRequest &operator = (const HTTPRequest &src);
 
 		/**
+		 * Parse method, request target and
+		 * optional request query (if present) from \p start_line.
+		 * @throw	invalid_argument	The start line stored
+		 * 					in \p info is malformed.
+		 * @param	start_line	The start line of the request
+		 * 				with the "\r\n" erased.
+		 * @return	Processed bytes in \p start_line.
+		 */
+		size_t handle_start_line(const std::string &start_line);
+
+		/**
 		 * Set the method of the request, depending on the value
 		 * stored in \p start_line.
 		 * @throw	invalid_argument	The request method
@@ -124,17 +135,6 @@ class HTTPRequest
 		 */
 		size_t set_request_target_and_query(const std::string &start_line,
 				size_t pos);
-
-		/**
-		 * Parse method, request target and
-		 * optional request query (if present) from \p start_line.
-		 * @throw	invalid_argument	The start line stored
-		 * 					in \p info is malformed.
-		 * @param	start_line	The start line of the request
-		 * 				with the "\r\n" erased.
-		 * @return	Processed bytes in \p start_line.
-		 */
-		size_t handle_start_line(const std::string &start_line);
 
 		/**
 		 * Parse header field from \p info
