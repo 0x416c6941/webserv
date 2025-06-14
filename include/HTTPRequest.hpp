@@ -127,6 +127,9 @@ class HTTPRequest
 		/**
 		 * Set the `_request_target` and `_request_query`
 		 * to those from \p start_line.
+		 * @throw	invalid_argument	\p start_line
+		 * 					contains
+		 * 					invalid information.
 		 * @param	start_line	The start line of the request
 		 * 				with the "\r\n" erased.
 		 * @param	pos		Where the request target
@@ -135,6 +138,26 @@ class HTTPRequest
 		 */
 		size_t set_request_target_and_query(const std::string &start_line,
 				size_t pos);
+
+		/**
+		 * Decodes the percent-encoded character stored in
+		 * \p start_line at \p pos.
+		 * @throw	invalid_argument	\p start_line
+		 * 					contains
+		 * 					invalid information.
+		 * @throw	range_error	If encoded character
+		 * 				can't be stored in `char`
+		 * 				(only ASCII is supported).
+		 * @param	start_line	The start line of the request
+		 * 				with the "\r\n" erased.
+		 * @param	pos		Where the percent-encoded
+		 * 				character starts
+		 * 				(also an output parameter
+		 * 				where it ends).
+		 * @return	Decoded character.
+		 */
+		char decode_percent_encoded_character(const std::string &start_line,
+				size_t &pos);
 
 		/**
 		 * Parse header field from \p info
