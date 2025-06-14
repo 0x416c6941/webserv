@@ -1,5 +1,7 @@
 #pragma once
+
 #include "Webserv.hpp"
+#include <string>
 // #include "HttpRequest.hpp"
 // #include "Response.hpp"
 
@@ -17,6 +19,9 @@ private:
 	ServerConfig*           _server;
 	time_t                  _last_msg_time;
 
+	// TCP is a streaming oriented protocol, we therefore
+	// need a buffer for the request until it's fully parsed.
+	std::string             _request_buffer;
 	// HttpRequest             _request;
 	// Response                _response;
 
