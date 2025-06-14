@@ -172,6 +172,13 @@ int ServerConfig::createListeningSocket(const std::string& host, uint16_t port, 
 	int fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (fd < 0) return -1;
 
+	// Allow socket reuse to avoid "Address already in use" on quick restart
+	int yes = 1;
+	if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) < 0) {
+		close(fd);
+		return -1;
+	}
+
 	std::memset(&out_addr, 0, sizeof(out_addr));
 	out_addr.sin_family = AF_INET;
 	out_addr.sin_port = htons(port);

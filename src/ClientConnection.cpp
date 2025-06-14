@@ -93,8 +93,6 @@ bool ClientConnection::handleRead()
 	while (true) {
 		ssize_t n = recv(_client_socket, buffer, BUFFER_SIZE, 0);
 		if (n < 0) {
-			if (errno == EAGAIN || errno == EWOULDBLOCK)
-				break; // All data read
 			print_err("recv() failed: ", strerror(errno), "");
 			return false;
 		}
@@ -112,7 +110,7 @@ bool ClientConnection::handleRead()
 			"HTTP/1.1 200 OK\r\n"
 			"Content-Length: 13\r\n"
 			"Content-Type: text/plain\r\n"
-			"Connection: close\r\n"
+			// "Connection: closed\r\n"
 			"\r\n"
 			"Hello, world!";
 
