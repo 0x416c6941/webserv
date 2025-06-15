@@ -162,14 +162,15 @@ size_t HTTPRequest::set_request_component(std::string & component,
 		const std::string &start_line, size_t pos, size_t end)
 {
 	size_t i = pos;
-	// RFC 3986.
+	// RFC 3986 in case of path in request target and request query.
 	const std::string ALLOWED_UNENCODED_CHARS =
 		"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 		"abcdefghijklmnopqrstuvwxyz"
 		"0123456789"
-		"-_~.";
+		"-_~."
+		"!$&'()*+,/:;=@";
 	const std::string ALLOWED_CHARS_ONLY_ENCODED =
-		"!#$&'()*+,/:;=?@[] %";
+		"#?[] %";
 
 	// If any information is already stored in `component`, drop it.
 	component.clear();
