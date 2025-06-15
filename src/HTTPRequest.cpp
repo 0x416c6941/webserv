@@ -169,12 +169,8 @@ size_t HTTPRequest::set_request_component(std::string & component,
 		"abcdefghijklmnopqrstuvwxyz"
 		"0123456789"
 		"-_~.";
-	const std::string ALLOWED_ENCODED_CHARS =
-		"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-		"abcdefghijklmnopqrstuvwxyz"
-		"0123456789"
-		"-_~."
-		"!#$&'()*+,/:;=?@[]";
+	const std::string ALLOWED_CHARS_ONLY_ENCODED =
+		"!#$&'()*+,/:;=?@[] %";
 
 	// If any information is already stored in `component`, drop it.
 	component.clear();
@@ -184,7 +180,8 @@ size_t HTTPRequest::set_request_component(std::string & component,
 		{
 			// Percent-encoded character.
 			char pec = this->decode_percent_encoded_character(start_line, i);
-			if (ALLOWED_ENCODED_CHARS.find(start_line.at(i)) == std::string::npos)
+			if (ALLOWED_UNENCODED_CHARS.find(pec) == std::string::npos
+				&& ALLOWED_CHARS_ONLY_ENCODED.find(pec) == std::string::npos)
 			{
 				throw std::invalid_argument("HTTPRequest::set_request_component(): Start line contains illegal encoded characters.");
 			}
