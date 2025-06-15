@@ -86,7 +86,7 @@ class HTTPRequest
 		std::string _request_query;	// Optional.
 		bool _request_query_is_set;
 
-		// Header fields in format "key:value".
+		// Header fields in format "key:OWS value OWS".
 		//
 		// All requests must contain a "Host" field.
 		// Without it, the server should respond with 400.
@@ -186,6 +186,8 @@ class HTTPRequest
 		 * and store the result in `_header_fields`.
 		 * @throw	invalid_argument	The header field stored
 		 * 					in \p header_field is malformed.
+		 * @throw	runtime_error		Received a header field
+		 * 					whose key was already registered.
 		 * @param	header_field	Header field with the "\r\n" erased.
 		 * @return	Processed bytes in \p header_field.
 		 */

@@ -45,14 +45,11 @@ size_t HTTPRequest::process_info(const std::string &info)
 		return this->handle_start_line(info.substr(0, ft_pos))
 			+ FIELD_TERMINATOR.length();
 	}
-	/*
 	else
 	{
 		return this->handle_header_field(info.substr(0, ft_pos))
 			+ FIELD_TERMINATOR.length();
 	}
-	 */
-	return 0;	// TODO.
 }
 
 size_t HTTPRequest::handle_start_line(const std::string &start_line)
@@ -243,4 +240,72 @@ char HTTPRequest::decode_percent_encoded_character(const std::string &start_line
 		}
 	}
 	return ret;
+}
+
+size_t HTTPRequest::handle_header_field(const std::string &header_field)
+{
+	const std::string DELIM = ":";
+	size_t delim_pos, value_begin_pos, value_end_pos;
+	std::string key;
+	std::string value;
+
+	// Key.
+	delim_pos = header_field.find(DELIM);
+	if (delim_pos == 0)
+	{
+		throw std::invalid_argument("HTTPRequest::handle_header_field(): Header field's key is empty.");
+	}
+	else if (delim_pos == std::string::npos)
+	{
+		throw std::invalid_argument("HTTPRequest::handle_header_field(): Header field is malformed.");
+	}
+	for (size_t i = 0; i < delim_pos; i++)
+	{
+		if (!std::isgraph(header_field.at(i)))
+		{
+			throw std::invalid_argument("HTTPRequest::handle_header_field(): Header field's key must consist only of printable non-whitespace characters.");
+		}
+		key.push_back(header_field.at(i));
+	}
+	if (this->_header_fields.find(key) != this->_header_fields.end())
+	{
+		throw std::runtime_error("HTTPRequest::handle_header_field(): Header field is duplicated.");
+	}
+	// Value.
+	value_begin_pos = delim_pos + DELIM.length();
+	// Skipping the optional whitespaces after the delimiter.
+	while (value_begin_pos < header_field.length()
+		&& std::isspace(header_field.at(value_begin_pos)))
+	{
+		if (header_field.at(value_begin_pos) != ' '
+			&& header_field.at(value_begin_pos) != '\t')
+		{
+			throw std::invalid_argument("HTTPRequest::handle_header_field: Header field contains illegal whitespace.");
+		}
+		value_begin_pos++;
+	}
+	value_end_pos = header_field.length() - 1;	// No overflow will happen at this point.
+	// Skipping the optional whitespaces after the header's value.
+	while (value_end_pos != 0
+		&& std::isspace(header_field.at(value_end_pos)))
+	{
+		if (header_field.at(value_end_pos) != ' '
+			&& header_field.at(value_end_pos) != '\t')
+		{
+			throw std::invalid_argument("HTTPRequest::handle_header_field: Header field contains illegal whitespace.");
+		}
+		value_end_pos--;
+	}
+	// It's fine even if value is empty.
+	for (size_t i = value_begin_pos; i <= value_end_pos; i++)
+	{
+		if (!std::isgraph(header_field.at(i)))
+		{
+			throw std::invalid_argument("HTTPRequest::handle_header_field(): Header field's value must consist only of printable non-whitespace characters.");
+		}
+		value.push_back(header_field.at(i));
+	}
+	(this->_header_fields)[key] = value;
+	// At this point, all bytes in `_header_field` were processed.
+	return header_field.length();
 }
