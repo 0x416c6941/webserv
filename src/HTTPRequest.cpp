@@ -6,7 +6,10 @@
 #include <cctype>
 
 HTTPRequest::HTTPRequest()
-	: _method_is_set(false), _complete(false)
+	:	_method_is_set(false),
+		_request_target_is_set(false),
+		_request_query_is_set(false),
+		_complete(false)
 {
 }
 
@@ -106,11 +109,59 @@ size_t HTTPRequest::set_method(const std::string &start_line)
 	throw std::invalid_argument("HTTPRequest::set_method(): Request method isn't supported.");
 }
 
-// It's possible to divide this function for better code structure.
+// Both request target and query may be empty,
+// e.g. this start line: "GET /? HTTP/1.1\r\n" is perfectly valid.
 size_t HTTPRequest::set_request_target_and_query(const std::string &start_line,
 		size_t pos)
 {
+	size_t ret = 0;
 	size_t end;
+
+	// Finding the end of the request target.
+	end = start_line.find('?', pos);
+	if (end == std::string::npos)
+	{
+		end = start_line.find(' ', pos);
+		if (end == std::string::npos)
+		{
+			end = start_line.length();
+		}
+	}
+	// _request_target.
+	ret += this->set_request_component(this->_request_target,
+			REQUEST_TARGET, start_line, pos, end);
+	this->_request_target_is_set = true;
+	pos += ret;
+	if (start_line.length() <= pos || start_line.at(pos) != '?')
+	{
+		// Optional query isn't present.
+		return ret;
+	}
+	// _request_query.
+	if (start_line.length() <= ++pos)
+	{
+		throw std::invalid_argument("HTTP::set_request_target_and_query(): Start line unexpectedly ends after ? sign.");
+	}
+	ret++;	// Skipped the '?' sign.
+	// Finding the end of the request query.
+	// Request query may also be empty, as well request target,
+	// e.g. this start line: "GET /? HTTP/1.1\r\n" is valid.
+	end = start_line.find(' ', pos);
+	if (end == std::string::npos)
+	{
+		end = start_line.length();
+	}
+	ret += this->set_request_component(this->_request_query,
+			REQUEST_QUERY, start_line, pos, end);
+	this->_request_query_is_set = true;
+	pos += ret;
+	return ret;
+}
+
+size_t HTTPRequest::set_request_component(std::string & component,
+		enum e_request_component_type component_type,
+		const std::string &start_line, size_t pos, size_t end)
+{
 	size_t i = pos;
 	// RFC 3986.
 	const std::string ALLOWED_UNENCODED_CHARS =
@@ -125,17 +176,8 @@ size_t HTTPRequest::set_request_target_and_query(const std::string &start_line,
 		"-_~."
 		"!#$&'()*+,/:;=?@[]";
 
-	// Finding the end of the request target.
-	end = start_line.find('?', pos);
-	if (end == std::string::npos)
-	{
-		end = start_line.find(' ', pos);
-	}
-	if (end == std::string::npos)
-	{
-		end = start_line.length();
-	}
-	// _request_target.
+	// If any information is already stored in `component`, drop it.
+	component.clear();
 	while (i < end)
 	{
 		if (start_line.at(i) == '%')
@@ -144,17 +186,18 @@ size_t HTTPRequest::set_request_target_and_query(const std::string &start_line,
 			char pec = this->decode_percent_encoded_character(start_line, i);
 			if (ALLOWED_ENCODED_CHARS.find(start_line.at(i)) == std::string::npos)
 			{
-				throw std::invalid_argument("HTTPRequest::set_request_target_and_query(): Start line contains illegal encoded characters.");
+				throw std::invalid_argument("HTTPRequest::set_request_component(): Start line contains illegal encoded characters.");
 			}
-			_request_target.push_back(pec);
+			component.push_back(pec);
 		}
-		else if (ALLOWED_UNENCODED_CHARS.find(start_line.at(i)) != std::string::npos)
+		else if (ALLOWED_UNENCODED_CHARS.find(start_line.at(i)) != std::string::npos
+			|| (component_type == REQUEST_QUERY && start_line.at(i) == '='))
 		{
-			_request_target.push_back(start_line.at(i++));
+			component.push_back(start_line.at(i++));
 		}
 		else
 		{
-			throw std::invalid_argument("HTTPRequest::set_request_target_and_query(): Start line contains illegal unencoded characters.");
+			throw std::invalid_argument("HTTPRequest::set_request_component(): Start line contains illegal unencoded characters.");
 		}
 	}
 	return i - pos;

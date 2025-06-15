@@ -56,7 +56,6 @@ class HTTPRequest
 
 		/**
 		 * Get the request query.
-		 * If request query wasn't present, empty string is returned.
 		 * @throw	runtime_error	Request query wasn't set yet.
 		 * @return	Request query (empty string if wasn't present).
 		 */
@@ -81,8 +80,16 @@ class HTTPRequest
 	private:
 		enum e_method _method;
 		bool _method_is_set;		// To check if `_method` is initialized.
+
+		enum e_request_component_type
+		{
+			REQUEST_TARGET,
+			REQUEST_QUERY
+		};
 		std::string _request_target;
+		bool _request_target_is_set;
 		std::string _request_query;	// Optional.
+		bool _request_query_is_set;
 
 		// Header fields in format "key:value".
 		//
@@ -138,6 +145,31 @@ class HTTPRequest
 		 */
 		size_t set_request_target_and_query(const std::string &start_line,
 				size_t pos);
+
+		/**
+		 * Parses a request component from \p start_line
+		 * beginning at \p pos and ending at \p end
+		 * and saves it to \p component
+		 * 	(that is either a target or query).
+		 * @warning	If any information is already set in
+		 * 		\p component, it will be lost.
+		 * @throw	invalid_argument	\p start_line
+		 * 					contains
+		 * 					invalid information.
+		 * @param	component	Component to set.
+		 * @param	component_type	Dirty hack, since request query
+		 * 				also allows the '=' as
+		 * 				percent-unencoded character.
+		 * @param	start_line	The start line of the request
+		 * 				with the "\r\n" erased.
+		 * @param	pos		Where the request component
+		 * 				in \p start_line starts.
+		 * @param	end		Where does the request component end.
+		 * @return	Processed bytes in \p start_line.
+		 */
+		size_t set_request_component(std::string &component,
+				enum e_request_component_type component_type,
+				const std::string &start_line, size_t pos, size_t end);
 
 		/**
 		 * Decodes the percent-encoded character stored in
