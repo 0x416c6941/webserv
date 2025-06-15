@@ -129,7 +129,7 @@ size_t HTTPRequest::set_request_target_and_query(const std::string &start_line,
 	}
 	// _request_target.
 	ret += this->set_request_component(this->_request_target,
-			REQUEST_TARGET, start_line, pos, end);
+			start_line, pos, end);
 	this->_request_target_is_set = true;
 	pos += ret;
 	if (start_line.length() <= pos || start_line.at(pos) != '?')
@@ -152,14 +152,13 @@ size_t HTTPRequest::set_request_target_and_query(const std::string &start_line,
 		end = start_line.length();
 	}
 	ret += this->set_request_component(this->_request_query,
-			REQUEST_QUERY, start_line, pos, end);
+			start_line, pos, end);
 	this->_request_query_is_set = true;
 	pos += ret;
 	return ret;
 }
 
 size_t HTTPRequest::set_request_component(std::string & component,
-		enum e_request_component_type component_type,
 		const std::string &start_line, size_t pos, size_t end)
 {
 	size_t i = pos;
@@ -187,8 +186,7 @@ size_t HTTPRequest::set_request_component(std::string & component,
 			}
 			component.push_back(pec);
 		}
-		else if (ALLOWED_UNENCODED_CHARS.find(start_line.at(i)) != std::string::npos
-			|| (component_type == REQUEST_QUERY && start_line.at(i) == '='))
+		else if (ALLOWED_UNENCODED_CHARS.find(start_line.at(i)) != std::string::npos)
 		{
 			component.push_back(start_line.at(i++));
 		}

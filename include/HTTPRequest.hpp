@@ -78,14 +78,9 @@ class HTTPRequest
 		bool is_complete() const;
 
 	private:
+		// All possible information from the start line.
 		enum e_method _method;
 		bool _method_is_set;		// To check if `_method` is initialized.
-
-		enum e_request_component_type
-		{
-			REQUEST_TARGET,
-			REQUEST_QUERY
-		};
 		std::string _request_target;
 		bool _request_target_is_set;
 		std::string _request_query;	// Optional.
@@ -148,17 +143,13 @@ class HTTPRequest
 
 		/**
 		 * Parses a request component from \p start_line
-		 * beginning at \p pos and ending at \p end
-		 * and saves it to \p component
-		 * 	(that is either a target or query).
+		 * beginning at \p pos and ending at \p end.
 		 * @warning	If any information is already set in
 		 * 		\p component, it will be lost.
 		 * @throw	invalid_argument	\p start_line
 		 * 					contains
 		 * 					invalid information.
 		 * @param	component	Component to set.
-		 * @param	component_type	Dirty hack, since request query
-		 * 				also allows the '=' as
 		 * 				percent-unencoded character.
 		 * @param	start_line	The start line of the request
 		 * 				with the "\r\n" erased.
@@ -168,7 +159,6 @@ class HTTPRequest
 		 * @return	Processed bytes in \p start_line.
 		 */
 		size_t set_request_component(std::string &component,
-				enum e_request_component_type component_type,
 				const std::string &start_line, size_t pos, size_t end);
 
 		/**
