@@ -52,6 +52,15 @@ size_t HTTPRequest::process_info(const std::string &info)
 	}
 }
 
+enum HTTPRequest::e_method HTTPRequest::get_method() const
+{
+	if (!(this->_method_is_set))
+	{
+		throw std::runtime_error("HTTPRequest::get_method(): Request method wasn't set yet.");
+	}
+	return this->_method;
+}
+
 size_t HTTPRequest::handle_start_line(const std::string &start_line)
 {
 	size_t i;
