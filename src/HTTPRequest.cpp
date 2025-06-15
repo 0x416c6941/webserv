@@ -178,7 +178,7 @@ size_t HTTPRequest::set_request_target_and_query(const std::string &start_line,
 	// _request_query.
 	if (start_line.length() <= ++pos)
 	{
-		throw std::invalid_argument("HTTP::set_request_target_and_query(): Start line unexpectedly ends after ? sign.");
+		throw std::invalid_argument("HTTPRequest::set_request_target_and_query(): Start line unexpectedly ends after ? sign.");
 	}
 	ret++;	// Skipped the '?' sign.
 	// Finding the end of the request query.
