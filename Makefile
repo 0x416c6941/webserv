@@ -6,16 +6,17 @@ FLAGS = -Wall -Wextra -Wsign-conversion -pedantic -Werror -Wreorder -g -std=c++9
 SRC_DIR  = src
 INC_DIR  = include
 
-SRC_FILES = main.cpp \
-			ConfigFile.cpp \
-			ConfigParser.cpp \
-			ServerConfig.cpp \
-			ServerBuilder.cpp \
-			Location.cpp \
-			ServerManager.cpp \
-			ClientConnection.cpp \
-			utils.cpp	\
-			debug.cpp	\
+SRC_FILES = main.cpp				\
+			ConfigFile.cpp		\
+			ConfigParser.cpp	\
+			ServerConfig.cpp	\
+			ServerBuilder.cpp	\
+			Location.cpp		\
+			ServerManager.cpp	\
+			ClientConnection.cpp	\
+			HTTPRequest.cpp		\
+			utils.cpp		\
+			debug.cpp		\
 
 
 SRC_FILES := $(addprefix $(SRC_DIR)/,$(SRC_FILES))
