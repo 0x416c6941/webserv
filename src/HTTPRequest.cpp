@@ -40,7 +40,7 @@ size_t HTTPRequest::process_info(const std::string &info)
 		this->_complete = true;
 		return FIELD_TERMINATOR.length();
 	}
-	if (!(this->_method_is_set) || this->_request_target.empty())
+	if (!(this->_method_is_set) || !(this->_request_target_is_set))
 	{
 		return this->handle_start_line(info.substr(0, ft_pos))
 			+ FIELD_TERMINATOR.length();
