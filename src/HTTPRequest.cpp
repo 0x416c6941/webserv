@@ -214,20 +214,30 @@ char HTTPRequest::decode_percent_encoded_character(const std::string &start_line
 		{
 			if (!(pos < start_line.length()))
 			{
-				throw std::range_error("HTTPRequest::decode_percent_encoded_character(): Expected literal after % sign.");
+				throw std::invalid_argument("HTTPRequest::decode_percent_encoded_character(): Expected some literal after % sign.");
 			}
 			else if (std::isdigit(start_line.at(pos)))
 			{
+				if (static_cast<char>(ret * BASE + (start_line.at(pos) - '0'))
+					< ret)
+				{
+					throw std::range_error("HTTPRequest::decode_percent_encoded_character(): Only ASCII characters are supported as percent-encoded characters.");
+				}
 				ret = ret * BASE + (start_line.at(pos) - '0');
 			}
-			else if (std::isupper(start_line.at(pos))
-				|| std::islower(start_line.at(pos)))
+			else if (std::toupper(start_line.at(pos)) >= 'A'
+				&& std::toupper(start_line.at(pos)) <= 'F')
 			{
+				if (static_cast<char>(ret * BASE + (std::toupper(start_line.at(pos)) - 'A' + 10))
+					< ret)
+				{
+					throw std::range_error("HTTPRequest::decode_percent_encoded_character(): Only ASCII characters are supported as percent-encoded characters.");
+				}
 				ret = ret * BASE + (std::toupper(start_line.at(pos)) - 'A' + 10);
 			}
 			else
 			{
-				throw std::invalid_argument("HTTPRequest::decode_percent_encoded_character(): Start line contains invalid information.");
+				throw std::invalid_argument("HTTPRequest::decode_percent_encoded_character(): Some literal after % sign is invalid.");
 			}
 			pos++;
 		}

@@ -167,9 +167,9 @@ class HTTPRequest
 		 * @throw	invalid_argument	\p start_line
 		 * 					contains
 		 * 					invalid information.
-		 * @throw	range_error	If encoded character
-		 * 				can't be stored in `char`
-		 * 				(only ASCII is supported).
+		 * @throw	range_error		If encoded character
+		 * 					can't be stored in `char`
+		 * 					(only ASCII is supported by us).
 		 * @param	start_line	The start line of the request
 		 * 				with the "\r\n" erased.
 		 * @param	pos		Where the percent-encoded
@@ -182,14 +182,12 @@ class HTTPRequest
 				size_t &pos);
 
 		/**
-		 * Parse header field from \p info
-		 * and store the result in `_header_fields`., request target and
-		 * optional request query (if present) from \p info.
-		 * @throw	invalid_argument	The start line stored
-		 * 					in \p info is malformed.
-		 * @param	info	The start line of the request
-		 * 			with the "\r\n" erased.
-		 * @return	Processed bytes in \p info (excluding "\r\n").
+		 * Parse header field from \p header_field
+		 * and store the result in `_header_fields`.
+		 * @throw	invalid_argument	The header field stored
+		 * 					in \p header_field is malformed.
+		 * @param	header_field	Header field with the "\r\n" erased.
+		 * @return	Processed bytes in \p header_field.
 		 */
-		size_t handle_header_field(const std::string &info);
+		size_t handle_header_field(const std::string &header_field);
 };
