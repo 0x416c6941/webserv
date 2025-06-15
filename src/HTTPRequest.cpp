@@ -61,6 +61,38 @@ enum HTTPRequest::e_method HTTPRequest::get_method() const
 	return this->_method;
 }
 
+const std::string &HTTPRequest::get_request_target() const
+{
+	if (!(this->_request_target_is_set))
+	{
+		throw std::runtime_error("HTTPRequest::get_request_target(): Request target wasn't set yet.");
+	}
+	return this->_request_target;
+}
+
+const std::string &HTTPRequest::get_request_query() const
+{
+	if (!(this->_request_query_is_set))
+	{
+		throw std::runtime_error("HTTPRequest::get_request_query(): Request query wasn't set yet.");
+	}
+	return this->_request_query;
+}
+
+const std::string &HTTPRequest::get_header_value(const std::string &key) const
+{
+	if (this->_header_fields.find(key) == this->_header_fields.end())
+	{
+		throw std::range_error("HTTPRequest::get_header_value(): Header with the provided key wasn't set yet.");
+	}
+	return this->_header_fields.at(key);
+}
+
+bool HTTPRequest::is_complete() const
+{
+	return this->_complete;
+}
+
 size_t HTTPRequest::handle_start_line(const std::string &start_line)
 {
 	size_t i;
