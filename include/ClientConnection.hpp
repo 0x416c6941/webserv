@@ -2,7 +2,7 @@
 
 #include "Webserv.hpp"
 #include <string>
-// #include "HttpRequest.hpp"
+#include "HTTPRequest.hpp"
 // #include "Response.hpp"
 
 /**
@@ -18,26 +18,26 @@ private:
 	struct sockaddr_in      _client_address;
 	ServerConfig*           _server;
 	time_t                  _last_msg_time;
+	HTTPRequest             _request;
 
 	// TCP is a streaming oriented protocol, we therefore
 	// need a buffer for the request until it's fully parsed.
 	std::string             _request_buffer;
-	// HttpRequest             _request;
 	// Response                _response;
-
-        
-        public:
+	
+public:
 	ClientConnection();
 	ClientConnection(int fd);
 	~ClientConnection();
 	ClientConnection(const ClientConnection &other);
 	ClientConnection &operator=(const ClientConnection &rhs);
-
+	
 	// Accessors
 	int                     getSocket() const;
 	const struct sockaddr_in& getAddress() const;
 	time_t                  getLastTime() const;
 	ServerConfig*           getServer() const;
+	bool			getRequestIsComplete() const;
 
 	// Mutators
 	void                    setSocket(int socket);
@@ -47,5 +47,5 @@ private:
 
 	// Logic
 	bool                    handleRead();
-	void                    closeConnection();
+	void                    closeConnection();	
 };

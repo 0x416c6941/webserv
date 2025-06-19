@@ -85,6 +85,11 @@ ServerConfig* ClientConnection::getServer() const
 	return _server;
 }
 
+bool 	ClientConnection::getRequestIsComplete() const
+{
+	return _request.is_complete();
+}
+
 bool ClientConnection::handleRead()
 {
 	enum { BUFFER_SIZE = 1024 };
