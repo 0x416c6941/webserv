@@ -46,6 +46,6 @@ public:
 	void                    updateTime();
 
 	// Logic
-	bool                    handleRead();
+	bool                    handleReadEvent();
 	void                    closeConnection();	
 };

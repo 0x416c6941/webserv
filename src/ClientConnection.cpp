@@ -90,10 +90,10 @@ bool 	ClientConnection::getRequestIsComplete() const
 	return _request.is_complete();
 }
 
-bool ClientConnection::handleRead()
+bool ClientConnection::handleReadEvent()
 {
 	enum { BUFFER_SIZE = 1024 };
-        print_log("handleRead() called for fd ", to_string(_client_socket), "");
+        print_log("handleReadEvent() called for fd ", to_string(_client_socket), "");
 	char buffer[BUFFER_SIZE];
 	while (true) {
 		ssize_t n = recv(_client_socket, buffer, BUFFER_SIZE, 0);
