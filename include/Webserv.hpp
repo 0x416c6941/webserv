@@ -90,6 +90,7 @@ std::string to_string(size_t value);
 
 uint64_t 	validateGetMbs(std::string param);
 
+std::string generateErrorPage(size_t status_code);
 
 //Debug
 class ServerConfig;
