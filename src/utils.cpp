@@ -68,6 +68,7 @@ bool 		pathExists(const std::string& path) {
 }
 
 
+
 /**
  * @brief 
  * 
@@ -98,7 +99,7 @@ uint64_t 	validateGetMbs(std::string param) {
 		throw ConfigParser::ErrorException("Invalid number in client_max_body_size: " + param);
 
 	// Overflow check before multiplication
-	if (size > (ULLONG_MAX / multiplier))
+	if (size > (ULONG_MAX / multiplier))
 		throw ConfigParser::ErrorException("client_max_body_size too large: " + param);
 
 	uint64_t finalSize = size * multiplier;
