@@ -10,3 +10,12 @@
 - check if all file descriptors, including epoll, are properly closed during:
 	some connection removal;
 	program closing.
+
+
+HTTPRequest should not throw an error, but return error code or smthing like that
+write wrapper for HTTPRequest to catch errors and return error code
+
+
+Idea:
+readEvent -> without while loop -> read until client fd received EPOLLIN -> here if the msg chunked we can accumulate entire msg -> easy to handle I guess
+client fd received EPOLLET -> check if parsed and ready -> build response | parse 
