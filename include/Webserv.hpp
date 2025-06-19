@@ -84,6 +84,7 @@ void print_warning(const std::string &desc, const std::string &line, const std::
 bool pathExists(const std::string& path);
 
 std::string to_string(uint16_t value);
+std::string to_string(uint32_t value);
 std::string to_string(int value);
 std::string to_string(size_t value);
 
