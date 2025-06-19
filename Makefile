@@ -15,6 +15,7 @@ SRC_FILES = main.cpp				\
 			ServerManager.cpp	\
 			ClientConnection.cpp	\
 			HTTPRequest.cpp		\
+			errors.cpp		\
 			utils.cpp		\
 			debug.cpp		\
 
