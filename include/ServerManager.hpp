@@ -30,10 +30,11 @@ private:
 	void 				handleNewConnection(int server_fd);
 
 	/**
-	 * @brief Handles a ready-to-read event from a client socket.
+	 * @brief Handles EPOLLIN (for reading), EPOLLOUT (for sending), EPOLERR,
+	 * 		EPOLL event from a client socket.
 	 * @param client_fd Client socket file descriptor.
 	 */
-        void 				handleClientEvent(int client_fd);
+        void 				handleClientEvent(int client_fd, uint32_t eventFlag);
 
 
 	/**

@@ -109,105 +109,7 @@ int ServerManager::getEpollFd() const {
 }
 
 
-/**
- * @brief Accepts and registers new incoming client connections.
- *
- * This function is triggered when the epoll instance reports a readable event
- * on a server (listening) socket. It accepts all pending client connections
- * in a non-blocking loop using `accept()`, sets each new client socket to
- * non-blocking mode, and registers it with the server's epoll instance
- * using edge-triggered (EPOLLET) mode.
- *
- * For each successfully accepted connection, a ClientConnection object is
- * created, initialized with socket information and associated ServerConfig,
- * and stored in the _client_connections map.
- *
- * If accept() returns EAGAIN or EWOULDBLOCK, the function breaks the loop,
- * assuming all pending connections have been processed.
- *
- * In case of error (e.g., failed fcntl, epoll_ctl, etc.), the client socket
- * is closed and skipped without crashing the server.
- *
- * @param server_fd File descriptor of the server's listening socket that
- *        received the connection request.
- */
-void ServerManager::handleNewConnection(int server_fd)
-{
-	while (true) {
-		struct sockaddr_in client_addr;
-		socklen_t client_len = sizeof(client_addr);
-		int client_fd = accept(server_fd, (struct sockaddr*)&client_addr, &client_len);
-		if (client_fd < 0) {
-			if (errno == EAGAIN || errno == EWOULDBLOCK)
-				break;
-			print_err("accept() failed: ", strerror(errno), "");
-			break;
-		}
 
-		// Set client socket to non-blocking mode
-		int flags = fcntl(client_fd, F_GETFL, 0);
-		if (flags < 0 || fcntl(client_fd, F_SETFL, flags | O_NONBLOCK) < 0) {
-			print_err("fcntl() failed: ", strerror(errno), "");
-			::close(client_fd);
-			print_warning("Failed to set non-blocking mode for client fd ", to_string(client_fd), "");
-			continue;
-		}
-
-		// Register client fd with epoll
-		if (!addFdToEpoll(client_fd, EPOLLIN)) {
-			::close(client_fd);
-			print_err("Failed to add client fd to epoll: ", to_string(client_fd), "");
-			continue;
-		}
-
-		// Create and store new client connection
-		_client_connections[client_fd] = ClientConnection();
-		ClientConnection &conn = _client_connections.at(client_fd);
-		conn.setSocket(client_fd);
-		conn.setAddress(client_addr);
-
-		std::map<int, ServerConfig*>::iterator sit = _fd_to_server.find(server_fd);
-		if (sit != _fd_to_server.end())
-			conn.setServer(*sit->second);
-
-		print_log("Accepted connection: fd ", to_string(client_fd), "");
-	}
-}
-
-
-/**
- * @brief Handles an incoming client event on a given file descriptor.
- *
- * This function is called when epoll signals activity on a client socket.
- * It retrieves the associated ClientConnection object and attempts to process
- * the incoming data by calling ClientConnection::handleRead().
- *
- * If handleRead() returns false, it indicates that the client has closed the
- * connection, there was an error, or the server should close the connection
- * (e.g., after processing a non-persistent HTTP request).
- *
- * In such cases, this function:
- * - Removes the file descriptor from the epoll instance.
- * - Closes the underlying socket using ClientConnection::closeConnection().
- * - Erases the client from the internal _client_connections map.
- * - Logs the closure for debugging purposes.
- *
- * @param client_fd The file descriptor for the client socket that triggered the event.
- */
-void ServerManager::handleClientEvent(int client_fd)
-{
-	print_log("handleClientEvent() called for fd ", to_string(client_fd), "");
-	std::map<int, ClientConnection>::iterator it = _client_connections.find(client_fd);
-	if (it == _client_connections.end()) {
-		print_warning("Event for unknown client fd: ", to_string(client_fd), "");
-		return; // the connection was probably closed
-	}
-	ClientConnection &conn = it->second;
-	if (!conn.handleRead()) {
-		closeClientConnection(client_fd);
-	}
-
-}
 
 /**
  * @brief Closes and cleans up a client connection.
@@ -288,6 +190,134 @@ bool ServerManager::removeFdFromEpoll(int fd)
 }
 
 /**
+ * @brief Accepts and registers new incoming client connections.
+ *
+ * This function is triggered when the epoll instance reports a readable event
+ * on a server (listening) socket. It accepts all pending client connections
+ * in a non-blocking loop using `accept()`, sets each new client socket to
+ * non-blocking mode, and registers it with the server's epoll instance
+ * using edge-triggered (EPOLLET) mode.
+ *
+ * For each successfully accepted connection, a ClientConnection object is
+ * created, initialized with socket information and associated ServerConfig,
+ * and stored in the _client_connections map.
+ *
+ * If accept() returns EAGAIN or EWOULDBLOCK, the function breaks the loop,
+ * assuming all pending connections have been processed.
+ *
+ * In case of error (e.g., failed fcntl, epoll_ctl, etc.), the client socket
+ * is closed and skipped without crashing the server.
+ *
+ * @param server_fd File descriptor of the server's listening socket that
+ *        received the connection request.
+ */
+void ServerManager::handleNewConnection(int server_fd)
+{
+	while (true) {
+		struct sockaddr_in client_addr;
+		socklen_t client_len = sizeof(client_addr);
+		int client_fd = accept(server_fd, (struct sockaddr*)&client_addr, &client_len);
+		if (client_fd < 0) {
+			if (errno == EAGAIN || errno == EWOULDBLOCK)
+				break;
+			print_err("accept() failed: ", strerror(errno), "");
+			break;
+		}
+
+		// Set client socket to non-blocking mode
+		int flags = fcntl(client_fd, F_GETFL, 0);
+		if (flags < 0 || fcntl(client_fd, F_SETFL, flags | O_NONBLOCK) < 0) {
+			print_err("fcntl() failed: ", strerror(errno), "");
+			::close(client_fd);
+			print_warning("Failed to set non-blocking mode for client fd ", to_string(client_fd), "");
+			continue;
+		}
+
+		// Register client fd with epoll
+		if (!addFdToEpoll(client_fd, EPOLLIN | EPOLLERR | EPOLLOUT | EPOLLHUP | EPOLLRDHUP )) {
+			::close(client_fd);
+			print_err("Failed to add client fd to epoll: ", to_string(client_fd), "");
+			continue;
+		}
+
+		// Create and store new client connection
+		_client_connections[client_fd] = ClientConnection();
+		ClientConnection &conn = _client_connections.at(client_fd);
+		conn.setSocket(client_fd);
+		conn.setAddress(client_addr);
+
+		std::map<int, ServerConfig*>::iterator sit = _fd_to_server.find(server_fd);
+		if (sit != _fd_to_server.end())
+			conn.setServer(*sit->second);
+
+		print_log("Accepted connection: fd ", to_string(client_fd), "");
+	}
+}
+
+
+/**
+ * @brief Handles an incoming client event on a given file descriptor.
+ *
+ * This function is called when epoll signals activity on a client socket.
+ * It retrieves the associated ClientConnection object and attempts to process
+ * the incoming data by calling ClientConnection::handleReadEvent().
+ *
+ * If handleReadEvent() returns false, it indicates that the client has closed the
+ * connection, there was an error, or the server should close the connection
+ * (e.g., after processing a non-persistent HTTP request).
+ *
+ * In such cases, this function:
+ * - Removes the file descriptor from the epoll instance.
+ * - Closes the underlying socket using ClientConnection::closeConnection().
+ * - Erases the client from the internal _client_connections map.
+ * - Logs the closure for debugging purposes.
+ *
+ * @param client_fd The file descriptor for the client socket that triggered the event.
+ */
+void ServerManager::handleClientEvent(int client_fd, uint32_t eventFlag)
+{
+	// print_log("handleClientEvent() called for fd ", to_string(client_fd), "");
+	std::map<int, ClientConnection>::iterator it = _client_connections.find(client_fd);
+	if (it == _client_connections.end()) {
+		print_warning("Event for unknown client fd: ", to_string(client_fd), "");
+		return; 
+	}
+	ClientConnection &conn = it->second;
+	if (eventFlag & (EPOLLERR | EPOLLHUP | EPOLLRDHUP))
+	{
+		print_err("Error Event flag for client fd: ", to_string(client_fd), to_string(eventFlag));
+		closeClientConnection(client_fd);
+		return;
+	}
+	else if (eventFlag & EPOLLIN)
+	{
+		if(!conn.handleReadEvent())
+		{
+			print_log("EPOLLIN event for client fd: ", to_string(client_fd), " - closing connection");
+			closeClientConnection(client_fd);
+			return;
+		}
+		print_log("EPOLLIN event for client fd: ", to_string(client_fd), "");
+		return;
+	}
+	else if (eventFlag & EPOLLOUT)
+	{
+		if (conn.getRequestIsComplete())
+		{
+			print_log("EPOLLOUT event for client fd: ", to_string(client_fd), " - request is complete");
+			// build the response and send it
+			// conn.handleWrite();
+		}
+		else
+		{
+			// print_warning("EPOLLOUT event for client fd: ", to_string(client_fd), " but request is not complete");
+			return;
+		}
+	}
+	return ;
+}
+
+/**
  * @brief Runs the main server event loop using epoll.
  *
  * This function is the core of the server’s execution. It enters a loop where it waits
@@ -329,11 +359,11 @@ void ServerManager::run() {
 
                 for (int i = 0; i < n; ++i) {
                         int fd = events[i].data.fd;
-			print_log("Event for fd ", to_string(fd), "");
+			// print_log("Event for fd ", to_string(fd), "");
                         if (_fd_to_server.count(fd)) {
                                 handleNewConnection(fd);
                         } else {
-                                handleClientEvent(fd);
+                                handleClientEvent(fd, events[i].events);
                         }
                 }
         }

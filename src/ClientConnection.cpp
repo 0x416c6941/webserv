@@ -85,38 +85,66 @@ ServerConfig* ClientConnection::getServer() const
 	return _server;
 }
 
-bool ClientConnection::handleRead()
+bool 	ClientConnection::getRequestIsComplete() const
 {
-	enum { BUFFER_SIZE = 1024 };
-        print_log("handleRead() called for fd ", to_string(_client_socket), "");
-	char buffer[BUFFER_SIZE];
-	while (true) {
-		ssize_t n = recv(_client_socket, buffer, BUFFER_SIZE, 0);
-		if (n < 0) {
-			print_err("recv() failed: ", strerror(errno), "");
-			return false;
-		}
-		if (n == 0) {
-			print_log("Client closed connection", "", "");
-			return false;
-		}
+	return _request.is_complete();
+}
 
-		if (n > 0) {
-	                print_log("DEBUG: Received request: ", std::string(buffer, static_cast<size_t>(n)), "");
-                }
-
-
-		const char *response =
-			"HTTP/1.1 200 OK\r\n"
-			"Content-Length: 13\r\n"
-			"Content-Type: text/plain\r\n"
-			// "Connection: closed\r\n"
-			"\r\n"
-			"Hello, world!";
-
-		send(_client_socket, response, std::strlen(response), 0);
-		return true; // Only one-shot response for now
+size_t ClientConnection::parseReadEvent(const std::string &buffer)
+{
+	try {
+		return _request.process_info(buffer);
+	} catch (const std::invalid_argument &e) {
+		print_err("Invalid request format: ", e.what(), "");
+		return 400;  
+	} catch (const std::range_error &e) {
+		print_err("Request parsing error: ", e.what(), "");
+		return 400;  
 	}
+	return 0; 
+}
+
+/**
+ * @brief Handles the read event for the client connection.
+ * Reads data from the socket until no more data is available or an error occurs.
+ * Parses the request from the received data and updates the last message time.
+ * 
+ * @return true if data was successfully read and parsed, false if an error occurred or the client closed the connection.
+ */
+bool ClientConnection::handleReadEvent()
+{
+	enum { BUFFER_SIZE = 2048 }; // 2 KB buffer size for reading data
+        print_log("handleReadEvent() called for fd ", to_string(_client_socket), "");
+	char buffer[BUFFER_SIZE];
+	ssize_t n = recv(_client_socket, buffer, BUFFER_SIZE, 0);
+	if (n < 0) {
+		print_err("recv() failed: ", strerror(errno), "");
+		return false;
+	}
+	if (n == 0) {
+		print_log("Client closed connection", "", "");
+		return false;
+	}
+	if (n > 0) {
+	        print_log("DEBUG: Received request: ", std::string(buffer, static_cast<size_t>(n)), "");
+        }
+	_request_buffer.append(buffer, static_cast<size_t>(n));
+	
+	size_t status = parseReadEvent(_request_buffer);
+	// It should be rewritten to reply throw Response class 
+	
+	if (status != 0) {
+		// It should be rewritten to reply throw Response class
+		// and stop futher request parsing
+		// Also response should be sent throw EPOLLOUT
+		// and request buffer should be cleared
+		print_err("Failed to parse request from buffer: ", _request_buffer, "");
+		std::string error_response = generateErrorPage(status);
+		send(_client_socket, error_response.c_str(), error_response.size(), 0);
+		_request_buffer.clear();
+		return false;
+	}
+	updateTime(); //need to check if works correctly
 	return true;
 }
 

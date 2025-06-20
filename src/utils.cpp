@@ -117,6 +117,14 @@ std::string to_string(uint16_t value) {
 	return std::string(buf);
 }
 
+std::string to_string(uint32_t value) {
+    	enum { BUF_SIZE = 11 }; // Max uint32_t = "4294967295" + '\0'
+    	char buf[BUF_SIZE];
+    	std::sprintf(buf, "%u", value); 
+    	return std::string(buf);
+}
+
+
 std::string to_string(int value) {
 	enum { BUF_SIZE = 12 };	// "-2147483648" + '\0'.
 	char buf[BUF_SIZE];
