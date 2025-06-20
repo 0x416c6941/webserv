@@ -27,6 +27,7 @@ private:
 	std::vector<Location>		_locations;		// List of route-specific configurations
 	std::vector<sockaddr_in>	_server_addresses;	// Full IPv4 socket address struct
 	std::vector<int>		_listen_fds;		// Socket file descriptor
+	std::pair<uint32_t, uint64_t> _large_client_header_buffers; // Large client header buffers (for ddos protection)
 
 	// Internal helper for initializeSockets server
 	int createListeningSocket(const std::string& host, uint16_t port, sockaddr_in& out_addr);
@@ -51,6 +52,9 @@ public:
 	const std::vector<Location>& 	getLocations() const;
 	const std::vector<sockaddr_in>& getServerAddresses() const;
 	const std::vector<int>& 	getListenFds() const;
+	std::pair<uint32_t, uint64_t> 	getLargeClientHeaderBuffers() const;
+	uint32_t 			getLargeClientHeaderBufferCount() const;
+	uint64_t 			getLargeClientHeaderBufferSize() const;
 
 	// Setters
 	void 				addListenEndpoint(const std::pair<std::string, uint16_t>& endpoint);
@@ -73,6 +77,7 @@ public:
 	void 				addServerAddress(const sockaddr_in& address);
 	void 				setListenFds(const std::vector<int>& fds);
 	void 				addListenFd(int fd);
+	void 				setLargeClientHeaderBuffers(uint32_t count, uint64_t sizeInBytes);
 
 	// helpers
 	bool 				alreadyAddedHost(const std::string& host) const;

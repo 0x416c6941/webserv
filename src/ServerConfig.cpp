@@ -51,6 +51,15 @@ const std::map<int, std::string>& 	ServerConfig::getErrorPages() const { return 
 const std::vector<Location>& 		ServerConfig::getLocations() const { return _locations; }
 const std::vector<sockaddr_in>& 	ServerConfig::getServerAddresses() const { return _server_addresses; }
 const std::vector<int>& 		ServerConfig::getListenFds() const { return _listen_fds; }
+std::pair<uint32_t, uint64_t> 		ServerConfig::getLargeClientHeaderBuffers() const { return _large_client_header_buffers;}
+// Optional: Individual getters
+uint32_t ServerConfig::getLargeClientHeaderBufferCount() const {
+	return _large_client_header_buffers.first;
+}
+
+uint64_t ServerConfig::getLargeClientHeaderBufferSize() const {
+	return _large_client_header_buffers.second;
+}
 
 // Setters
 void ServerConfig::addListenEndpoint(const std::pair<std::string, uint16_t>& endpoint) {
@@ -75,6 +84,10 @@ void 					ServerConfig::setServerAddresses(const std::vector<sockaddr_in>& addre
 void 					ServerConfig::addServerAddress(const sockaddr_in& address) { _server_addresses.push_back(address); }
 void 					ServerConfig::setListenFds(const std::vector<int>& fds) { _listen_fds = fds; }
 void 					ServerConfig::addListenFd(int fd) { _listen_fds.push_back(fd); }
+void 					ServerConfig::setLargeClientHeaderBuffers(uint32_t count, uint64_t sizeInBytes) {
+	_large_client_header_buffers.first = count;
+	_large_client_header_buffers.second = sizeInBytes;
+}
 
 
 bool 					ServerConfig::alreadyAddedHost(const std::string& host) const {
