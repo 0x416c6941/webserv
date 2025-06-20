@@ -3,7 +3,7 @@
 #include "Webserv.hpp"
 #include <string>
 #include "HTTPRequest.hpp"
-// #include "Response.hpp"
+#include "HTTPResponse.hpp"
 
 /**
  * @brief Represents a single client connection.
@@ -19,11 +19,13 @@ private:
 	ServerConfig*           _server;
 	time_t                  _last_msg_time;
 	HTTPRequest             _request;
-
+	bool                    _request_error;	
+	bool		    	_msg_sent; // Indicates if the request is fully sent
+	size_t 			_bytes_sent;
 	// TCP is a streaming oriented protocol, we therefore
 	// need a buffer for the request until it's fully parsed.
 	std::string             _request_buffer;
-	// Response                _response;
+	HTTPResponse            _response;
 	
 public:
 	ClientConnection();
@@ -38,6 +40,9 @@ public:
 	time_t                  getLastTime() const;
 	ServerConfig*           getServer() const;
 	bool			getRequestIsComplete() const;
+	bool			getRequestError() const;
+	bool			getResponseReady() const;
+	bool			getMsgSent() const;
 
 	// Mutators
 	void                    setSocket(int socket);
@@ -47,6 +52,8 @@ public:
 
 	// Logic
 	bool                    handleReadEvent();
+	bool		    	handleWriteEvent();
 	int                  	parseReadEvent(const std::string &buffer);
 	void                    closeConnection();
+	void 			reset();
 };

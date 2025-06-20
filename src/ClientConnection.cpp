@@ -2,9 +2,18 @@
 
 
 ClientConnection::ClientConnection()
-	: _client_socket(-1), _server(NULL), _last_msg_time(std::time(NULL))
+	: _client_socket(-1),
+	_client_address(),
+	_server(NULL),
+	_last_msg_time(std::time(NULL)),
+	_request(),
+	_request_error(false),
+	_msg_sent(false),
+	_bytes_sent(0),
+	_request_buffer(),
+	_response()
 {
-	std::memset(&_client_address, 0, sizeof(_client_address));
+    std::memset(&_client_address, 0, sizeof(_client_address));
 }
 
 ClientConnection::ClientConnection(int fd)
@@ -90,6 +99,21 @@ bool 	ClientConnection::getRequestIsComplete() const
 	return _request.is_complete();
 }
 
+bool ClientConnection::getRequestError() const
+{
+	return _request_error;
+}
+
+bool ClientConnection::getResponseReady() const
+{
+	return _response.is_response_ready();
+}
+
+bool ClientConnection::getMsgSent() const
+{
+	return _msg_sent;
+}
+
 int ClientConnection::parseReadEvent(const std::string &buffer)
 {
 	try {
@@ -138,17 +162,58 @@ bool ClientConnection::handleReadEvent()
 		// and stop futher request parsing
 		// Also response should be sent throw EPOLLOUT
 		// and request buffer should be cleared
-		print_err("Failed to parse request from buffer: ", _request_buffer, "");
-		std::string error_response = generateErrorPage(status);
-		send(_client_socket, error_response.c_str(), error_response.size(), 0);
-		_request_buffer.clear();
-		return false;
+		_request_error = true;
+		_response.set_status_code(status);
+		_response.build_error_response();
 	}
 	updateTime(); //need to check if works correctly
 	return true;
 }
 
+bool	ClientConnection::handleWriteEvent()
+{
+	const std::string& response_msg = _response.get_response_msg();
+	if (response_msg.empty()) {
+		print_err("Smth went wrong. No response to send", "", "");
+		return false; // Nothing to send, skip write event
+	}
+	size_t total_size = response_msg.size();
+	if (_bytes_sent >= total_size) {
+		print_warning("All bytes already sent, but EPOLLOUT fired", "", "");
+		return true; // Defensive, shouldn't happen
+	}
+	const char* data_ptr = response_msg.c_str() + _bytes_sent;
+	size_t remaining = total_size - _bytes_sent;
+	ssize_t n = send(_client_socket, data_ptr, remaining, 0);
+	if (n < 0) {
+		// Treat all n < 0 as retry later (since errno is forbidden)
+		print_log("send() would block or failed, will retry", "", "");
+		return true;
+	}
+	if (n == 0) {
+		print_log("Client closed connection", "", "");
+		return false;
+	}
 
+	_bytes_sent += static_cast<size_t>(n);
+	if (_bytes_sent == total_size) {
+		print_log("Response fully sent", "", "");
+		_bytes_sent = 0;
+		_msg_sent = true;
+	}
+
+	return true;
+}
+
+void ClientConnection::reset()
+{
+	_response.reset();
+	_request.reset(); // Clear request data
+	_request_buffer.clear(); // Clear request buffer
+	_request_error = false; // Reset request error state
+	_msg_sent = false; // Reset message sent flag
+	_bytes_sent = 0; // Reset bytes sent counter
+}
 
 void ClientConnection::closeConnection()
 {
