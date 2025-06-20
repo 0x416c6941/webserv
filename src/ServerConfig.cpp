@@ -106,12 +106,12 @@ void ServerConfig::setDefaultsIfEmpty() {
 	}
 
 	// Default error pages
-	if (_error_pages.empty()) {
-		_error_pages[404] = "error_pages/404.html";
-		_error_pages[500] = "error_pages/500.html";
-		_error_pages[403] = "error_pages/403.html";
-		_error_pages[400] = "error_pages/400.html";
-	}
+	// if (_error_pages.empty()) {
+	// 	_error_pages[404] = "error_pages/404.html";
+	// 	_error_pages[500] = "error_pages/500.html";
+	// 	_error_pages[403] = "error_pages/403.html";
+	// 	_error_pages[400] = "error_pages/400.html";
+	// }
 
 	if (_ports.empty() && _listen_endpoints.empty()) {
 		throw ServerConfig::ErrorException("No 'listen' directive provided: server must specify at least one port.");
@@ -120,6 +120,10 @@ void ServerConfig::setDefaultsIfEmpty() {
 	// Default host (if only port is defined and no endpoint provided)
 	if (_hosts.empty() && !_ports.empty() && _listen_endpoints.empty()) {
 		_hosts.push_back("0.0.0.0");
+	}
+
+	if (_client_max_body_size == 0) {
+		_client_max_body_size = DEFAULT_CONTENT_LENGTH; // Default to 1MB
 	}
 }
 
