@@ -289,32 +289,41 @@ void ServerManager::handleClientEvent(int client_fd, uint32_t eventFlag)
 		closeClientConnection(client_fd);
 		return;
 	}
-	else if (eventFlag & EPOLLIN)
-	{
-		if(!conn.handleReadEvent())
-		{
-			print_log("EPOLLIN event for client fd: ", to_string(client_fd), " - closing connection");
-			closeClientConnection(client_fd);
-			return;
-		}
-		print_log("EPOLLIN event for client fd: ", to_string(client_fd), "");
-		return;
-	}
-	else if (eventFlag & EPOLLOUT)
-	{
-		if (conn.getRequestIsComplete())
-		{
-			print_log("EPOLLOUT event for client fd: ", to_string(client_fd), " - request is complete");
-			// build the response and send it
-			// conn.handleWrite();
-		}
-		else
-		{
-			// print_warning("EPOLLOUT event for client fd: ", to_string(client_fd), " but request is not complete");
-			return;
+	// We don't want to read futher if the request is already complete or error occured in the request parsing
+	// in this case we won't to send a response (with error page/or normal response)
+	if (eventFlag & EPOLLIN) {
+		if (!conn.getRequestIsComplete() && !conn.getRequestError()) {
+			if (!conn.handleReadEvent()) {
+				print_log("EPOLLIN event for client fd: ", to_string(client_fd), " - closing connection");
+				closeClientConnection(client_fd);
+				return;
+			}
+			print_log("EPOLLIN event for client fd: ", to_string(client_fd), " - data read");
 		}
 	}
-	return ;
+	// Here should be cleaning up all stack memory in response and request parsing 
+	if (eventFlag & EPOLLOUT)
+	{
+		if (conn.getRequestError() || conn.getRequestIsComplete())
+		{
+			if (conn.getResponseReady() == true){
+				if(!conn.handleWriteEvent()){
+					print_log("EPOLLOUT event for client fd: ", to_string(client_fd), " - closing connection");
+					closeClientConnection(client_fd);
+					return;
+				}
+				if (conn.getMsgSent() == true) {
+					print_log("EPOLLOUT event for client fd: ", to_string(client_fd), " - response sent");
+					// // After sending the response, we can clean up the request and response objects
+					conn.reset();
+				} 
+			}
+			else {
+				print_log("EPOLLOUT event for client fd: ", to_string(client_fd), " - no response ready");
+				return; // Nothing to send, skip write event
+			}
+		}
+	}
 }
 
 /**

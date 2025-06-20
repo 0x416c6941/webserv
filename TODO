@@ -16,4 +16,6 @@ HTTPRequest should not throw an error, but return error code or smthing like tha
 write wrapper for HTTPRequest to catch errors and return error code
 
 
-Idea:
+HTTPRequest should not parse until obtain entire header
+	- url can be very long as well as header 
+	- untill header is closed do not parse! if there will be corrupted msg without \r\t\r\t -> close connection by timeout or just leave as it is (Konstantin advise)
