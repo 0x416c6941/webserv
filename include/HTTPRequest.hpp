@@ -6,6 +6,10 @@
 #include <cstddef>
 #include <iostream> //for debug
 #include <iomanip> //for debug
+
+//large_client_header_buffers -> We don't store it in server config so we can use "magix_number" here
+// protection against ddos + we 
+
 /**
  * A class containing a received and parsed HTTP/1.1 request.
  * Non-standard header fields are also stored, but they're not processed later.

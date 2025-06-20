@@ -95,7 +95,7 @@ std::string generateErrorPage(int status_code) {
     response << "HTTP/1.1 " << status_code << " " << reason << "\r\n"
              << "Content-Length: " << body_str.size() << "\r\n"
              << "Content-Type: text/html\r\n"
-             << "Connection: close\r\n"
+             << "Connection: close\r\n" // should we close the connection?
              << "\r\n"
              << body_str;
 

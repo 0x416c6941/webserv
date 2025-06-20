@@ -2,11 +2,11 @@
 + write function to validate that there's no duplicated address
 	(any host + port combination + full endpointlisten)
 - write function to add default value to the:
-	- root = "./"
-	- host = "0.0.0.0" (if there's port, but no host and endpointlisten)
+	+ root = "./"
+	+ host = "0.0.0.0" (if there's port, but no host and endpointlisten)
 	- index (index.html by default)
 	- default_error_pages (default one)
-- create default error_pages
++ create default error_pages
 - check if all file descriptors, including epoll, are properly closed during:
 	some connection removal;
 	program closing.
@@ -15,7 +15,9 @@
 HTTPRequest should not throw an error, but return error code or smthing like that
 write wrapper for HTTPRequest to catch errors and return error code
 
+In conf file can be specified: large_client_header_buffers (we don't support it) 
 
 HTTPRequest should not parse until obtain entire header
-	- url can be very long as well as header 
-	- untill header is closed do not parse! if there will be corrupted msg without \r\t\r\t -> close connection by timeout or just leave as it is (Konstantin advise)
+	- url can be very long as well as header -> set in httpreques max_header_size(we didn't implement it in ServerConfig)
+		also chceck _client_max_body_size -> we have implemented it in ServerConfig
+	- untill header is finished do not parse! if there will be corrupted msg without \r\t\r\t -> close connection by timeout or just leave as it is (Konstantin advise)
