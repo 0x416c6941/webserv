@@ -17,5 +17,3 @@ write wrapper for HTTPRequest to catch errors and return error code
 
 
 Idea:
-readEvent -> without while loop -> read until client fd received EPOLLIN -> here if the msg chunked we can accumulate entire msg -> easy to handle I guess
-client fd received EPOLLET -> check if parsed and ready -> build response | parse 

@@ -113,37 +113,37 @@ size_t ClientConnection::parseReadEvent(const std::string &buffer)
  */
 bool ClientConnection::handleReadEvent()
 {
-	enum { BUFFER_SIZE = 1024 };
+	enum { BUFFER_SIZE = 2048 }; // 2 KB buffer size for reading data
         print_log("handleReadEvent() called for fd ", to_string(_client_socket), "");
 	char buffer[BUFFER_SIZE];
-	while (true) {
-		ssize_t n = recv(_client_socket, buffer, BUFFER_SIZE, 0);
-		if (n < 0) {
-			// print_err("recv() failed: ", strerror(errno), "");  \\ we have a problem here 
-			// return false;
-			break;
-		}
-		if (n == 0) {
-			print_log("Client closed connection", "", "");
-			return false;
-		}
-
-		if (n > 0) {
-	                print_log("DEBUG: Received request: ", std::string(buffer, static_cast<size_t>(n)), "");
-                }
-		_request_buffer.append(buffer, static_cast<size_t>(n));
+	ssize_t n = recv(_client_socket, buffer, BUFFER_SIZE, 0);
+	if (n < 0) {
+		print_err("recv() failed: ", strerror(errno), "");
+		return false;
 	}
+	if (n == 0) {
+		print_log("Client closed connection", "", "");
+		return false;
+	}
+	if (n > 0) {
+	        print_log("DEBUG: Received request: ", std::string(buffer, static_cast<size_t>(n)), "");
+        }
+	_request_buffer.append(buffer, static_cast<size_t>(n));
+	
 	size_t status = parseReadEvent(_request_buffer);
 	// It should be rewritten to reply throw Response class 
-	// if request is not complete, we should ignore it 
+	
 	if (status != 0) {
+		// It should be rewritten to reply throw Response class
+		// and stop futher request parsing
+		// Also response should be sent throw EPOLLOUT
+		// and request buffer should be cleared
 		print_err("Failed to parse request from buffer: ", _request_buffer, "");
 		std::string error_response = generateErrorPage(status);
 		send(_client_socket, error_response.c_str(), error_response.size(), 0);
 		_request_buffer.clear();
 		return false;
 	}
-	_request_buffer.clear();
 	updateTime(); //need to check if works correctly
 	return true;
 }
