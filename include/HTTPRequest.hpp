@@ -16,7 +16,7 @@ class HTTPRequest
 	public:
 		HTTPRequest();
 		virtual ~HTTPRequest();
-
+		void 		reset();
 		enum e_method
 		{
 			GET,

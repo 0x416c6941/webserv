@@ -17,6 +17,21 @@ HTTPRequest::~HTTPRequest()
 {
 }
 
+void HTTPRequest::reset() {
+    _method_is_set = false;
+
+    _request_target.clear();
+    _request_target_is_set = false;
+
+    _request_query.clear();
+    _request_query_is_set = false;
+
+    _header_fields.clear();
+
+    _complete = false;
+}
+
+
 size_t HTTPRequest::process_info(const std::string &info)
 {
 	size_t ft_pos;	// Field terminator position.
