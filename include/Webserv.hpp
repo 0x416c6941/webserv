@@ -22,9 +22,10 @@
 #include <arpa/inet.h>
 #include <signal.h>
 #include <ctime>
+#include <iomanip>
 
 
-#define DEBUG 0
+#define DEBUG 1
 
 #define EPOLL_MAX_EVENTS 1024
 
@@ -95,3 +96,4 @@ std::string generateErrorPage(int status_code);
 //Debug
 class ServerConfig;
 void printServerConfig(const ServerConfig& config);
+std::string escape_string(const std::string &input);

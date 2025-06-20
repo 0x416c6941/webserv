@@ -150,7 +150,9 @@ bool ClientConnection::handleReadEvent()
 		return false;
 	}
 	if (n > 0) {
-	        print_log("DEBUG: Received request: ", std::string(buffer, static_cast<size_t>(n)), "");
+	        print_log("DEBUG: Received request (normal): ", std::string(buffer, static_cast<size_t>(n)), "");
+		// print_log("DEBUG: Received request (with \\r\\n): ", escape_string(std::string(buffer, static_cast<size_t>(n))), "");
+
         }
 	_request_buffer.append(buffer, static_cast<size_t>(n));
 	

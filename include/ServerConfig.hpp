@@ -27,7 +27,7 @@ private:
 	std::vector<Location>		_locations;		// List of route-specific configurations
 	std::vector<sockaddr_in>	_server_addresses;	// Full IPv4 socket address struct
 	std::vector<int>		_listen_fds;		// Socket file descriptor
-	std::pair<uint32_t, uint64_t> _large_client_header_buffers; // Large client header buffers (for ddos protection)
+	std::pair<uint32_t, uint64_t> 	_large_client_header_buffers; // Large client header buffers (for ddos protection)
 
 	// Internal helper for initializeSockets server
 	int createListeningSocket(const std::string& host, uint16_t port, sockaddr_in& out_addr);

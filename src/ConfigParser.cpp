@@ -175,13 +175,13 @@ void ConfigParser::parse() {
 	splitIntoServerBlocks(_rawContent);
 	for (size_t i = 0; i < _serverBlocks.size(); ++i) {
 		std::vector<std::string> directives = splitDirectives(_serverBlocks[i]);
-		// if (DEBUG)
-		// {
-		// 	std::cout << "\nParsed Directives for Server Block #" << i << ":\n";
-		// 	for (size_t j = 0; j < directives.size(); ++j) {
-		// 		std::cout << "  [" << j << "] " << directives[j] << std::endl;
-		// 	}
-		// }
+		if (DEBUG)
+		{
+			std::cout << "\nParsed Directives for Server Block #" << i << ":\n";
+			for (size_t j = 0; j < directives.size(); ++j) {
+				std::cout << "  [" << j << "] " << directives[j] << std::endl;
+			}
+		}
 		ServerConfig server = ServerBuilder::build(directives);
 		_servers.push_back(server);
 	}
