@@ -158,15 +158,11 @@ bool ClientConnection::handleReadEvent()
 	// It should be rewritten to reply throw Response class 
 	
 	if (status != 0) {
-		// It should be rewritten to reply throw Response class
-		// and stop futher request parsing
-		// Also response should be sent throw EPOLLOUT
-		// and request buffer should be cleared
 		_request_error = true;
 		_response.set_status_code(status);
 		_response.build_error_response();
 	}
-	updateTime(); //need to check if works correctly
+	
 	return true;
 }
 
@@ -204,6 +200,11 @@ bool	ClientConnection::handleWriteEvent()
 
 	return true;
 }
+
+void ClientConnection::printDebugRequestParse(){
+	_request.printDebug();
+}
+
 
 void ClientConnection::reset()
 {

@@ -299,6 +299,8 @@ void ServerManager::handleClientEvent(int client_fd, uint32_t eventFlag)
 				return;
 			}
 			print_log("EPOLLIN event for client fd: ", to_string(client_fd), " - data read");
+			conn.updateTime(); // Update last message time after reading
+			conn.printDebugRequestParse();
 		}
 	}
 	// Here should be cleaning up all stack memory in response and request parsing 

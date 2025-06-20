@@ -4,7 +4,8 @@
 #include <string>
 #include <map>
 #include <cstddef>
-
+#include <iostream> //for debug
+#include <iomanip> //for debug
 /**
  * A class containing a received and parsed HTTP/1.1 request.
  * Non-standard header fields are also stored, but they're not processed later.
@@ -76,6 +77,11 @@ class HTTPRequest
 		 * 		false otherwise.
 		 */
 		bool is_complete() const;
+
+		/**
+ 		* Debug function to print all parsed request fields.
+ 		*/
+		void printDebug() const;
 
 	private:
 		// All possible information from the start line.

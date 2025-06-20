@@ -365,3 +365,48 @@ size_t HTTPRequest::handle_header_field(const std::string &header_field)
 	// At this point, all bytes in `_header_field` were processed.
 	return header_field.length();
 }
+
+
+void HTTPRequest::printDebug() const {
+	std::cout << "\n===== HTTP Request Debug Info =====" << std::endl;
+
+	// Method
+	if (_method_is_set) {
+		std::string method_str;
+		switch (_method) {
+			case GET:    method_str = "GET"; break;
+			case POST:   method_str = "POST"; break;
+			case DELETE: method_str = "DELETE"; break;
+			default:     method_str = "UNKNOWN"; break;
+		}
+		std::cout << "Method:          " << method_str << std::endl;
+	} else {
+		std::cout << "Method:          [NOT SET]" << std::endl;
+	}
+
+	// Target
+	if (_request_target_is_set)
+		std::cout << "Target:          " << _request_target << std::endl;
+	else
+		std::cout << "Target:          [NOT SET]" << std::endl;
+
+	// Query
+	if (_request_query_is_set)
+		std::cout << "Query:           " << _request_query << std::endl;
+	else
+		std::cout << "Query:           [NOT SET]" << std::endl;
+
+	// Headers
+	std::cout << "Header Fields:" << std::endl;
+	if (_header_fields.empty()) {
+		std::cout << "  [NONE]" << std::endl;
+	} else {
+		for (std::map<std::string, std::string>::const_iterator it = _header_fields.begin(); it != _header_fields.end(); ++it) {
+			std::cout << "  " << std::setw(16) << std::left << it->first << ": " << it->second << std::endl;
+		}
+	}
+
+	// Completion flag
+	std::cout << "Request Complete: " << (_complete ? "Yes" : "No") << std::endl;
+	std::cout << "====================================\n" << std::endl;
+}

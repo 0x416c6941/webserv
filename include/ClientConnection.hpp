@@ -56,4 +56,8 @@ public:
 	int                  	parseReadEvent(const std::string &buffer);
 	void                    closeConnection();
 	void 			reset();
+
+	//Debug
+	void 			printDebugRequestParse();
+
 };
