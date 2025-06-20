@@ -90,7 +90,7 @@ bool 	ClientConnection::getRequestIsComplete() const
 	return _request.is_complete();
 }
 
-size_t ClientConnection::parseReadEvent(const std::string &buffer)
+int ClientConnection::parseReadEvent(const std::string &buffer)
 {
 	try {
 		return _request.process_info(buffer);
@@ -130,7 +130,7 @@ bool ClientConnection::handleReadEvent()
         }
 	_request_buffer.append(buffer, static_cast<size_t>(n));
 	
-	size_t status = parseReadEvent(_request_buffer);
+	int status = parseReadEvent(_request_buffer);
 	// It should be rewritten to reply throw Response class 
 	
 	if (status != 0) {

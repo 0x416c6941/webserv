@@ -47,6 +47,6 @@ public:
 
 	// Logic
 	bool                    handleReadEvent();
-	size_t                  parseReadEvent(const std::string &buffer);
+	int                  	parseReadEvent(const std::string &buffer);
 	void                    closeConnection();
 };
