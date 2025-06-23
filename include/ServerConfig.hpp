@@ -55,6 +55,7 @@ public:
 	std::pair<uint32_t, uint64_t> 	getLargeClientHeaderBuffers() const;
 	uint32_t 			getLargeClientHeaderBufferCount() const;
 	uint64_t 			getLargeClientHeaderBufferSize() const;
+	uint64_t 			getLargeClientHeaderTotalBytes() const;
 
 	// Setters
 	void 				addListenEndpoint(const std::pair<std::string, uint16_t>& endpoint);
