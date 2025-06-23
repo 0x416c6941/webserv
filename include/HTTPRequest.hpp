@@ -77,6 +77,12 @@ class HTTPRequest
 		 */
 		bool is_complete() const;
 
+		//Shit implementation -> upon creation ClientConnection -> need to copy to ServerManager _client_connections
+		// It doesn't make sense for `HTTPRequest` to be CopyConstructible
+		// or have an ::operator =() available.
+		HTTPRequest(const HTTPRequest &src);
+		HTTPRequest &operator = (const HTTPRequest &src);
+
 	private:
 		// All possible information from the start line.
 		enum e_method _method;
@@ -99,10 +105,7 @@ class HTTPRequest
 
 		bool _complete;			// If request is fully parsed.
 
-		// It doesn't make sense for `HTTPRequest` to be CopyConstructible
-		// or have an ::operator =() available.
-		HTTPRequest(const HTTPRequest &src);
-		HTTPRequest &operator = (const HTTPRequest &src);
+
 
 		/**
 		 * Parse method, request target and
