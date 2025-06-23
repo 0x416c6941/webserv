@@ -29,6 +29,33 @@ void HTTPRequest::reset() {
     _header_fields.clear();
 
     _complete = false;
+
+    // Copy constructor
+HTTPRequest::HTTPRequest(const HTTPRequest &src)
+	: _method(src._method),
+	  _method_is_set(src._method_is_set),
+	  _request_target(src._request_target),
+	  _request_target_is_set(src._request_target_is_set),
+	  _request_query(src._request_query),
+	  _request_query_is_set(src._request_query_is_set),
+	  _header_fields(src._header_fields),
+	  _complete(src._complete)
+{
+}
+
+HTTPRequest &HTTPRequest::operator=(const HTTPRequest &src)
+{
+	if (this != &src) {
+		_method = src._method;
+		_method_is_set = src._method_is_set;
+		_request_target = src._request_target;
+		_request_target_is_set = src._request_target_is_set;
+		_request_query = src._request_query;
+		_request_query_is_set = src._request_query_is_set;
+		_header_fields = src._header_fields;
+		_complete = src._complete;
+	}
+	return *this;
 }
 
 
