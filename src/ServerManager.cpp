@@ -196,14 +196,12 @@ bool ServerManager::removeFdFromEpoll(int fd)
  * on a server (listening) socket. It accepts all pending client connections
  * in a non-blocking loop using `accept()`, sets each new client socket to
  * non-blocking mode, and registers it with the server's epoll instance
- * using edge-triggered (EPOLLET) mode.
+ * using client_fd, EPOLLIN | EPOLLERR | EPOLLOUT | EPOLLHUP | EPOLLRDHUP.
  *
  * For each successfully accepted connection, a ClientConnection object is
  * created, initialized with socket information and associated ServerConfig,
  * and stored in the _client_connections map.
  *
- * If accept() returns EAGAIN or EWOULDBLOCK, the function breaks the loop,
- * assuming all pending connections have been processed.
  *
  * In case of error (e.g., failed fcntl, epoll_ctl, etc.), the client socket
  * is closed and skipped without crashing the server.
@@ -213,45 +211,45 @@ bool ServerManager::removeFdFromEpoll(int fd)
  */
 void ServerManager::handleNewConnection(int server_fd)
 {
-	while (true) {
-		struct sockaddr_in client_addr;
-		socklen_t client_len = sizeof(client_addr);
-		int client_fd = accept(server_fd, (struct sockaddr*)&client_addr, &client_len);
-		if (client_fd < 0) {
-			if (errno == EAGAIN || errno == EWOULDBLOCK)
-				break;
-			print_err("accept() failed: ", strerror(errno), "");
-			break;
-		}
-
-		// Set client socket to non-blocking mode
-		int flags = fcntl(client_fd, F_GETFL, 0);
-		if (flags < 0 || fcntl(client_fd, F_SETFL, flags | O_NONBLOCK) < 0) {
-			print_err("fcntl() failed: ", strerror(errno), "");
-			::close(client_fd);
-			print_warning("Failed to set non-blocking mode for client fd ", to_string(client_fd), "");
-			continue;
-		}
-
-		// Register client fd with epoll
-		if (!addFdToEpoll(client_fd, EPOLLIN | EPOLLERR | EPOLLOUT | EPOLLHUP | EPOLLRDHUP )) {
-			::close(client_fd);
-			print_err("Failed to add client fd to epoll: ", to_string(client_fd), "");
-			continue;
-		}
-
-		// Create and store new client connection
-		_client_connections[client_fd] = ClientConnection();
-		ClientConnection &conn = _client_connections.at(client_fd);
-		conn.setSocket(client_fd);
-		conn.setAddress(client_addr);
-
-		std::map<int, ServerConfig*>::iterator sit = _fd_to_server.find(server_fd);
-		if (sit != _fd_to_server.end())
-			conn.setServer(*sit->second);
-
-		print_log("Accepted connection: fd ", to_string(client_fd), "");
+	struct sockaddr_in client_addr;
+	socklen_t client_len = sizeof(client_addr);
+	int client_fd = accept(server_fd, (struct sockaddr*)&client_addr, &client_len);
+	if (client_fd < 0) {
+		print_err("accept() failed: ", strerror(errno), "");
+		return ;
 	}
+
+	// Set client socket to non-blocking mode
+	int flags = fcntl(client_fd, F_GETFL, 0);
+	if (flags < 0 || fcntl(client_fd, F_SETFL, flags | O_NONBLOCK) < 0) {
+		print_err("fcntl() failed: ", strerror(errno), "");
+		::close(client_fd);
+		return;
+	}
+
+	// Register client fd with epoll
+	if (!addFdToEpoll(client_fd, EPOLLIN | EPOLLERR | EPOLLOUT | EPOLLHUP | EPOLLRDHUP )) {
+		::close(client_fd);
+		print_err("Failed to add client fd to epoll: ", to_string(client_fd), "");
+	}
+
+	// Construct directly into the map to avoid copying or assignment
+	_client_connections.insert(std::make_pair(client_fd, ClientConnection()));
+
+	std::map<int, ClientConnection>::iterator it = _client_connections.find(client_fd);
+	if (it == _client_connections.end()) {
+		throw std::runtime_error("Failed to find ClientConnection for fd: " + to_string(client_fd));
+	}
+
+	ClientConnection &conn = it->second;
+
+	conn.setSocket(client_fd);
+	conn.setAddress(client_addr);
+
+	std::map<int, ServerConfig*>::iterator sit = _fd_to_server.find(server_fd);
+	if (sit != _fd_to_server.end())
+		conn.setServer(*sit->second);
+	print_log("Accepted connection: fd ", to_string(client_fd), "");
 }
 
 

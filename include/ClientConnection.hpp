@@ -19,6 +19,7 @@ private:
 	ServerConfig*           _server;
 	time_t                  _last_msg_time;
 	HTTPRequest             _request;
+	bool 		  	_request_header_found; 
 	bool                    _request_error;	
 	bool		    	_msg_sent; // Indicates if the request is fully sent
 	size_t 			_bytes_sent;
@@ -26,13 +27,13 @@ private:
 	// need a buffer for the request until it's fully parsed.
 	std::string             _request_buffer;
 	HTTPResponse            _response;
+	ClientConnection(const ClientConnection &other);	//do we need this? need to update
+	ClientConnection &operator=(const ClientConnection &rhs); //do we need this? need to update
 	
-public:
+	public:
 	ClientConnection();
 	ClientConnection(int fd);
 	~ClientConnection();
-	ClientConnection(const ClientConnection &other);
-	ClientConnection &operator=(const ClientConnection &rhs);
 	
 	// Accessors
 	int                     getSocket() const;

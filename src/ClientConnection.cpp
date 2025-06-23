@@ -7,6 +7,7 @@ ClientConnection::ClientConnection()
 	_server(NULL),
 	_last_msg_time(std::time(NULL)),
 	_request(),
+	_request_header_found(false),
 	_request_error(false),
 	_msg_sent(false),
 	_bytes_sent(0),
@@ -16,37 +17,39 @@ ClientConnection::ClientConnection()
     std::memset(&_client_address, 0, sizeof(_client_address));
 }
 
-ClientConnection::ClientConnection(int fd)
-	: _client_socket(fd), _server(NULL), _last_msg_time(std::time(NULL))
-{
-	std::memset(&_client_address, 0, sizeof(_client_address));
-}
+// ClientConnection::ClientConnection(const ClientConnection& other)
+// 	: _client_socket(other._client_socket),
+// 	  _client_address(other._client_address),
+// 	  _server(other._server),  // pointer, shallow copy – make sure this is OK!
+// 	  _last_msg_time(other._last_msg_time),
+// 	  _request(other._request),
+// 	  _request_header_found(other._request_header_found),
+// 	  _request_error(other._request_error),
+// 	  _msg_sent(other._msg_sent),
+// 	  _bytes_sent(other._bytes_sent),
+// 	  _request_buffer(other._request_buffer),
+// 	  _response(other._response)
+// {}
 
-ClientConnection::ClientConnection(const ClientConnection &other)
-	: _client_socket(other._client_socket),
-	  _client_address(other._client_address),
-	  _server(other._server),
-	  _last_msg_time(other._last_msg_time)
-{
-	// _request = other._request;
-	// _response = other._response;
-}
+// ClientConnection& ClientConnection::operator=(const ClientConnection& rhs) {
+// 	if (this != &rhs) {
+// 		_client_socket = rhs._client_socket;
+// 		_client_address = rhs._client_address;
+// 		_server = rhs._server;  // again, shallow copy — clarify ownership!
+// 		_last_msg_time = rhs._last_msg_time;
+// 		_request = rhs._request;
+// 		_request_header_found = rhs._request_header_found;
+// 		_request_error = rhs._request_error;
+// 		_msg_sent = rhs._msg_sent;
+// 		_bytes_sent = rhs._bytes_sent;
+// 		_request_buffer = rhs._request_buffer;
+// 		_response = rhs._response;
+// 	}
+// 	return *this;
+// }
 
 
-ClientConnection &ClientConnection::operator=(const ClientConnection &rhs)
-{
-	if (this != &rhs) {
-		_client_socket = rhs._client_socket;
-		_client_address = rhs._client_address;
-		_server = rhs._server; // non-owning pointer, shallow copy
-		_last_msg_time = rhs._last_msg_time;
 
-		// If HttpRequest/Response get added, copy them too
-		// _request = rhs._request;
-		// _response = rhs._response;
-	}
-	return *this;
-}
 
 
 ClientConnection::~ClientConnection()
@@ -128,6 +131,19 @@ int ClientConnection::parseReadEvent(const std::string &buffer)
 	return 0; 
 }
 
+int getHttpHeaderLength(const std::string& requestBuffer) {
+    	std::string headerEnd = "\r\n\r\n";
+    	std::size_t pos = requestBuffer.find(headerEnd);
+	
+    	if (pos == std::string::npos) {
+    	    return -1;  // Header not complete
+    	}
+
+    	// Return length including the 4-byte delimiter
+    	return static_cast<int>(pos + headerEnd.length());
+}
+
+
 /**
  * @brief Handles the read event for the client connection.
  * Reads data from the socket until no more data is available or an error occurs.
@@ -137,6 +153,7 @@ int ClientConnection::parseReadEvent(const std::string &buffer)
  */
 bool ClientConnection::handleReadEvent()
 {
+	std::cout <<"CLient header bytes: "<< _server->getLargeClientHeaderTotalBytes()<< std::endl;
 	enum { BUFFER_SIZE = 2048 }; // 2 KB buffer size for reading data
         print_log("handleReadEvent() called for fd ", to_string(_client_socket), "");
 	char buffer[BUFFER_SIZE];
@@ -151,13 +168,22 @@ bool ClientConnection::handleReadEvent()
 	}
 	if (n > 0) {
 	        print_log("DEBUG: Received request (normal): ", std::string(buffer, static_cast<size_t>(n)), "");
-		// print_log("DEBUG: Received request (with \\r\\n): ", escape_string(std::string(buffer, static_cast<size_t>(n))), "");
 
         }
 	_request_buffer.append(buffer, static_cast<size_t>(n));
 	
+	if (getHttpHeaderLength(_request_buffer) < 0)
+	{ 
+		if (_request_buffer.size() > _server->getLargeClientHeaderTotalBytes()) {
+			_request_error = true;
+			_response.set_status_code(431);
+			_response.build_error_response();
+			return true; // Request too large, send error response
+		}
+		return true; // Not enough data yet, wait for more
+	}
+
 	int status = parseReadEvent(_request_buffer);
-	// It should be rewritten to reply throw Response class 
 	
 	if (status != 0) {
 		_request_error = true;
