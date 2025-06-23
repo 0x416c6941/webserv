@@ -29,6 +29,7 @@ void HTTPRequest::reset() {
     _header_fields.clear();
 
     _complete = false;
+}
 
     // Copy constructor
 HTTPRequest::HTTPRequest(const HTTPRequest &src)
