@@ -64,6 +64,10 @@ uint64_t ServerConfig::getLargeClientHeaderBufferSize() const {
 	return _large_client_header_buffers.second;
 }
 
+uint64_t ServerConfig::getLargeClientHeaderTotalBytes() const {
+	return _large_client_header_buffers.second * _large_client_header_buffers.first;
+}
+
 // Setters
 void ServerConfig::addListenEndpoint(const std::pair<std::string, uint16_t>& endpoint) {
 	_listen_endpoints.push_back(endpoint);
