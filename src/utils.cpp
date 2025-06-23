@@ -79,17 +79,17 @@ bool 		pathExists(const std::string& path) {
  */
 uint64_t 	validateGetMbs(std::string param) {
 	if (param.empty())
-		throw ConfigParser::ErrorException("client_max_body_size cannot be empty");
+		throw ConfigParser::ErrorException("client or header max_body_size  cannot be empty");
 
 	std::string numericPart = param;
 	char suffix = param[param.size() - 1];
 	unsigned long multiplier = 1;
 
-	if (suffix == 'K' || suffix == 'M' || suffix == 'G') {
+	if (suffix == 'K' || suffix == 'k'  || suffix == 'M' || suffix == 'm' || suffix == 'G' || suffix == 'g') {
 		numericPart = param.substr(0, param.size() - 1);
-		if (suffix == 'K') multiplier = 1024UL;
-		else if (suffix == 'M') multiplier = 1024UL * 1024UL;
-		else if (suffix == 'G') multiplier = 1024UL * 1024UL * 1024UL;
+		if (suffix == 'K' || suffix == 'k') multiplier = 1024UL;
+		else if (suffix == 'M' || suffix == 'm') multiplier = 1024UL * 1024UL;
+		else if (suffix == 'G' || suffix == 'g') multiplier = 1024UL * 1024UL * 1024UL;
 	}
 
 	std::istringstream iss(numericPart);
@@ -97,16 +97,16 @@ uint64_t 	validateGetMbs(std::string param) {
 	iss >> size;
 
 	if (iss.fail() || !iss.eof())
-		throw ConfigParser::ErrorException("Invalid number in client_max_body_size: " + param);
+		throw ConfigParser::ErrorException("Invalid number in client or header max_body_size: " + param);
 
 	// Overflow check before multiplication
 	if (size > (ULONG_MAX / multiplier))
-		throw ConfigParser::ErrorException("client_max_body_size too large: " + param);
+		throw ConfigParser::ErrorException("client or header max_body_size too large: " + param);
 
 	uint64_t finalSize = size * multiplier;
 
 	if (finalSize > MAX_CONTENT_LENGTH)
-		throw ConfigParser::ErrorException("client_max_body_size exceeds maximum allowed (1GB): " + param);
+		throw ConfigParser::ErrorException("client or header max_body_size exceeds maximum allowed (1GB): " + param);
 	return (finalSize);
 }
 

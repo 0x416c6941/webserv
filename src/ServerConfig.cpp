@@ -9,7 +9,8 @@ ServerConfig::ServerConfig()
 	  _client_max_body_size(DEFAULT_CONTENT_LENGTH),
 	  _index(),
 	  _autoindex(false),
-	  _listen_fds()
+	  _listen_fds(),
+	  _large_client_header_buffers(DEFAULT_LARGE_CLIENT_HEADER_BUFFERS, DEFAULT_LARGE_CLIENT_HEADER_BUFFER_SIZE)
 {
 	_server_addresses.clear();
 	_listen_fds.clear();
@@ -28,7 +29,9 @@ ServerConfig::ServerConfig(const ServerConfig& other)
 	  _error_pages(other._error_pages),
 	  _locations(other._locations),
 	  _server_addresses(other._server_addresses),
-	  _listen_fds(other._listen_fds)
+	  _listen_fds(other._listen_fds),
+	  _large_client_header_buffers(other._large_client_header_buffers)
+	  
 {}
 
 ServerConfig::~ServerConfig(){

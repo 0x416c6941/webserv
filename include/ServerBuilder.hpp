@@ -27,6 +27,7 @@ private:
 	static void 		handle_autoindex(const std::vector<std::string>& parameters, ServerConfig& server_cfg);
 	static void 		handle_error_page(const std::vector<std::string>& parameters, ServerConfig& server_cfg);
 	static void 		handle_location(const std::vector<std::string>& parameters, ServerConfig& server_cfg);
+	static void		handle_large_client_header_buffers(const std::vector<std::string>& parameters, ServerConfig& server_cfg);
     	/**
     	 * @brief Retrieves the appropriate handler for a directive.
     	 * @param directive The directive string (e.g., "listen").

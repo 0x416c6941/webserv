@@ -179,6 +179,51 @@ void ServerBuilder::handle_mbs(const std::vector<std::string>& parameters, Serve
 	server_cfg.setClientMaxBodySize(finalSize);
 }
 
+/**
+ * @brief Handles the 'large_client_header_buffers' directive.
+ *
+ * This directive specifies the maximum number and size of buffers used
+ * for reading large client request headers. It is typically placed in the 
+ * HTTP block of an NGINX configuration.
+ *
+ * Format: `large_client_header_buffers <number_of_buffers> <buffer_size>;`
+ *
+ * Example: `large_client_header_buffers 4 16k;`
+ *
+ * Validates that:
+ * - The number of buffers is a numeric value between 1 and 1024.
+ * - The buffer size is a valid size string (e.g., "8k", "16k", "1m").
+ * - The total size (`number * size`) does not exceed MAX_CONTENT_LENGTH.
+ *
+ * @param parameters Tokenized directive as parsed from the configuration.
+ * @param server_cfg Server configuration object to apply the settings to.
+ *
+ * @throws ConfigParser::ErrorException If syntax is invalid or values exceed limits.
+ */
+void ServerBuilder::handle_large_client_header_buffers(const std::vector<std::string>& parameters, ServerConfig& server_cfg) {
+	if (parameters.size() < 4 || parameters.back() != ";")
+		throw ConfigParser::ErrorException("Invalid syntax for large_client_header_buffers directive");
+
+	const std::string& buffer_nbr = parameters[1];
+	const std::string& buffer_size = parameters[2];
+
+	if (buffer_nbr.empty() || buffer_size.empty())
+		throw ConfigParser::ErrorException("client_max_body_size cannot be empty");
+	for (std::string::const_iterator it = buffer_nbr.begin(); it != buffer_nbr.end(); ++it) {
+		if (!isdigit(*it))
+			throw ConfigParser::ErrorException("Buffer count must be a numeric value");
+	}
+	std::istringstream iss(buffer_nbr);
+	uint32_t bufferCount = 0;
+	iss >> bufferCount;
+	if (iss.fail() || bufferCount == 0 || bufferCount > 1024)
+		throw ConfigParser::ErrorException("Buffer count must be between 1 and 1024");
+	uint64_t 	finalBufferSize = validateGetMbs(buffer_size);
+
+	if (bufferCount > 0 && finalBufferSize > MAX_HEADER_CONTENT_LENGTH / bufferCount)
+		throw ConfigParser::ErrorException("Total buffer size exceeds 40k limit");
+	server_cfg.setLargeClientHeaderBuffers(bufferCount, finalBufferSize);
+}
 
 /**
  * @brief Processes 'error_page' directive mapping codes to pages.
@@ -551,6 +596,7 @@ HandlerFunc ServerBuilder::getHandler(const std::string& directive) {
 		handlers["index"] = &ServerBuilder::handle_index;
 		handlers["error_page"] = &ServerBuilder::handle_error_page;
 		handlers["location"] = &ServerBuilder::handle_location;
+		handlers["large_client_header_buffers"] = &ServerBuilder::handle_large_client_header_buffers;
 	}
 
 	std::map<std::string, HandlerFunc>::const_iterator it = handlers.find(directive);

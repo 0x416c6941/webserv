@@ -56,6 +56,11 @@ void printServerConfig(const ServerConfig& config)
 	// Max Body Size
 	std::cout << "Max Client Body Size: " << config.getClientMaxBodySize() << " bytes" << std::endl;
 
+	// Large Client Header Buffers
+	std::pair<uint32_t, uint64_t> large_buffers = config.getLargeClientHeaderBuffers();
+	std::cout << "Large Client Header Buffers: "
+	          << large_buffers.first << " buffers of size " << large_buffers.second << " bytes each" << std::endl;
+
 	// Error Pages
 	const std::map<int, std::string>& errors = config.getErrorPages();
 	std::cout << "Error Pages: " << errors.size() << std::endl;
