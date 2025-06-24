@@ -14,23 +14,26 @@ class HTTPResponse {
 public:
 	HTTPResponse();
 	// HTTPResponse(const HTTPRequest& request, const ServerConfig& config);
+	
 	~HTTPResponse();
-
-
+	
+	
 	// void prepare();
 	// std::string get_header_string() const;
 	// int get_status_code() const;
 	// std::string get_file_path() const;
-
-
+	
+	
 	void 			set_status_code(int code);
 	void 			build_error_response();
 	bool 			is_response_ready() const;
 	std::string 		get_response_msg() const;
-
+	
 	void			reset();
-
+	
 private:
+	HTTPResponse(const HTTPResponse& other); 
+	HTTPResponse& operator=(const HTTPResponse& other); 
 	std::string 		_response_msg;
 	// const HTTPRequest*      _request;
 	const ServerConfig*     _server_config;

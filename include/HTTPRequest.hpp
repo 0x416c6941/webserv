@@ -87,13 +87,12 @@ class HTTPRequest
  		*/
 		void printDebug() const;
 
-		//Shit implementation -> upon creation ClientConnection -> need to copy to ServerManager _client_connections
+		
+	private:
 		// It doesn't make sense for `HTTPRequest` to be CopyConstructible
 		// or have an ::operator =() available.
 		HTTPRequest(const HTTPRequest &src);
 		HTTPRequest &operator = (const HTTPRequest &src);
-
-	private:
 		// All possible information from the start line.
 		enum e_method _method;
 		bool _method_is_set;		// To check if `_method` is initialized.

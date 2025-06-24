@@ -7,8 +7,25 @@ HTTPResponse::HTTPResponse():
         _status_code(200),
         _response_ready(false) {}
 
-// HTTPResponse::HTTPResponse(const HTTPRequest& request, const ServerConfig& config)
-// : _request(request), _server_config(config), _status_code(200)  {}
+
+HTTPResponse::HTTPResponse(const HTTPResponse& other)
+	: _response_msg(other._response_msg),
+	  _server_config(other._server_config),
+	  _status_code(other._status_code),
+	  _response_ready(other._response_ready)
+{}
+
+HTTPResponse& HTTPResponse::operator=(const HTTPResponse& other) {
+	if (this != &other) {
+		_response_msg = other._response_msg;
+		_server_config = other._server_config;
+		_status_code = other._status_code;
+		_response_ready = other._response_ready;
+	}
+	return *this;
+}
+
+
 
 HTTPResponse::~HTTPResponse() {}
 

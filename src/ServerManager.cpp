@@ -231,6 +231,7 @@ void ServerManager::handleNewConnection(int server_fd)
 	if (!addFdToEpoll(client_fd, EPOLLIN | EPOLLERR | EPOLLOUT | EPOLLHUP | EPOLLRDHUP )) {
 		::close(client_fd);
 		print_err("Failed to add client fd to epoll: ", to_string(client_fd), "");
+		return;
 	}
 
 	// Construct directly into the map to avoid copying or assignment
@@ -243,12 +244,14 @@ void ServerManager::handleNewConnection(int server_fd)
 
 	ClientConnection &conn = it->second;
 
+	// Fully initialize before inserting
 	conn.setSocket(client_fd);
 	conn.setAddress(client_addr);
 
 	std::map<int, ServerConfig*>::iterator sit = _fd_to_server.find(server_fd);
 	if (sit != _fd_to_server.end())
 		conn.setServer(*sit->second);
+		
 	print_log("Accepted connection: fd ", to_string(client_fd), "");
 }
 

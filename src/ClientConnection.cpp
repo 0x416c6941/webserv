@@ -1,54 +1,67 @@
 #include "../include/ClientConnection.hpp"
 
+ClientConnection::ClientConnection(int fd)
+	: _client_socket(fd),
+	_client_address(),
+	_server(NULL),
+	_last_msg_time(std::time(NULL)),
+	// _request(),
+	_request_header_found(false),
+	_request_error(false),
+	_msg_sent(false),
+	_bytes_sent(0),
+	_request_buffer()
+	// _response()
+{
+    std::memset(&_client_address, 0, sizeof(_client_address));
+}
 
 ClientConnection::ClientConnection()
 	: _client_socket(-1),
 	_client_address(),
 	_server(NULL),
 	_last_msg_time(std::time(NULL)),
-	_request(),
+	// _request(),
 	_request_header_found(false),
 	_request_error(false),
 	_msg_sent(false),
 	_bytes_sent(0),
-	_request_buffer(),
-	_response()
+	_request_buffer()
+	// _response()
 {
     std::memset(&_client_address, 0, sizeof(_client_address));
 }
 
-// ClientConnection::ClientConnection(const ClientConnection& other)
-// 	: _client_socket(other._client_socket),
-// 	  _client_address(other._client_address),
-// 	  _server(other._server),  // pointer, shallow copy – make sure this is OK!
-// 	  _last_msg_time(other._last_msg_time),
-// 	  _request(other._request),
-// 	  _request_header_found(other._request_header_found),
-// 	  _request_error(other._request_error),
-// 	  _msg_sent(other._msg_sent),
-// 	  _bytes_sent(other._bytes_sent),
-// 	  _request_buffer(other._request_buffer),
-// 	  _response(other._response)
-// {}
+ClientConnection::ClientConnection(const ClientConnection& other)
+	: _client_socket(other._client_socket),
+	  _client_address(other._client_address),
+	  _server(other._server),  // shallow copy (non-owning)
+	  _last_msg_time(other._last_msg_time),
+	//   _request(other._request),
+	  _request_header_found(other._request_header_found),
+	  _request_error(other._request_error),
+	  _msg_sent(other._msg_sent),
+	  _bytes_sent(other._bytes_sent),
+	  _request_buffer(other._request_buffer)
+	//   _response(other._response)
+{}
 
-// ClientConnection& ClientConnection::operator=(const ClientConnection& rhs) {
-// 	if (this != &rhs) {
-// 		_client_socket = rhs._client_socket;
-// 		_client_address = rhs._client_address;
-// 		_server = rhs._server;  // again, shallow copy — clarify ownership!
-// 		_last_msg_time = rhs._last_msg_time;
-// 		_request = rhs._request;
-// 		_request_header_found = rhs._request_header_found;
-// 		_request_error = rhs._request_error;
-// 		_msg_sent = rhs._msg_sent;
-// 		_bytes_sent = rhs._bytes_sent;
-// 		_request_buffer = rhs._request_buffer;
-// 		_response = rhs._response;
-// 	}
-// 	return *this;
-// }
-
-
+ClientConnection& ClientConnection::operator=(const ClientConnection& other) {
+	if (this != &other) {
+		_client_socket = other._client_socket;
+		_client_address = other._client_address;
+		_server = other._server;  // shallow copy (non-owning)
+		_last_msg_time = other._last_msg_time;
+		// _request = other._request;
+		_request_header_found = other._request_header_found;
+		_request_error = other._request_error;
+		_msg_sent = other._msg_sent;
+		_bytes_sent = other._bytes_sent;
+		_request_buffer = other._request_buffer;
+		// _response = other._response;
+	}
+	return *this;
+}
 
 
 

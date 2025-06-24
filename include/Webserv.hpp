@@ -25,7 +25,7 @@
 #include <iomanip>
 
 
-#define DEBUG 1
+#define DEBUG 0
 
 #define EPOLL_MAX_EVENTS 1024
 
