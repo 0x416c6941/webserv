@@ -166,7 +166,7 @@ int getHttpHeaderLength(const std::string& requestBuffer) {
  */
 bool ClientConnection::handleReadEvent()
 {
-	std::cout <<"CLient header bytes: "<< _server->getLargeClientHeaderTotalBytes()<< std::endl;
+	std::cout <<"Client header bytes: "<< _server->getLargeClientHeaderTotalBytes()<< std::endl;
 	enum { BUFFER_SIZE = 2048 }; // 2 KB buffer size for reading data
         print_log("handleReadEvent() called for fd ", to_string(_client_socket), "");
 	char buffer[BUFFER_SIZE];
