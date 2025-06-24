@@ -208,7 +208,7 @@ void ServerBuilder::handle_large_client_header_buffers(const std::vector<std::st
 	const std::string& buffer_size = parameters[2];
 
 	if (buffer_nbr.empty() || buffer_size.empty())
-		throw ConfigParser::ErrorException("client_max_body_size cannot be empty");
+		throw ConfigParser::ErrorException("large_client_header_buffers values cannot be empty");
 	for (std::string::const_iterator it = buffer_nbr.begin(); it != buffer_nbr.end(); ++it) {
 		if (!isdigit(*it))
 			throw ConfigParser::ErrorException("Buffer count must be a numeric value");
