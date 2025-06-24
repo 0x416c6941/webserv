@@ -293,13 +293,13 @@ void ServerManager::handleClientEvent(int client_fd, uint32_t eventFlag)
 	// We don't want to read futher if the request is already complete or error occured in the request parsing
 	// in this case we won't to send a response (with error page/or normal response)
 	if (eventFlag & EPOLLIN) {
+		print_log("EPOLLIN event for client fd: ", to_string(client_fd), "");
 		if (!conn.getRequestIsComplete() && !conn.getRequestError()) {
 			if (!conn.handleReadEvent()) {
 				print_log("EPOLLIN event for client fd: ", to_string(client_fd), " - closing connection");
 				closeClientConnection(client_fd);
 				return;
 			}
-			print_log("EPOLLIN event for client fd: ", to_string(client_fd), " - data read");
 			conn.updateTime(); // Update last message time after reading
 			conn.printDebugRequestParse();
 		}

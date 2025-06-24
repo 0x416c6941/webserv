@@ -133,7 +133,7 @@ bool ClientConnection::getMsgSent() const
 int ClientConnection::parseReadEvent(const std::string &buffer)
 {
 	try {
-		return _request.process_info(buffer);
+		_request.process_info(buffer);
 	} catch (const std::invalid_argument &e) {
 		print_err("Invalid request format: ", e.what(), "");
 		return 400;  
@@ -143,8 +143,16 @@ int ClientConnection::parseReadEvent(const std::string &buffer)
 	}
 	return 0; 
 }
-
-int getHttpHeaderLength(const std::string& requestBuffer) {
+/**
+ * @brief Returns the length of the HTTP header in the request buffer.
+ *
+ * Finds the end-of-header delimiter ("\r\n\r\n") and returns its position
+ * plus the delimiter length. Returns -1 if the header is incomplete.
+ *
+ * @param requestBuffer Raw HTTP request data.
+ * @return int Length of the header including the delimiter, or -1 if not found.
+ */
+int ClientConnection::getHttpHeaderLength(const std::string& requestBuffer) {
     	std::string headerEnd = "\r\n\r\n";
     	std::size_t pos = requestBuffer.find(headerEnd);
 	
@@ -185,17 +193,26 @@ bool ClientConnection::handleReadEvent()
         }
 	_request_buffer.append(buffer, static_cast<size_t>(n));
 	
-	if (getHttpHeaderLength(_request_buffer) < 0)
-	{ 
+	int header_length = getHttpHeaderLength(_request_buffer);
+	if (header_length < 0) {
 		if (_request_buffer.size() > _server->getLargeClientHeaderTotalBytes()) {
 			_request_error = true;
 			_response.set_status_code(431);
 			_response.build_error_response();
+			print_err("Request too large, size: ", to_string(_request_buffer.size()), "");
 			return true; // Request too large, send error response
 		}
 		return true; // Not enough data yet, wait for more
-	}
 
+	}
+	else if (header_length > static_cast<int>(_server->getLargeClientHeaderTotalBytes())) {
+		_request_error = true;
+		_response.set_status_code(431);
+		_response.build_error_response();
+		print_err("Request too large, size: ", to_string(_request_buffer.size()), "");
+		return true; // Request too large, send error response
+	}
+	// We have a complete header, now parse it
 	int status = parseReadEvent(_request_buffer);
 	
 	if (status != 0) {

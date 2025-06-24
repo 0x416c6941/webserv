@@ -25,6 +25,16 @@ private:
 	// TCP is a streaming oriented protocol, we therefore
 	// need a buffer for the request until it's fully parsed.
 	std::string             _request_buffer;
+	/**
+	* @brief Returns the length of the HTTP header in the request buffer.
+	*
+	* Finds the end-of-header delimiter ("\r\n\r\n") and returns its position
+	* plus the delimiter length. Returns -1 if the header is incomplete.
+	*
+	* @param requestBuffer Raw HTTP request data.
+	* @return int Length of the header including the delimiter, or -1 if not found.
+	*/
+	int 	getHttpHeaderLength(const std::string& requestBuffer);
 	
 public:
 	HTTPRequest             _request;
