@@ -9,7 +9,8 @@ HTTPRequest::HTTPRequest()
 	:	_method_is_set(false),
 		_request_target_is_set(false),
 		_request_query_is_set(false),
-		_complete(false)
+		_header_complete(false),
+		_body_complete(false)
 {
 }
 
@@ -19,57 +20,27 @@ HTTPRequest::~HTTPRequest()
 
 void HTTPRequest::reset() {
     _method_is_set = false;
-
     _request_target.clear();
     _request_target_is_set = false;
-
     _request_query.clear();
     _request_query_is_set = false;
-
     _header_fields.clear();
+    _header_complete = false;
 
-    _complete = false;
+    _body.clear();
+    _body_complete = false;
 }
 
-    // Copy constructor
-HTTPRequest::HTTPRequest(const HTTPRequest &src)
-	: _method(src._method),
-	  _method_is_set(src._method_is_set),
-	  _request_target(src._request_target),
-	  _request_target_is_set(src._request_target_is_set),
-	  _request_query(src._request_query),
-	  _request_query_is_set(src._request_query_is_set),
-	  _header_fields(src._header_fields),
-	  _complete(src._complete)
-{
-}
-
-HTTPRequest &HTTPRequest::operator=(const HTTPRequest &src)
-{
-	if (this != &src) {
-		_method = src._method;
-		_method_is_set = src._method_is_set;
-		_request_target = src._request_target;
-		_request_target_is_set = src._request_target_is_set;
-		_request_query = src._request_query;
-		_request_query_is_set = src._request_query_is_set;
-		_header_fields = src._header_fields;
-		_complete = src._complete;
-	}
-	return *this;
-}
-
-
-size_t HTTPRequest::process_info(const std::string &info)
+size_t HTTPRequest::process_header_line(const std::string &header_line)
 {
 	size_t ft_pos;	// Field terminator position.
 	const std::string FIELD_TERMINATOR = "\r\n";
 
-	if (this->_complete)
+	if (this->_header_complete)
 	{
 		throw std::range_error("HTTPRequest::process_info(): Request has already been fully parsed.");
 	}
-	ft_pos = info.find(FIELD_TERMINATOR);
+	ft_pos = header_line.find(FIELD_TERMINATOR);
 	if (ft_pos == std::string::npos)
 	{
 		throw std::invalid_argument("HTTPRequest::process_info(): Some line isn't properly terminated.");
@@ -80,17 +51,17 @@ size_t HTTPRequest::process_info(const std::string &info)
 		{
 			throw std::invalid_argument("HTTPRequest::process_info(): Found \"r\"n immediately after the request beginning.");
 		}
-		this->_complete = true;
+		this->_header_complete = true;
 		return FIELD_TERMINATOR.length();
 	}
 	if (!(this->_method_is_set) || !(this->_request_target_is_set))
 	{
-		return this->handle_start_line(info.substr(0, ft_pos))
+		return this->handle_start_line(header_line.substr(0, ft_pos))
 			+ FIELD_TERMINATOR.length();
 	}
 	else
 	{
-		return this->handle_header_field(info.substr(0, ft_pos))
+		return this->handle_header_field(header_line.substr(0, ft_pos))
 			+ FIELD_TERMINATOR.length();
 	}
 }
@@ -133,7 +104,17 @@ const std::string &HTTPRequest::get_header_value(const std::string &key) const
 
 bool HTTPRequest::is_complete() const
 {
-	return this->_complete;
+	if ((this->_method == GET || this->_method == DELETE)
+		&& this->_header_complete)
+	{
+		return true;
+	}
+	else if (this->_method == POST
+		&& (this->_header_complete && this->_body_complete))
+	{
+		return true;
+	}
+	return false;
 }
 
 size_t HTTPRequest::handle_start_line(const std::string &start_line)
@@ -383,7 +364,7 @@ size_t HTTPRequest::handle_header_field(const std::string &header_field)
 	// It's fine even if value is empty.
 	for (size_t i = value_begin_pos; i <= value_end_pos; i++)
 	{
-		if (!std::isgraph(header_field.at(i)))
+		if (!std::isprint(header_field.at(i)))
 		{
 			throw std::invalid_argument("HTTPRequest::handle_header_field(): Header field's value must consist only of printable non-whitespace characters.");
 		}
@@ -435,6 +416,6 @@ void HTTPRequest::printDebug() const {
 	}
 
 	// Completion flag
-	std::cout << "Request Complete: " << (_complete ? "Yes" : "No") << std::endl;
+	std::cout << "Request Complete: " << (this->_header_complete ? "Yes" : "No") << std::endl;
 	std::cout << "====================================\n" << std::endl;
 }

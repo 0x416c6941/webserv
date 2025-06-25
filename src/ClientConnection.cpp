@@ -130,18 +130,23 @@ bool ClientConnection::getMsgSent() const
 	return _msg_sent;
 }
 
-int ClientConnection::parseReadEvent(const std::string &buffer)
+int ClientConnection::parseReadEvent(std::string &buffer)
 {
-	try {
-		_request.process_info(buffer);
-	} catch (const std::invalid_argument &e) {
-		print_err("Invalid request format: ", e.what(), "");
-		return 400;  
-	} catch (const std::range_error &e) {
-		print_err("Request parsing error: ", e.what(), "");
-		return 400;  
+	for (;;) {
+		try {
+			buffer.erase(0, _request.process_header_line(buffer));
+		} catch (const std::invalid_argument &e) {
+			print_err("Invalid request format: ", e.what(), "");
+			return 400;  
+		} catch (const std::range_error &e) {
+			print_err("Request parsing error: ", e.what(), "");
+			return 400;  
+		}
+		if (this->_request.is_complete())
+		{
+			return 0;
+		}
 	}
-	return 0; 
 }
 /**
  * @brief Returns the length of the HTTP header in the request buffer.

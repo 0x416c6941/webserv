@@ -30,20 +30,20 @@ class HTTPRequest
 		};
 
 		/**
-		 * Processes line in \p info
+		 * Processes line in \p header_line
 		 * until the field terminator ("\r\n") is met:
 		 * sets the request method (as well as `_request_target` and `_request_query` fields),
 		 * or appends the `_header_fields` with the new field,
 		 * or marks the request as complete (fully parsed).
-		 * @brief	Process info stored in \p info.
-		 * @throw	invalid_argument	\p info isn't terminated
+		 * @brief	Process info stored in \p header_line.
+		 * @throw	invalid_argument	\p header_line isn't terminated
 		 * 					or contains invalid information.
 		 * @throw	range_error		Request was fully parsed,
 		 * 					yet new information arrived.
-		 * @param	info	Line with information to process.
-		 * @return	Processed bytes in \p info (including "\r\n").
+		 * @param	header_line	Header line with information to process.
+		 * @return	Processed bytes in \p header_line (including "\r\n").
 		 */
-		size_t process_info(const std::string &info);
+		size_t process_header_line(const std::string &header_line);
 
 		/**
 		 * Get method of the request.
@@ -112,15 +112,17 @@ class HTTPRequest
 		// Without both, the server should respond with 411.
 		std::map<std::string, std::string> _header_fields;
 
-		bool _complete;			// If request is fully parsed.
+		bool _header_complete;		// If header's request is fully parsed.
 
-		
+		std::string _body;		// Should be used only in POST methods.
+		bool _body_complete;
+
 
 		/**
 		 * Parse method, request target and
 		 * optional request query (if present) from \p start_line.
 		 * @throw	invalid_argument	The start line stored
-		 * 					in \p info is malformed.
+		 * 					in \p start_line is malformed.
 		 * @param	start_line	The start line of the request
 		 * 				with the "\r\n" erased.
 		 * @return	Processed bytes in \p start_line.

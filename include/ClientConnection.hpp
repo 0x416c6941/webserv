@@ -64,7 +64,7 @@ public:
 	// Logic
 	bool                    handleReadEvent();
 	bool		    	handleWriteEvent();
-	int                  	parseReadEvent(const std::string &buffer);
+	int                  	parseReadEvent(std::string &buffer);
 	void                    closeConnection();
 	void 			reset();
 
