@@ -114,7 +114,7 @@ class HTTPRequest
 
 		bool _complete;			// If request is fully parsed.
 
-
+		
 
 		/**
 		 * Parse method, request target and

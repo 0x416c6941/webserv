@@ -174,7 +174,7 @@ int ClientConnection::getHttpHeaderLength(const std::string& requestBuffer) {
  */
 bool ClientConnection::handleReadEvent()
 {
-	std::cout <<"Client header bytes: "<< _server->getLargeClientHeaderTotalBytes()<< std::endl;
+	// std::cout <<"Client header bytes: "<< _server->getLargeClientHeaderTotalBytes()<< std::endl;
 	enum { BUFFER_SIZE = 2048 }; // 2 KB buffer size for reading data
         print_log("handleReadEvent() called for fd ", to_string(_client_socket), "");
 	char buffer[BUFFER_SIZE];
@@ -268,7 +268,7 @@ void ClientConnection::reset()
 {
 	_response.reset();
 	_request.reset(); // Clear request data
-	_request_buffer.clear(); // Clear request buffer
+	// _request_buffer.clear(); // Clear request buffer
 	_request_error = false; // Reset request error state
 	_msg_sent = false; // Reset message sent flag
 	_bytes_sent = 0; // Reset bytes sent counter

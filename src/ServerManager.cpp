@@ -228,10 +228,9 @@ void ServerManager::handleNewConnection(int server_fd)
 	}
 
 	// Register client fd with epoll
-	if (!addFdToEpoll(client_fd, EPOLLIN | EPOLLERR | EPOLLOUT | EPOLLHUP | EPOLLRDHUP )) {
+	if (!addFdToEpoll(client_fd, EPOLLIN | EPOLLOUT | EPOLLRDHUP )) {
 		::close(client_fd);
 		print_err("Failed to add client fd to epoll: ", to_string(client_fd), "");
-		return;
 	}
 
 	// Construct directly into the map to avoid copying or assignment
@@ -244,14 +243,12 @@ void ServerManager::handleNewConnection(int server_fd)
 
 	ClientConnection &conn = it->second;
 
-	// Fully initialize before inserting
 	conn.setSocket(client_fd);
 	conn.setAddress(client_addr);
 
 	std::map<int, ServerConfig*>::iterator sit = _fd_to_server.find(server_fd);
 	if (sit != _fd_to_server.end())
 		conn.setServer(*sit->second);
-		
 	print_log("Accepted connection: fd ", to_string(client_fd), "");
 }
 
@@ -281,7 +278,7 @@ void ServerManager::handleClientEvent(int client_fd, uint32_t eventFlag)
 	std::map<int, ClientConnection>::iterator it = _client_connections.find(client_fd);
 	if (it == _client_connections.end()) {
 		print_warning("Event for unknown client fd: ", to_string(client_fd), "");
-		return; 
+		return;
 	}
 	ClientConnection &conn = it->second;
 	if (eventFlag & (EPOLLERR | EPOLLHUP | EPOLLRDHUP))
@@ -293,13 +290,13 @@ void ServerManager::handleClientEvent(int client_fd, uint32_t eventFlag)
 	// We don't want to read futher if the request is already complete or error occured in the request parsing
 	// in this case we won't to send a response (with error page/or normal response)
 	if (eventFlag & EPOLLIN) {
-		print_log("EPOLLIN event for client fd: ", to_string(client_fd), "");
 		if (!conn.getRequestIsComplete() && !conn.getRequestError()) {
 			if (!conn.handleReadEvent()) {
 				print_log("EPOLLIN event for client fd: ", to_string(client_fd), " - closing connection");
 				closeClientConnection(client_fd);
 				return;
 			}
+			print_log("EPOLLIN event for client fd: ", to_string(client_fd), " - data read");
 			conn.updateTime(); // Update last message time after reading
 			conn.printDebugRequestParse();
 		}
