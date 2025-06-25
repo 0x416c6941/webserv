@@ -79,26 +79,29 @@ std::string getReasonPhrase(int status_code) {
     }
 }
 
-
-std::string generateErrorPage(int status_code) {
-    std::string reason = getReasonPhrase(status_code);
-
+std::string generateErrorBody(int status_code, const std::string& reason) {
     std::ostringstream body;
     body << "<!DOCTYPE html>\n"
          << "<html><head><title>" << status_code << " " << reason << "</title></head>\n"
          << "<body><h1>" << status_code << " " << reason << "</h1>\n"
          << "<p>The server encountered an error processing your request.</p>\n"
          << "</body></html>\n";
+    return body.str();
+}
 
-    std::string body_str = body.str();
-    std::ostringstream response;
-    response << "HTTP/1.1 " << status_code << " " << reason << "\r\n"
-             << "Content-Length: " << body_str.size() << "\r\n"
-             << "Content-Type: text/html\r\n"
-            //  << "Connection: keep-alive\r\n" // should we close the connection?
-             << "Connection: close\r\n" // should we close the connection?
-             << "\r\n"
-             << body_str;
+std::string generateErrorHeader(int status_code, const std::string& reason, size_t content_length) {
+    std::ostringstream header;
+    header << "HTTP/1.1 " << status_code << " " << reason << "\r\n"
+           << "Content-Length: " << content_length << "\r\n"
+           << "Content-Type: text/html\r\n"
+           << "Connection: close\r\n"
+           << "\r\n";
+    return header.str();
+}
 
-    return response.str();
+std::string generateErrorPage(int status_code) {
+    std::string reason = getReasonPhrase(status_code);
+    std::string body = generateErrorBody(status_code, reason);
+    std::string header = generateErrorHeader(status_code, reason, body.size());
+    return header + body;
 }
