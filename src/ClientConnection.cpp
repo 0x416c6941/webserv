@@ -130,6 +130,11 @@ bool ClientConnection::getMsgSent() const
 	return _msg_sent;
 }
 
+HTTPRequest& ClientConnection::getRequest()
+{
+	return _request;
+}
+
 int ClientConnection::parseReadEvent(std::string &buffer)
 {
 	for (;;) {
