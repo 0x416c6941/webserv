@@ -25,21 +25,6 @@ HTTPResponse& HTTPResponse::operator=(const HTTPResponse& other) {
 	return *this;
 }
 
-void    HTTPResponse::build_response(const ServerConfig& server_config)
-{
-        _response_msg.clear();
-        _response_ready = false;
-        (void) server_config;
-        // if (_status_code >= 400) {
-        //         build_error_response();
-        // } else {
-        //         // Here you would build a normal response based on the request
-        //         // For now, we just set a placeholder message
-        //         _response_msg = "HTTP/1.1 " + to_string(_status_code) + " OK\r\n\r\n";
-        //         _response_ready = true;
-        // }
-}
-
 HTTPResponse::~HTTPResponse() {}
 
 void HTTPResponse::set_status_code(int code)
@@ -56,6 +41,114 @@ std::string HTTPResponse::get_response_msg() const
 {
         return _response_msg;
 }
+
+
+bool HTTPResponse::validate_request(const HTTPRequest& request)
+{
+    try {
+        if (!request.is_complete()) {
+            _status_code = 400; // Bad Request
+            return false; //should never happen
+        }
+
+        HTTPRequest::e_method method = request.get_method();
+
+        // Allow only GET, POST, DELETE
+        if (method != HTTPRequest::GET &&
+            method != HTTPRequest::POST &&
+            method != HTTPRequest::DELETE) {
+            _status_code = 405; // Method Not Allowed
+            return false;
+        }
+
+        // All requests must contain a "Host" header
+        try {
+            request.get_header_value("Host");
+        } catch (const std::out_of_range&) {
+            _status_code = 400; // Bad Request (missing Host)
+            return false;
+        }
+
+        // Additional checks for POST
+        // Should we check the body here?
+        if (method == HTTPRequest::POST) {
+            bool hasContentLength = false;
+            bool hasTransferEncoding = false;
+
+            try {
+                request.get_header_value("Content-Length");
+                hasContentLength = true;
+            } catch (...) {}
+
+            try {
+                request.get_header_value("Transfer-Encoding");
+                hasTransferEncoding = true;
+            } catch (...) {}
+
+            if (!hasContentLength && !hasTransferEncoding) {
+                _status_code = 411; // Length Required
+                return false;
+            }
+        }
+
+        _status_code = 200; // OK, just in case; it's already 200 by default
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Validation error: " << e.what() << std::endl;
+        _status_code = 400;
+        return false; // Fallback to Bad Request on unexpected error
+    }
+    return true; // Request is valid
+}
+
+void HTTPResponse::set_root(const std::string& root)
+{
+        _root = root;
+}
+
+// void HTTPResponse::handleGET(const HTTPRequest& request, const ServerConfig& server_config)
+// {
+//     // Implement GET handling logic here
+//     // For example, read the requested file and set _response_msg
+//     // Set _status_code to 200 if successful, or appropriate error code if not
+//         void request;
+//         void server_config;
+// }
+
+void    HTTPResponse::build_response(const ServerConfig& server_config, const HTTPRequest& request)
+{
+        if(_response_msg.size() > 0)
+                _response_msg.clear();
+        _response_ready = false;
+        // basic validation, probably unnecessary
+        if (!validate_request(request)) {
+                build_error_response(server_config);
+                return;
+        }
+        HTTPRequest::e_method method = request.get_method();
+        set_root(server_config.getRoot());
+        switch (method){
+                case HTTPRequest::GET:
+                        // Handle GET
+                        break;
+
+                case HTTPRequest::POST:
+                        // Handle POST
+                        break;
+
+                case HTTPRequest::DELETE:
+                        // Handle DELETE
+                        break;
+
+                default:
+                        // Unknown method (should not occur if validated properly)
+                        _status_code = 405;
+                        build_error_response(server_config);
+                        return;
+        }
+        return;
+}
+
 
 
 void HTTPResponse::build_error_response(const ServerConfig& server_config)
