@@ -283,7 +283,7 @@ std::string HTTPResponse::build_response_msg() const
         std::ostringstream response;
         response << "HTTP/1.1 " << _status_code << " " << getReasonPhrase(_status_code) << "\r\n";
         response << "Server: Webserv_hlyshchu_asagymbe\r\n";
-        response << "Connection: close\r\n";
+        response << "Connection: keep-alive\r\n";
         response << "Content-Type: " << _mime << "\r\n";
         response << "Content-Length: " << _response_body.size() << "\r\n";
         response << "\r\n"; // End of headers
