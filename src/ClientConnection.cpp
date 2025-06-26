@@ -137,10 +137,10 @@ int ClientConnection::parseReadEvent(std::string &buffer)
 			buffer.erase(0, _request.process_header_line(buffer));
 		} catch (const std::invalid_argument &e) {
 			print_err("Invalid request format: ", e.what(), "");
-			return 400;  
+			return 400;
 		} catch (const std::range_error &e) {
 			print_err("Request parsing error: ", e.what(), "");
-			return 400;  
+			return 400;
 		}
 		if (this->_request.is_complete())
 		{
@@ -160,7 +160,7 @@ int ClientConnection::parseReadEvent(std::string &buffer)
 int ClientConnection::getHttpHeaderLength(const std::string& requestBuffer) {
     	std::string headerEnd = "\r\n\r\n";
     	std::size_t pos = requestBuffer.find(headerEnd);
-	
+
     	if (pos == std::string::npos) {
     	    return -1;  // Header not complete
     	}
@@ -174,7 +174,7 @@ int ClientConnection::getHttpHeaderLength(const std::string& requestBuffer) {
  * @brief Handles the read event for the client connection.
  * Reads data from the socket until no more data is available or an error occurs.
  * Parses the request from the received data and updates the last message time.
- * 
+ *
  * @return true if data was successfully read and parsed, false if an error occurred or the client closed the connection.
  */
 bool ClientConnection::handleReadEvent()
@@ -197,13 +197,13 @@ bool ClientConnection::handleReadEvent()
 
         }
 	_request_buffer.append(buffer, static_cast<size_t>(n));
-	
+
 	int header_length = getHttpHeaderLength(_request_buffer);
 	if (header_length < 0) {
 		if (_request_buffer.size() > _server->getLargeClientHeaderTotalBytes()) {
 			_request_error = true;
 			_response.set_status_code(431);
-			_response.build_error_response();
+			_response.build_error_response(*_server);
 			print_err("Request too large, size: ", to_string(_request_buffer.size()), "");
 			return true; // Request too large, send error response
 		}
@@ -213,19 +213,19 @@ bool ClientConnection::handleReadEvent()
 	else if (header_length > static_cast<int>(_server->getLargeClientHeaderTotalBytes())) {
 		_request_error = true;
 		_response.set_status_code(431);
-		_response.build_error_response();
+		_response.build_error_response(*_server);
 		print_err("Request too large, size: ", to_string(_request_buffer.size()), "");
 		return true; // Request too large, send error response
 	}
 	// We have a complete header, now parse it
 	int status = parseReadEvent(_request_buffer);
-	
+
 	if (status != 0) {
 		_request_error = true;
 		_response.set_status_code(status);
-		_response.build_error_response();
+		_response.build_error_response(*_server);
 	}
-	
+
 	return true;
 }
 

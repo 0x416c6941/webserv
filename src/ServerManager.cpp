@@ -34,7 +34,7 @@ void ServerManager::loadServers(const std::vector<ServerConfig>& servers) {
  * - Associates the socket file descriptor with its corresponding server configuration.
  *
  * If any error occurs during socket setup or epoll registration, the specific server is cleaned up
- * and initialization continues with the next server. If no valid server sockets are initialized, 
+ * and initialization continues with the next server. If no valid server sockets are initialized,
  * an exception is thrown to signal critical failure.
  *
  * @throws std::runtime_error if epoll creation fails or no valid servers are successfully initialized.
@@ -301,7 +301,7 @@ void ServerManager::handleClientEvent(int client_fd, uint32_t eventFlag)
 			conn.printDebugRequestParse();
 		}
 	}
-	// Here should be cleaning up all stack memory in response and request parsing 
+	// Here should be cleaning up all stack memory in response and request parsing
 	if (eventFlag & EPOLLOUT)
 	{
 		if (conn.getRequestError() || conn.getRequestIsComplete())
@@ -316,10 +316,17 @@ void ServerManager::handleClientEvent(int client_fd, uint32_t eventFlag)
 					print_log("EPOLLOUT event for client fd: ", to_string(client_fd), " - response sent");
 					// // After sending the response, we can clean up the request and response objects
 					conn.reset();
-				} 
+				}
 			}
 			else {
-				print_log("EPOLLOUT event for client fd: ", to_string(client_fd), " - no response ready");
+				// response.build_response(&server_cofig);
+				// // Maybe we should send a response in next iteration???
+				// if (conn.getResponseReady() == true){
+				// if(!conn.handleWriteEvent()){
+				// 	print_log("EPOLLOUT event for client fd: ", to_string(client_fd), " - closing connection");
+				// 	closeClientConnection(client_fd);
+				// 	return;
+				// }
 				return; // Nothing to send, skip write event
 			}
 		}

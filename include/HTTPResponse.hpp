@@ -5,38 +5,37 @@
 #include "MIME.hpp"
 
 /**
- * @brief The HTTPResponse class is responsible for constructing a 
- * HTTP response message (status line, headers, and body) 
+ * @brief The HTTPResponse class is responsible for constructing a
+ * HTTP response message (status line, headers, and body)
  * based on the request and server configuration.
- * 
+ *
  */
 class HTTPResponse {
 public:
 	HTTPResponse();
 	// HTTPResponse(const HTTPRequest& request, const ServerConfig& config);
-	
+
 	~HTTPResponse();
-	
-	
+
+
 	// void prepare();
 	// std::string get_header_string() const;
 	// int get_status_code() const;
 	// std::string get_file_path() const;
-	
-	
+
+
 	void 			set_status_code(int code);
-	void 			build_error_response();
+	void 			build_error_response(const ServerConfig& server_config);
 	bool 			is_response_ready() const;
 	std::string 		get_response_msg() const;
-	
+	void 			build_response(const ServerConfig& server_config);
 	void			reset();
-	
+
 private:
-	HTTPResponse(const HTTPResponse& other); 
-	HTTPResponse& operator=(const HTTPResponse& other); 
+	HTTPResponse(const HTTPResponse& other);
+	HTTPResponse& operator=(const HTTPResponse& other);
 	std::string 		_response_msg;
 	// const HTTPRequest*      _request;
-	const ServerConfig*     _server_config;
 
 	int                     _status_code;
 	bool 		  	_response_ready;

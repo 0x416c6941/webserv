@@ -3,14 +3,14 @@
 HTTPResponse::HTTPResponse():
         _response_msg(""),
         // _request(NULL),
-        _server_config(NULL),
+        // _server_config(NULL),
         _status_code(200),
         _response_ready(false) {}
 
 
 HTTPResponse::HTTPResponse(const HTTPResponse& other)
 	: _response_msg(other._response_msg),
-	  _server_config(other._server_config),
+	//   _server_config(other._server_config),
 	  _status_code(other._status_code),
 	  _response_ready(other._response_ready)
 {}
@@ -18,14 +18,27 @@ HTTPResponse::HTTPResponse(const HTTPResponse& other)
 HTTPResponse& HTTPResponse::operator=(const HTTPResponse& other) {
 	if (this != &other) {
 		_response_msg = other._response_msg;
-		_server_config = other._server_config;
+		// _server_config = other._server_config;
 		_status_code = other._status_code;
 		_response_ready = other._response_ready;
 	}
 	return *this;
 }
 
-
+void    HTTPResponse::build_response(const ServerConfig& server_config)
+{
+        _response_msg.clear();
+        _response_ready = false;
+        (void) server_config;
+        // if (_status_code >= 400) {
+        //         build_error_response();
+        // } else {
+        //         // Here you would build a normal response based on the request
+        //         // For now, we just set a placeholder message
+        //         _response_msg = "HTTP/1.1 " + to_string(_status_code) + " OK\r\n\r\n";
+        //         _response_ready = true;
+        // }
+}
 
 HTTPResponse::~HTTPResponse() {}
 
@@ -45,15 +58,13 @@ std::string HTTPResponse::get_response_msg() const
 }
 
 
-void HTTPResponse::build_error_response()
+void HTTPResponse::build_error_response(const ServerConfig& server_config)
 {
-        if(_server_config){
-                std::map<int, std::string>::const_iterator it = _server_config->getErrorPages().find(_status_code);
-                if (it != _server_config->getErrorPages().end()) {
-                       // If an error page is defined for this status code, use it
-                //        _response_ready = true;
+        std::map<int, std::string>::const_iterator it = server_config.getErrorPages().find(_status_code);
+        if (it != server_config.getErrorPages().end()) {
+                // If an error page is defined for this status code, use it
+                // _response_ready = true;
                 }
-        }
         else {
                 _response_msg = generateErrorPage(_status_code);
                 _response_ready = true;
