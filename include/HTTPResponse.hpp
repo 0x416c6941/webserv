@@ -2,7 +2,6 @@
 #include "Webserv.hpp"
 #include "HTTPRequest.hpp"
 #include "ServerConfig.hpp"
-#include "MIME.hpp"
 
 /**
  * @brief The HTTPResponse class is responsible for constructing a
@@ -28,20 +27,27 @@ public:
 	void 			build_error_response(const ServerConfig& server_config);
 	bool 			is_response_ready() const;
 	std::string 		get_response_msg() const;
-	void 			build_response(const ServerConfig& server_config, const HTTPRequest& request);
+	void 			handle_response_routine(const ServerConfig& server_config, const HTTPRequest& request);
 	void			reset();
-
-private:
 	HTTPResponse(const HTTPResponse& other);
 	HTTPResponse& operator=(const HTTPResponse& other);
-	std::string 		_response_msg;
-	std::string 		_root;
-	int                     _status_code;
-	bool 		  	_response_ready;
+
+private:
+	std::string 				_mime;
+	std::string 				_response_msg;
+	std::string 				_response_body;
+	std::string 				_root;
+	int                     		_status_code;
+	bool 		  			_response_ready;
 	// std::map<std::string, std::string> _headers;
 	// std::string             _resolved_path;
 
-
+	// helpers
+	std::string 	build_path(const std::string& file_name) const;
+	bool 		file_exists(const std::string& path) const;
+	bool  		is_directory(const std::string& path) const;
+	bool 		has_permission(const std::string& path, HTTPRequest::e_method method) const;
+	std::string 	resolve_secure_path(const std::string& request_path) const;
 	/**
  	* @brief Validates an HTTP request according to HTTP/1.1 protocol rules.
  	*
@@ -60,11 +66,9 @@ private:
  	* @param request A constant reference to the HTTPRequest to be validated.
  	* @return true if the request is valid and all required headers/methods are satisfied; false otherwise.
 	*/
-	bool	validate_request(const HTTPRequest& request);
+	bool		validate_request(const HTTPRequest& request);
 
-	void 	handleGET(const HTTPRequest& request, const ServerConfig& server_config);
-	// void determine_status();
-	// void resolve_path();
-	// void build_headers();
-	// void use_error_page_if_needed();
+	std::string 	build_response_msg() const;
+	std::string 	get_mime_type(const std::string &path);
+	void 		handleGET(const HTTPRequest& request, const ServerConfig& server_config);
 };

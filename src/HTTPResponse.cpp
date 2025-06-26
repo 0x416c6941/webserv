@@ -2,8 +2,6 @@
 
 HTTPResponse::HTTPResponse():
         _response_msg(""),
-        // _request(NULL),
-        // _server_config(NULL),
         _status_code(200),
         _response_ready(false) {}
 
@@ -101,37 +99,219 @@ bool HTTPResponse::validate_request(const HTTPRequest& request)
     return true; // Request is valid
 }
 
+std::string HTTPResponse::get_mime_type(const std::string &path) {
+	static std::map<std::string, std::string> mime_map;
+	if (mime_map.empty()) {
+		mime_map.insert(std::make_pair(".html", "text/html"));
+		mime_map.insert(std::make_pair(".htm", "text/html"));
+		mime_map.insert(std::make_pair(".css", "text/css"));
+		mime_map.insert(std::make_pair(".js", "application/javascript"));
+		mime_map.insert(std::make_pair(".png", "image/png"));
+		mime_map.insert(std::make_pair(".jpg", "image/jpeg"));
+		mime_map.insert(std::make_pair(".jpeg", "image/jpeg"));
+		mime_map.insert(std::make_pair(".gif", "image/gif"));
+		mime_map.insert(std::make_pair(".svg", "image/svg+xml"));
+		mime_map.insert(std::make_pair(".json", "application/json"));
+		mime_map.insert(std::make_pair(".pdf", "application/pdf"));
+		mime_map.insert(std::make_pair(".txt", "text/plain"));
+		mime_map.insert(std::make_pair(".xml", "application/xml"));
+	}
+
+	std::string::size_type dot = path.find_last_of('.');
+	if (dot == std::string::npos)
+		return "application/octet-stream";
+
+	std::string ext = path.substr(dot);
+	for (size_t i = 0; i < ext.size(); ++i) {
+		ext[i] = std::tolower(static_cast<unsigned char>(ext[i]));
+	}
+
+	std::map<std::string, std::string>::const_iterator it = mime_map.find(ext);
+	if (it != mime_map.end())
+		return it->second;
+
+	return "application/octet-stream";
+}
+
 void HTTPResponse::set_root(const std::string& root)
 {
         _root = root;
 }
 
-// void HTTPResponse::handleGET(const HTTPRequest& request, const ServerConfig& server_config)
-// {
-//     // Implement GET handling logic here
-//     // For example, read the requested file and set _response_msg
-//     // Set _status_code to 200 if successful, or appropriate error code if not
-//         void request;
-//         void server_config;
-// }
+std::string HTTPResponse::build_path(const std::string& file_name) const
+{
+        if (_root.empty()) {
+                throw std::runtime_error("Root directory is not set.");
+        }
+        return _root + file_name;
+}
 
-void    HTTPResponse::build_response(const ServerConfig& server_config, const HTTPRequest& request)
+bool HTTPResponse::file_exists(const std::string& path) const
+{
+        struct stat sb;
+        return (stat(path.c_str(), &sb) == 0);
+}
+
+bool HTTPResponse::is_directory(const std::string& path) const
+{
+        struct stat sb;
+        if (stat(path.c_str(), &sb) != 0)
+                return false;
+        return S_ISDIR(sb.st_mode);
+}
+
+
+bool HTTPResponse::has_permission(const std::string& path, HTTPRequest::e_method method) const
+{
+        int mode = 0;
+
+        switch (method) {
+                case HTTPRequest::GET:
+                        mode = R_OK; // Read permission
+                        break;
+                case HTTPRequest::POST:
+                        mode = W_OK; // Write permission (for appending/uploading)
+                        break;
+                case HTTPRequest::DELETE:
+                        mode = W_OK; // Need write access to the directory (delete op)
+                        break;
+                default:
+                        return false;
+        }
+
+        return (access(path.c_str(), mode) == 0);
+}
+
+std::string HTTPResponse::resolve_secure_path(const std::string& request_path) const {
+	// Step 1: Normalize input
+	std::string path = request_path.empty() ? "/" : request_path;
+
+	std::string::size_type pos = path.find_first_of("?#");
+	if (pos != std::string::npos)
+		path = path.substr(0, pos);
+
+	if (!path.empty() && path[0] == '/')
+		path = path.substr(1);
+
+	std::string full_path = _root + "/" + path;
+
+	// Step 2: Canonicalize full_path
+	char resolved[PATH_MAX];
+	if (!realpath(full_path.c_str(), resolved)) {
+		throw std::runtime_error("Failed to resolve path: " + full_path);
+	}
+	std::string resolved_path(resolved);
+
+	// Step 3: Canonicalize _root
+	char canonical_root[PATH_MAX];
+	if (!realpath(_root.c_str(), canonical_root)) {
+		throw std::runtime_error("Failed to resolve root path: " + _root);
+	}
+	std::string resolved_root(canonical_root);
+
+	// Step 4: Ensure resolved_path is within resolved_root
+	if (resolved_path.compare(0, resolved_root.size(), resolved_root) != 0 ||
+	    (resolved_path.size() > resolved_root.size() && resolved_path[resolved_root.size()] != '/')) {
+		throw std::runtime_error("Security violation: directory traversal");
+	}
+
+	return resolved_path;
+}
+
+
+
+void HTTPResponse::handleGET(const HTTPRequest& request, const ServerConfig& server_config)
+{
+        const std::vector<Location> loc = server_config.getLocations(); // Unused for now, but should be checked latter
+        try {
+                std::string requested_path = request.get_request_target();
+                std::string full_path = resolve_secure_path(requested_path);
+
+
+                // If it's a directory, try to append "/index.html"
+                if (is_directory(full_path)) {
+                        if (!full_path.empty() && full_path[full_path.length() - 1] != '/')
+                                full_path += '/';
+                        full_path += "index.html";
+                }
+
+
+                // File must exist
+                if (!file_exists(full_path)) {
+                        _status_code = 404; // Not Found
+                        _response_msg = generateErrorPage(_status_code);
+                        return;
+                }
+
+                 // Must not be a directory (even after index.html fallback)
+                if (is_directory(full_path)) {
+                        _status_code = 403;
+                        _response_msg = generateErrorPage(_status_code);
+                        return;
+                }
+
+                // Must have read permissions
+                if (!has_permission(full_path, HTTPRequest::GET)) {
+                        _status_code = 403; // Forbidden
+                        _response_msg = generateErrorPage(_status_code);
+                        return;
+                }
+
+                // Read file contents
+                std::ifstream file(full_path.c_str());
+                if (!file) {
+                        _status_code = 500; // Internal Server Error
+                        _response_msg = generateErrorPage(_status_code);
+                        return;
+                }
+                _mime = get_mime_type(full_path);
+                std::ostringstream content;
+                content << file.rdbuf();
+                _response_body = content.str();
+
+                _status_code = 200;
+        }
+        catch (const std::exception& e) {
+                std::cerr << "handleGET error: " << e.what() << std::endl;
+                _status_code = 500;
+                _response_msg = generateErrorPage(_status_code);
+        }
+}
+
+std::string HTTPResponse::build_response_msg() const
+{
+        std::ostringstream response;
+        response << "HTTP/1.1 " << _status_code << " " << getReasonPhrase(_status_code) << "\r\n";
+        response << "Server: Webserv_hlyshchu_asagymbe\r\n";
+        response << "Connection: close\r\n";
+        response << "Content-Type: " << _mime << "\r\n";
+        response << "Content-Length: " << _response_body.size() << "\r\n";
+        response << "\r\n"; // End of headers
+        response << _response_body; // Add the body content
+        return response.str();
+}
+
+void    HTTPResponse::handle_response_routine(const ServerConfig& server_config, const HTTPRequest& request)
 {
         if(_response_msg.size() > 0)
                 _response_msg.clear();
         _response_ready = false;
+        set_root(server_config.getRoot());
         // basic validation, probably unnecessary
         if (!validate_request(request)) {
                 build_error_response(server_config);
                 return;
         }
         HTTPRequest::e_method method = request.get_method();
-        set_root(server_config.getRoot());
         switch (method){
                 case HTTPRequest::GET:
-                        // Handle GET
+                        handleGET(request, server_config);
+                        if (_status_code == 200) {
+                                // Build the response msg with headers
+                                _response_msg = build_response_msg();
+                                _response_ready = true;
                         break;
-
+                        }
                 case HTTPRequest::POST:
                         // Handle POST
                         break;
@@ -165,95 +345,14 @@ void HTTPResponse::build_error_response(const ServerConfig& server_config)
 }
 
 
-// void HTTPResponse::prepare() {
-// 	determine_status();
-// 	resolve_path();
-// 	use_error_page_if_needed();
-// 	build_headers();
-// }
-
-// void HTTPResponse::determine_status() {
-// 	if (!_request.is_complete()) {
-// 		_status_code = 400;
-// 		_reason_phrase = "Bad Request";
-// 		return;
-// 	}
-
-// 	if (_request.get_method() != HTTPRequest::GET &&
-// 		_request.get_method() != HTTPRequest::POST &&
-// 		_request.get_method() != HTTPRequest::DELETE) {
-// 		_status_code = 405;
-// 		_reason_phrase = "Method Not Allowed";
-// 		return;
-// 	}
-
-// 	// Additional logic for POST content-length or transfer-encoding
-// 	if (_request.get_method() == HTTPRequest::POST) {
-// 		if (_request.get_header_value("Content-Length").empty() &&
-// 			_request.get_header_value("Transfer-Encoding").empty()) {
-// 			_status_code = 411;
-// 			_reason_phrase = "Length Required";
-// 		}
-// 	}
-// }
-
-// void HTTPResponse::resolve_path() {
-// 	if (_status_code != 200)
-// 		return;
-
-// 	_resolved_path = _config.getRoot() + _request.get_request_target();
-
-// 	struct stat sb;
-// 	if (stat(_resolved_path.c_str(), &sb) != 0 || S_ISDIR(sb.st_mode)) {
-// 		_status_code = 404;
-// 		_reason_phrase = "Not Found";
-// 		return;
-// 	}
-// }
-
-// void HTTPResponse::use_error_page_if_needed() {
-// 	if (_status_code == 200)
-// 		return;
-
-// 	std::map<int, std::string>::const_iterator it = _config.getErrorPages().find(_status_code);
-// 	if (it != _config.getErrorPages().end()) {
-// 		_resolved_path = _config.getRoot() + it->second;
-// 	}
-// }
-
-// void HTTPResponse::build_headers() {
-// 	_headers["Server"] = "Webserv/1.0";
-// 	_headers["Connection"] = "close";
-// 	_headers["Content-Type"] = MIME::get_type(_resolved_path);
-
-// 	struct stat sb;
-// 	if (stat(_resolved_path.c_str(), &sb) == 0)
-// 		_headers["Content-Length"] = std::to_string(sb.st_size);
-// }
-
-// std::string HTTPResponse::get_header_string() const {
-// 	std::string response = "HTTP/1.1 " + std::to_string(_status_code) + " " + _reason_phrase + "\r\n";
-// 	for (std::map<std::string, std::string>::const_iterator it = _headers.begin(); it != _headers.end(); ++it) {
-// 		response += it->first + ": " + it->second + "\r\n";
-// 	}
-// 	response += "\r\n";
-// 	return response;
-// }
-
-// int HTTPResponse::get_status_code() const {
-// 	return _status_code;
-// }
-
-// std::string HTTPResponse::get_file_path() const {
-// 	return _resolved_path;
-// }
-
-
-
 void    HTTPResponse::reset()
 {
         _response_msg.clear();
         _status_code = 200;
         _response_ready = false;
+        _response_body.clear();
+        _response_msg.clear();
+        _mime.clear();
+
 }
 
