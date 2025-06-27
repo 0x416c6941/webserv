@@ -15,9 +15,24 @@
 HTTPRequest should not throw an error, but return error code or smthing like that
 write wrapper for HTTPRequest to catch errors and return error code
 
-In conf file can be specified: large_client_header_buffers (we don't support it) 
+In conf file can be specified: large_client_header_buffers (we don't support it)
 
 HTTPRequest should not parse until obtain entire header
 	- url can be very long as well as header -> set in httpreques max_header_size(we didn't implement it in ServerConfig)
 		also chceck _client_max_body_size -> we have implemented it in ServerConfig
 	- untill header is finished do not parse! if there will be corrupted msg without \r\t\r\t -> close connection by timeout or just leave as it is (Konstantin advise)
+
+
+HTTPResponse:
+- write as a separate function which handles proper routing:
+	- security check
+	- index.html by default
+	- proper error code return
+	- routing throw location
+		- proper validation of access + custom error pages is possible as well?? (not implemented)
+	- this function should set proper error_code and return full path or "" in return (can be disscussed)
+
+- probable it should be beneficial to add map header:value and then when building a header it just add everything to the response header (I don't now for now how our header will vary)
+
+
+- Parsing logic should be revised: if some of the directive is unknown - just skip and log(the same for Location).

@@ -31,7 +31,7 @@ ServerConfig::ServerConfig(const ServerConfig& other)
 	  _server_addresses(other._server_addresses),
 	  _listen_fds(other._listen_fds),
 	  _large_client_header_buffers(other._large_client_header_buffers)
-	  
+
 {}
 
 ServerConfig::~ServerConfig(){
@@ -109,9 +109,9 @@ void 					ServerConfig::resetIndex() { _index.clear(); }
 
 /**
  * @brief Sets default server configuration values if not explicitly provided.
- * 
+ *
  * Assigns defaults for root directory, index files, and error pages.
- * Ensures at least one listening port is configured, and sets a default host 
+ * Ensures at least one listening port is configured, and sets a default host
  * if none is specified. Throws `ErrorException` if no listen directive is present.
  */
 void ServerConfig::setDefaultsIfEmpty() {
@@ -149,9 +149,9 @@ void ServerConfig::setDefaultsIfEmpty() {
 
 /**
  * @brief Validates that all configured listen endpoints are unique.
- * 
- * Ensures there are no duplicate entries in `_listen_endpoints` or in the 
- * combinations of `_hosts` and `_ports`. Throws `ErrorException` if duplicates 
+ *
+ * Ensures there are no duplicate entries in `_listen_endpoints` or in the
+ * combinations of `_hosts` and `_ports`. Throws `ErrorException` if duplicates
  * are found.
  */
 void ServerConfig::validateListenEndpoint(void)
@@ -183,10 +183,10 @@ void ServerConfig::validateListenEndpoint(void)
 
 /**
  * @brief Creates, binds, and listens on a TCP socket for the given host and port.
- * 
+ *
  * Initializes a non-blocking socket, sets socket options, binds it to the
  * specified IPv4 address and port, and starts listening for incoming connections.
- * 
+ *
  * @param host The IP address to bind the socket to (as a string).
  * @param port The port number to bind the socket to.
  * @param out_addr Reference to a sockaddr_in structure that will be filled with the bound address.
@@ -224,17 +224,38 @@ int ServerConfig::createListeningSocket(const std::string& host, uint16_t port, 
 	return fd;
 }
 
+void ServerConfig::validateRoot() {
+        if (_root.empty()) {
+                throw ErrorException("Root directory is not set. Please specify a valid root path.");
+        }
+
+        struct stat sb;
+        if (stat(_root.c_str(), &sb) != 0) {
+                throw ErrorException("Root directory does not exist or is not accessible: " + _root);
+        }
+
+        if (!S_ISDIR(sb.st_mode)) {
+                throw ErrorException("Root path is not a directory: " + _root);
+        }
+
+	if (access(_root.c_str(), R_OK | X_OK) != 0) {
+        	throw ErrorException("Insufficient permissions to access root directory: " + _root);
+	}
+}
+
+
 /**
  * @brief Initializes and binds server sockets to configured host-port pairs.
- * 
- * Sets default values for server var if missing, validates the 
- * `_listen_endpoints`, then creates listening sockets for all specified 
- * endpoints and host-port combinations. On success, stores socket descriptors 
+ *
+ * Sets default values for server var if missing, validates the
+ * `_listen_endpoints`, then creates listening sockets for all specified
+ * endpoints and host-port combinations. On success, stores socket descriptors
  * and addresses. Throws if binding any socket fails.
  */
 void ServerConfig::initServerSocket() {
 	setDefaultsIfEmpty();
 	validateListenEndpoint();
+	validateRoot();
 	print_log("", "Initializing server sockets...", "");
 
 	// 1. Explicit host:port endpoints
@@ -278,7 +299,7 @@ void ServerConfig::initServerSocket() {
 
 /**
  * @brief Closes all listening sockets and clears related server data.
- * 
+ *
  * Attempts to close each socket in `_listen_fds`, logging success or failure,
  * then clears `_listen_fds` and `_server_addresses`. Throws an exception if
  * any socket fails to close.

@@ -18,8 +18,8 @@ private:
 	struct sockaddr_in      _client_address;
 	ServerConfig*           _server;
 	time_t                  _last_msg_time;
-	bool 		  	_request_header_found; 
-	bool                    _request_error;	
+	bool 		  	_request_header_found;
+	bool                    _request_error;
 	bool		    	_msg_sent; // Indicates if the request is fully sent
 	size_t 			_bytes_sent;
 	// TCP is a streaming oriented protocol, we therefore
@@ -35,7 +35,7 @@ private:
 	* @return int Length of the header including the delimiter, or -1 if not found.
 	*/
 	int 	getHttpHeaderLength(const std::string& requestBuffer);
-	
+
 public:
 	HTTPRequest             _request;
 	HTTPResponse            _response;
@@ -44,7 +44,7 @@ public:
 	~ClientConnection();
 	ClientConnection &operator=(const ClientConnection &rhs); //do we need this? need to update
 	ClientConnection(const ClientConnection &other);	//do we need this? need to update
-	
+
 	// Accessors
 	int                     getSocket() const;
 	const struct sockaddr_in& getAddress() const;
@@ -54,7 +54,8 @@ public:
 	bool			getRequestError() const;
 	bool			getResponseReady() const;
 	bool			getMsgSent() const;
-	
+	HTTPRequest&          	getRequest();
+
 	// Mutators
 	void                    setSocket(int socket);
 	void                    setAddress(const struct sockaddr_in &addr);

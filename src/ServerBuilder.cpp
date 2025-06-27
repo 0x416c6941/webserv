@@ -69,9 +69,9 @@ void ServerBuilder::handle_host(const std::vector<std::string>& parameters, Serv
 
 /**
  * @brief Handles the 'root' directive for server-wide root path.
- * 
+ *
  * Format: `root <path>;`
- * 
+ *
  * @param parameters Tokenized directive.
  * @param server_cfg Server configuration to update.
  * @throws ConfigParser::ErrorException On incorrect syntax.
@@ -169,7 +169,7 @@ void ServerBuilder::handle_autoindex(const std::vector<std::string>& parameters,
  * @throws ConfigParser::ErrorException On syntax error.
  */
 void ServerBuilder::handle_mbs(const std::vector<std::string>& parameters, ServerConfig& server_cfg) {
-	if (parameters.size() < 3 || parameters.back() != ";")
+	if (parameters.size() != 3 || parameters.back() != ";")
 		throw ConfigParser::ErrorException("Invalid syntax for client_max_body_size directive");
 
 	const std::string& param = parameters[1];
@@ -183,7 +183,7 @@ void ServerBuilder::handle_mbs(const std::vector<std::string>& parameters, Serve
  * @brief Handles the 'large_client_header_buffers' directive.
  *
  * This directive specifies the maximum number and size of buffers used
- * for reading large client request headers. It is typically placed in the 
+ * for reading large client request headers. It is typically placed in the
  * HTTP block of an NGINX configuration.
  *
  * Format: `large_client_header_buffers <number_of_buffers> <buffer_size>;`
@@ -201,7 +201,7 @@ void ServerBuilder::handle_mbs(const std::vector<std::string>& parameters, Serve
  * @throws ConfigParser::ErrorException If syntax is invalid or values exceed limits.
  */
 void ServerBuilder::handle_large_client_header_buffers(const std::vector<std::string>& parameters, ServerConfig& server_cfg) {
-	if (parameters.size() < 4 || parameters.back() != ";")
+	if (parameters.size() != 4 || parameters.back() != ";")
 		throw ConfigParser::ErrorException("Invalid syntax for large_client_header_buffers directive");
 
 	const std::string& buffer_nbr = parameters[1];
@@ -227,24 +227,34 @@ void ServerBuilder::handle_large_client_header_buffers(const std::vector<std::st
 
 /**
  * @brief Processes 'error_page' directive mapping codes to pages.
- * 
+ *
  * Format: `error_page <code1> <code2> ... <file>;`
- * 
+ *
  * @param parameters Tokenized directive.
  * @param server_cfg Server configuration to update.
  * @throws ConfigParser::ErrorException On invalid codes or syntax.
  */
 void ServerBuilder::handle_error_page(const std::vector<std::string>& parameters, ServerConfig& server_cfg) {
-	if (parameters.size() < 3 || parameters.back() != ";")
-		throw ConfigParser::ErrorException("Invalid syntax for error_page directive");
+        if (parameters.size() != 4 || parameters.back() != ";")
+                throw ConfigParser::ErrorException("Invalid syntax for error_page directive");
 
-	for (size_t i = 1; i < parameters.size() - 2; ++i) {
-		int code = std::atoi(parameters[i].c_str());
-		if (code < 400 || code > 599)
-			throw ConfigParser::ErrorException("Invalid error code: " + parameters[i]);
-		server_cfg.setErrorPage(code, parameters[parameters.size() - 2]);
-	}
+        const std::string& page_path = parameters[parameters.size() - 2];
+
+        for (size_t i = 1; i < parameters.size() - 2; ++i) {
+                const std::string& code_str = parameters[i];
+                for (size_t j = 0; j < code_str.size(); ++j) {
+                        if (!std::isdigit(code_str[j]))
+                                throw ConfigParser::ErrorException("Invalid error code: " + code_str);
+                }
+
+                int code = std::atoi(code_str.c_str());
+                if (code < 400 || code > 599)
+                        throw ConfigParser::ErrorException("Error code out of range: " + code_str);
+
+                server_cfg.setErrorPage(code, page_path);
+        }
 }
+
 
 /**
  * @brief Handles the 'listen' directive defining the port.
@@ -261,7 +271,7 @@ void ServerBuilder::handle_listen(const std::vector<std::string>& parameters, Se
    	}
 
 	std::string listen_value = parameters[1];
-    	std::string host, port_str; 
+    	std::string host, port_str;
 
     	size_t colon_pos = listen_value.find(':');
     	if (colon_pos != std::string::npos) {
@@ -276,7 +286,7 @@ void ServerBuilder::handle_listen(const std::vector<std::string>& parameters, Se
 				throw ConfigParser::ErrorException("Invalid IPv4 address in 'listen' directive: " + host);
 			}
 		}
-    	} 
+    	}
     	else {
         // Case: just port
         	port_str = listen_value;
@@ -299,7 +309,7 @@ void ServerBuilder::handle_listen(const std::vector<std::string>& parameters, Se
 
 /**
  * @brief Handles the 'root' directive inside a location block.
- * 
+ *
  * @param loc The Location object being configured.
  * @param tokens Tokenized directive line.
  * @param i Current index in tokens; updated to skip parsed elements.
@@ -314,7 +324,7 @@ static void handle_location_root(Location& loc, const std::vector<std::string>& 
 
 /**
  * @brief Handles the 'index' directive inside a location block.
- * 
+ *
  * @param loc The Location object being configured.
  * @param tokens Tokenized directive line.
  * @param i Current index in tokens; updated to point to next directive.
@@ -333,7 +343,7 @@ static void handle_location_index(Location& loc, const std::vector<std::string>&
 
 /**
  * @brief Handles the 'autoindex' directive inside a location block.
- * 
+ *
  * @param loc The Location object being configured.
  * @param tokens Tokenized directive line.
  * @param i Current index in tokens; updated to skip parsed elements.
@@ -356,7 +366,7 @@ static void handle_location_autoindex(Location& loc, const std::vector<std::stri
 
 /**
  * @brief Handles the 'allow_methods' directive inside a location block.
- * 
+ *
  * @param loc The Location object being configured.
  * @param tokens Tokenized directive line.
  * @param i Current index in tokens; updated to point to the next directive.
@@ -370,7 +380,7 @@ static void handle_location_allow_methods(Location& loc, const std::vector<std::
 		kAllowedMethods.insert("DELETE");
 	}
 
-	loc.resetMethods();  
+	loc.resetMethods();
 
 	++i;
 	while (i < tokens.size() && tokens[i] != ";") {
@@ -388,7 +398,7 @@ static void handle_location_allow_methods(Location& loc, const std::vector<std::
 
 /**
  * @brief Handles the 'return' directive inside a location block.
- * 
+ *
  * @param loc The Location object being configured.
  * @param tokens Tokenized directive line.
  * @param i Current index in tokens; updated to skip parsed elements.
@@ -422,7 +432,7 @@ static void handle_location_return(Location& loc, const std::vector<std::string>
 
 /**
  * @brief Handles the 'alias' directive inside a location block.
- * 
+ *
  * @param loc The Location object being configured.
  * @param tokens Tokenized directive line.
  * @param i Current index in tokens; updated to skip parsed elements.
@@ -446,14 +456,14 @@ static void handle_location_alias(Location& loc, const std::vector<std::string>&
 
 /**
  * @brief Handles the 'cgi_path' directive inside a location block.
- * 
+ *
  * @param loc The Location object being configured.
  * @param tokens Tokenized directive line.
  * @param i Current index in tokens; updated to point to the next directive.
  * @throws ConfigParser::ErrorException if the path or terminator is missing.
  */
 static void handle_location_cgi_path(Location& loc, const std::vector<std::string>& tokens, size_t& i) {
-    ++i;   
+    ++i;
     if (i >= tokens.size())
         throw ConfigParser::ErrorException("Missing value(s) for cgi_path directive");
 
@@ -468,7 +478,7 @@ static void handle_location_cgi_path(Location& loc, const std::vector<std::strin
 
 /**
  * @brief Handles the 'cgi_ext' directive inside a location block.
- * 
+ *
  * @param loc The Location object being configured.
  * @param tokens Tokenized directive line.
  * @param i Current index in tokens; updated to point to the next directive.
@@ -497,7 +507,7 @@ static void handle_location_cgi_ext(Location& loc, const std::vector<std::string
 
 /**
  * @brief Handles the 'client_max_body_size' directive inside a location block.
- * 
+ *
  * @param loc The Location object being configured.
  * @param tokens Tokenized directive line.
  * @param i Current index in tokens; updated to skip parsed elements.
@@ -511,10 +521,61 @@ static void handle_location_client_max_body_size(Location& loc, const std::vecto
     	i += 2;
 }
 
+static void handle_location_upload_enabled(Location& loc, const std::vector<std::string>& tokens, size_t& i) {
+	if (i + 2 >= tokens.size() || tokens[i + 2] != ";")
+		throw ConfigParser::ErrorException("Invalid upload_enabled directive in location block");
+
+	const std::string& value = tokens[i + 1];
+	if (value == "on" || value == "true")
+		loc.setUploadEnabled(true);
+	else if (value == "off" || value == "false")
+		loc.setUploadEnabled(false);
+	else
+		throw ConfigParser::ErrorException("Invalid value for upload_enabled: " + value);
+
+	i += 2;
+}
+
+static void handle_location_upload_path(Location& loc, const std::vector<std::string>& tokens, size_t& i) {
+	 // Check syntax: upload_path <path> ;
+	if (i + 2 >= tokens.size() || tokens[i + 2] != ";")
+		throw ConfigParser::ErrorException("Invalid upload_path directive in location block");
+
+	const std::string& path = tokens[i + 1];
+	if (path.empty())
+		throw ConfigParser::ErrorException("upload_path cannot be empty");
+
+	if (!pathExists(path))
+		print_warning("upload_path '", path, "' does not exist at parse time.");
+
+	loc.setUploadPath(path);
+	i += 2;
+}
+
+static void handle_location_error_page(Location& loc, const std::vector<std::string>& tokens, size_t& i) {
+        if (i + 3 >= tokens.size() || tokens[i + 3] != ";")
+                throw ConfigParser::ErrorException("Invalid error_page directive in location block");
+
+        const std::string& code_str = tokens[i + 1];
+        for (size_t j = 0; j < code_str.size(); ++j) {
+                if (!std::isdigit(code_str[j]))
+                        throw ConfigParser::ErrorException("Invalid error code: " + code_str);
+        }
+
+        int code = std::atoi(code_str.c_str());
+        if (code < 400 || code > 599)
+                throw ConfigParser::ErrorException("Error code out of range: " + code_str);
+
+        const std::string& path = tokens[i + 1 + 1]; // second token after directive name
+        loc.setErrorPage(code, path);
+
+        i += 3;
+}
+
 /**
  * @brief Returns a map of supported location directive handlers.
- * 
- * @return const std::map<std::string, LocationHandler>& 
+ *
+ * @return const std::map<std::string, LocationHandler>&
  *         A static map linking directive names to their handler functions.
  */
 typedef void (*LocationHandler)(Location&, const std::vector<std::string>&, size_t&);
@@ -531,6 +592,9 @@ static const std::map<std::string, LocationHandler>& getLocationHandlers() {
         handlers["cgi_path"] = handle_location_cgi_path;
         handlers["cgi_ext"] = handle_location_cgi_ext;
         handlers["client_max_body_size"] = handle_location_client_max_body_size;
+	handlers["upload_enabled"] = handle_location_upload_enabled;
+	handlers["upload_path"] = handle_location_upload_path;
+	handlers["error_page"] = handle_location_error_page;
     }
     return handlers;
 }
@@ -546,7 +610,7 @@ static const std::map<std::string, LocationHandler>& getLocationHandlers() {
  *     directive2 ...
  * }
  * ```
- * 
+ *
  * @param parameters Full token list for the location block.
  * @param server_cfg Server configuration to update.
  * @throws ConfigParser::ErrorException On unknown directive or syntax error.
@@ -556,9 +620,9 @@ void ServerBuilder::handle_location(const std::vector<std::string>& parameters, 
         	throw ConfigParser::ErrorException("Invalid or missing URI for location block");
 
     	Location location;
-    	if (!pathExists(parameters[1])) 
+    	if (!pathExists(parameters[1]))
 		print_warning("location path '", parameters[1], "' does not exist at parse time.");
-	
+
     	location.setPath(parameters[1]);
 
     	const std::map<std::string, LocationHandler>& handlers = getLocationHandlers();
@@ -568,14 +632,23 @@ void ServerBuilder::handle_location(const std::vector<std::string>& parameters, 
 
         	std::map<std::string, LocationHandler>::const_iterator it = handlers.find(parameters[i]);
         	if (it == handlers.end()) {
-            		throw ConfigParser::ErrorException("Unknown directive: " + parameters[i]);
+            		// throw ConfigParser::ErrorException("Unknown directive: " + parameters[i]);
+			print_warning("Unknown directive: '", parameters[i], "' in location block. ");
+			// Can't skip cause it doesn't garanteed that we will find '}' after unknown directive
+			// Skip unknown directive arguments until ';' or '}'
+			// while (i < parameters.size() && parameters[i] != ";" && parameters[i] != "}") {
+			// 	++i;
+			// }
+			// if (i < parameters.size() && parameters[i] == "}")
+			// 	break; // Exit if we hit the end of the block
         	}
-
-        	LocationHandler handler = it->second;
-        	handler(location, parameters, i);
-    }
-
-    server_cfg.addLocation(location);
+		else {
+        		LocationHandler handler = it->second;
+        		handler(location, parameters, i);
+		}
+    	}
+	location.validateLocation();
+    	server_cfg.addLocation(location);
 }
 
 /**
@@ -619,9 +692,12 @@ ServerConfig ServerBuilder::build(const std::vector<std::string>& directives) {
 		const std::string& directive = tokens[0];
 		HandlerFunc handler = getHandler(directive);
 		if (!handler) {
-			throw ConfigParser::ErrorException("Unknown directive: '" + directive + "'");
+			// throw ConfigParser::ErrorException("Unknown directive: '" + directive + "'");
+			print_warning("Unknown directive: '", directive, ".");
 		}
-		handler(tokens, server_cfg);
+		else {
+			handler(tokens, server_cfg);
+		}
 	}
 	return server_cfg;
 }

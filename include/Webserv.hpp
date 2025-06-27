@@ -79,10 +79,10 @@ void print_warning(const std::string &desc, const std::string &line, const std::
 
 /**
  * @brief check if path exists
- * 
- * @param path 
- * @return true 
- * @return false 
+ *
+ * @param path
+ * @return true
+ * @return false
  */
 bool pathExists(const std::string& path);
 
@@ -93,7 +93,10 @@ std::string to_string(size_t value);
 
 uint64_t 	validateGetMbs(std::string param);
 
+std::string getReasonPhrase(int status_code);
 std::string generateErrorPage(int status_code);
+std::string generateErrorHeader(int status_code, size_t content_length);
+std::string generateErrorBody(int status_code);
 
 //Debug
 class ServerConfig;

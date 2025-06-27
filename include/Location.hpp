@@ -14,6 +14,7 @@ private:
 	std::string 			_path;
 	std::string 			_root;
 	bool 				_autoindex;
+	bool 				_upload_enabled;
 	std::vector<std::string> 	_index;
 	std::set<std::string>	 	_methods;
 	std::pair<int, std::string> 	_return;
@@ -21,16 +22,21 @@ private:
 	uint64_t 			_client_max_body_size;
 	std::vector<std::string> 	_cgi_path;
 	std::vector<std::string> 	_cgi_ext;
-	
-	public:
+	std::map<int, std::string> 	_error_pages;
+	std::string 			_upload_path; // Path for file uploads, if applicable
+
+
+
+public:
 	Location();
 	Location(const Location& other);
+	Location& operator=(const Location& other);
 	~Location();
-	
+
 	// Setters
 	void 						setPath(const std::string& path);
 	void 						setRootLocation(const std::string& root);
-	void 						setAutoindex(bool value);  
+	void 						setAutoindex(bool value);
 	void 						addIndexLocation(const std::string& index);
 	void 						setReturn(const std::pair<int, std::string> _returnvalue);
 	void 						setAlias(const std::string& alias);
@@ -39,7 +45,11 @@ private:
 	void 						setMaxBodySize(uint64_t size);
 	void 						resetMethods();
 	void 						addMethod(const std::string& method);
-	
+	void 						setErrorPages(const std::map<int, std::string>& errorPages);
+	void 						setErrorPage(int code, const std::string& path);
+	void 						setUploadPath(const std::string& path);
+	void 						setUploadEnabled(bool enabled);
+
 	const std::string 				&getPath() const;
 	const std::string 				&getRootLocation() const;
 	const std::set<std::string>			&getMethods() const;
@@ -50,7 +60,12 @@ private:
 	const std::vector<std::string> 			&getCgiPath() const;
 	const std::vector<std::string> 			&getCgiExtension() const;
 	const uint64_t	 				&getMaxBodySize() const;
+	const std::map<int, std::string> 		&getErrorPages() const;
+	std::string 					getErrorPage(int code) const;
+	const std::string 				&getUploadPath() const;
+	const bool 					&getUploadEnabled() const;
 
-	
+	void 						validateLocation() const;
+
 	void 						printDebug() const;
 };
