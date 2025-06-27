@@ -30,6 +30,7 @@ private:
 public:
 	Location();
 	Location(const Location& other);
+	Location& operator=(const Location& other);
 	~Location();
 
 	// Setters
@@ -64,6 +65,7 @@ public:
 	const std::string 				&getUploadPath() const;
 	const bool 					&getUploadEnabled() const;
 
+	void 						validateLocation() const;
 
 	void 						printDebug() const;
 };

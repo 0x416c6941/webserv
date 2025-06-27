@@ -1,26 +1,58 @@
 #include "../include/Location.hpp"
 
 Location::Location()
-	: _path(""),
-	  _root(""),
-	  _autoindex(false),
-	  _upload_enabled(false),
-	  _return(std::make_pair(0, "")),
-	  _alias(""),
-	  _client_max_body_size(DEFAULT_CONTENT_LENGTH) {}
+        : _path(""),
+          _root(""),
+          _autoindex(false),
+          _upload_enabled(false),
+          _index(),
+          _methods(),
+          _return(std::make_pair(0, "")),
+          _alias(""),
+          _client_max_body_size(0),
+          _cgi_path(),
+          _cgi_ext(),
+          _error_pages(),
+          _upload_path("") {
+}
+
+
+Location& Location::operator=(const Location& other) {
+        if (this != &other) {
+                _path = other._path;
+                _root = other._root;
+                _autoindex = other._autoindex;
+                _upload_enabled = other._upload_enabled;
+                _index = other._index;
+                _methods = other._methods;
+                _return = other._return;
+                _alias = other._alias;
+                _client_max_body_size = other._client_max_body_size;
+                _cgi_path = other._cgi_path;
+                _cgi_ext = other._cgi_ext;
+                _error_pages = other._error_pages;
+                _upload_path = other._upload_path;
+        }
+        return *this;
+}
+
 
 Location::Location(const Location& other)
-	: _path(other._path),
-	  _root(other._root),
-	  _autoindex(other._autoindex),
-	  _index(other._index),
-	  _methods(other._methods),
-	  _return(other._return),
-	  _alias(other._alias),
-	  _client_max_body_size(other._client_max_body_size),
-	  _cgi_path(other._cgi_path),
-	  _cgi_ext(other._cgi_ext)
-{}
+        : _path(other._path),
+          _root(other._root),
+          _autoindex(other._autoindex),
+          _upload_enabled(other._upload_enabled),
+          _index(other._index),
+          _methods(other._methods),
+          _return(other._return),
+          _alias(other._alias),
+          _client_max_body_size(other._client_max_body_size),
+          _cgi_path(other._cgi_path),
+          _cgi_ext(other._cgi_ext),
+          _error_pages(other._error_pages),
+          _upload_path(other._upload_path) {
+}
+
 
 
 Location::~Location() {}
@@ -64,70 +96,148 @@ std::string 				Location::getErrorPage(int code) const {
     return "";
 }
 
+void  Location::validateLocation() const {
+        // 1. Path must not be empty
+        if (_path.empty())
+                throw std::runtime_error("Location validation error: path is empty.");
+
+        // 2. root and alias must not be used together
+        if (!_root.empty() && !_alias.empty())
+                throw std::runtime_error("Location validation error: cannot use both root and alias in the same location block.");
+
+        // 3. If upload is enabled
+        if (_upload_enabled) {
+                if (_upload_path.empty())
+                        throw std::runtime_error("Location validation error: upload is enabled but upload_path is not set.");
+
+                if (_methods.find("POST") == _methods.end())
+                        throw std::runtime_error("Location validation error: upload is enabled but POST method is not allowed.");
+        }
+
+        // 4. If upload_path is relative, ensure root exists to resolve it
+        if (!_upload_path.empty() && _upload_path[0] != '/') {
+                if (_root.empty())
+                        throw std::runtime_error("Location validation error: upload_path is relative but root is not set.");
+        }
+
+        // 5. Ensure at least one way to handle the request
+        bool has_handler =
+                (!_root.empty() || !_alias.empty()) ||          // static file serving
+                (_return.first != 0) ||                         // return directive
+                (!_cgi_ext.empty() && !_cgi_path.empty()) ||    // CGI handler
+                (_upload_enabled);                              // upload handling
+
+        if (!has_handler)
+                throw std::runtime_error("Location validation error: no valid handling strategy defined (no root, alias, return, cgi, or upload).");
+
+        // 6. Validate HTTP methods
+        std::set<std::string>::const_iterator mit = _methods.begin();
+        for (; mit != _methods.end(); ++mit) {
+                if (*mit != "GET" && *mit != "POST" && *mit != "DELETE")
+                        throw std::runtime_error("Location validation error: invalid HTTP method '" + *mit + "'");
+        }
+
+        // 7. Validate error_page codes
+        std::map<int, std::string>::const_iterator eit = _error_pages.begin();
+        for (; eit != _error_pages.end(); ++eit) {
+                if (eit->first < 400 || eit->first > 599)
+                        throw std::runtime_error("Location validation error: invalid error_page code: " + to_string(eit->first));
+                if (eit->second.empty())
+                        throw std::runtime_error("Location validation error: error_page for code " + to_string(eit->first) + " has empty path.");
+        }
+
+        // Optional: validate CGI ext format (should start with '.')
+        for (size_t i = 0; i < _cgi_ext.size(); ++i) {
+                if (_cgi_ext[i].empty() || _cgi_ext[i][0] != '.')
+                        throw std::runtime_error("Location validation error: CGI extension '" + _cgi_ext[i] + "' must start with a dot.");
+        }
+}
+
 
 void Location::printDebug() const {
-	std::cout << "=== Location Debug Info ===" << std::endl;
+        std::cout << "=== Location Debug Info ===" << std::endl;
 
-	std::cout << "Path: " << _path << std::endl;
-	std::cout << "Root: " << _root << std::endl;
-	std::cout << "Autoindex: " << (_autoindex ? "on" : "off") << std::endl;
-	std::cout << "Max Body Size: " << _client_max_body_size << std::endl;
+        std::cout << "Path: " << _path << std::endl;
+        std::cout << "Root: " << _root << std::endl;
+        std::cout << "Alias: " << (_alias.empty() ? "(none)" : _alias) << std::endl;
+        std::cout << "Autoindex: " << (_autoindex ? "on" : "off") << std::endl;
+        std::cout << "Max Body Size: " << _client_max_body_size << std::endl;
 
-	// Methods
-	std::cout << "Allowed Methods: ";
-	if (_methods.empty()) {
-		std::cout << "(none)";
-	} else {
-		std::set<std::string>::const_iterator it = _methods.begin();
-		std::cout << *it;
-		for (++it; it != _methods.end(); ++it) {
-			std::cout << ", " << *it;
-		}
-	}
-	std::cout << std::endl;
+        // Upload
+        std::cout << "Upload Enabled: " << (_upload_enabled ? "yes" : "no") << std::endl;
+        std::cout << "Upload Path: " << (_upload_path.empty() ? "(none)" : _upload_path) << std::endl;
 
-	// Index
-	std::cout << "Index Files: ";
-	if (_index.empty()) {
-		std::cout << "(none)";
-	} else {
-		for (size_t i = 0; i < _index.size(); ++i) {
-			std::cout << _index[i];
-			if (i < _index.size() - 1)
-				std::cout << ", ";
-		}
-	}
-	std::cout << std::endl;
+        // Methods
+        std::cout << "Allowed Methods: ";
+        if (_methods.empty()) {
+                std::cout << "(none)";
+        } else {
+                std::set<std::string>::const_iterator it = _methods.begin();
+                std::cout << *it;
+                for (++it; it != _methods.end(); ++it) {
+                        std::cout << ", " << *it;
+                }
+        }
+        std::cout << std::endl;
 
-	// Return
-	if (_return.first != 0 || !_return.second.empty())
-		std::cout << "Return: " << _return.first << " " << _return.second << std::endl;
+        // Index
+        std::cout << "Index Files: ";
+        if (_index.empty()) {
+                std::cout << "(none)";
+        } else {
+                for (size_t i = 0; i < _index.size(); ++i) {
+                        std::cout << _index[i];
+                        if (i < _index.size() - 1)
+                                std::cout << ", ";
+                }
+        }
+        std::cout << std::endl;
 
-	// Alias
-	if (!_alias.empty())
-		std::cout << "Alias: " << _alias << std::endl;
+        // Return
+        if (_return.first != 0 || !_return.second.empty())
+                std::cout << "Return: " << _return.first << " " << _return.second << std::endl;
 
-	// CGI Paths
-	if (!_cgi_path.empty()) {
-		std::cout << "CGI Paths: ";
-		for (size_t i = 0; i < _cgi_path.size(); ++i) {
-			std::cout << _cgi_path[i];
-			if (i < _cgi_path.size() - 1)
-				std::cout << ", ";
-		}
-		std::cout << std::endl;
-	}
+        // CGI Paths
+        std::cout << "CGI Paths: ";
+        if (_cgi_path.empty()) {
+                std::cout << "(none)";
+        } else {
+                for (size_t i = 0; i < _cgi_path.size(); ++i) {
+                        std::cout << _cgi_path[i];
+                        if (i < _cgi_path.size() - 1)
+                                std::cout << ", ";
+                }
+        }
+        std::cout << std::endl;
 
-	// CGI Extensions
-	if (!_cgi_ext.empty()) {
-		std::cout << "CGI Extensions: ";
-		for (size_t i = 0; i < _cgi_ext.size(); ++i) {
-			std::cout << _cgi_ext[i];
-			if (i < _cgi_ext.size() - 1)
-				std::cout << ", ";
-		}
-		std::cout << std::endl;
-	}
+        // CGI Extensions
+        std::cout << "CGI Extensions: ";
+        if (_cgi_ext.empty()) {
+                std::cout << "(none)";
+        } else {
+                for (size_t i = 0; i < _cgi_ext.size(); ++i) {
+                        std::cout << _cgi_ext[i];
+                        if (i < _cgi_ext.size() - 1)
+                                std::cout << ", ";
+                }
+        }
+        std::cout << std::endl;
 
-	std::cout << "===========================" << std::endl;
+        // Error Pages
+        std::cout << "Error Pages: ";
+        if (_error_pages.empty()) {
+                std::cout << "(none)";
+        } else {
+                std::map<int, std::string>::const_iterator it = _error_pages.begin();
+                for (; it != _error_pages.end(); ++it) {
+                        std::cout << it->first << " -> " << it->second;
+                        std::map<int, std::string>::const_iterator next = it;
+                        ++next;
+                        if (next != _error_pages.end())
+                                std::cout << ", ";
+                }
+        }
+        std::cout << std::endl;
+
+        std::cout << "===========================" << std::endl;
 }
