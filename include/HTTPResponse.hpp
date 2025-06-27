@@ -32,6 +32,22 @@ public:
 	HTTPResponse(const HTTPResponse& other);
 	HTTPResponse& operator=(const HTTPResponse& other);
 
+public:
+	class HTTPError : public std::exception {
+	public:
+		int code;
+		std::string message;
+
+		HTTPError(int status_code, const std::string& msg)
+			: code(status_code), message(msg) {}
+
+		virtual const char* what() const throw() {
+			return message.c_str();
+		}
+		virtual ~HTTPError() throw() {}
+	};
+
+
 private:
 	std::string 				_mime;
 	std::string 				_response_msg;
@@ -43,7 +59,6 @@ private:
 	// std::string             _resolved_path;
 
 	// helpers
-	std::string 	build_path(const std::string& file_name) const;
 	bool 		file_exists(const std::string& path) const;
 	bool  		is_directory(const std::string& path) const;
 	bool 		has_permission(const std::string& path, HTTPRequest::e_method method) const;

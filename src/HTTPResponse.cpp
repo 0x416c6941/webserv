@@ -1,27 +1,36 @@
 #include "../include/HTTPResponse.hpp"
 
-HTTPResponse::HTTPResponse():
-        _response_msg(""),
-        _status_code(200),
-        _response_ready(false) {}
-
+HTTPResponse::HTTPResponse()
+	: _mime(""),
+	  _response_msg(""),
+	  _response_body(""),
+	  _root(""),
+	  _status_code(0),
+	  _response_ready(false) {
+}
 
 HTTPResponse::HTTPResponse(const HTTPResponse& other)
-	: _response_msg(other._response_msg),
-	//   _server_config(other._server_config),
+	: _mime(other._mime),
+	  _response_msg(other._response_msg),
+	  _response_body(other._response_body),
+	  _root(other._root),
 	  _status_code(other._status_code),
-	  _response_ready(other._response_ready)
-{}
+	  _response_ready(other._response_ready) {
+}
+
 
 HTTPResponse& HTTPResponse::operator=(const HTTPResponse& other) {
 	if (this != &other) {
+		_mime = other._mime;
 		_response_msg = other._response_msg;
-		// _server_config = other._server_config;
+		_response_body = other._response_body;
+		_root = other._root;
 		_status_code = other._status_code;
 		_response_ready = other._response_ready;
 	}
 	return *this;
 }
+
 
 HTTPResponse::~HTTPResponse() {}
 
@@ -138,14 +147,6 @@ void HTTPResponse::set_root(const std::string& root)
         _root = root;
 }
 
-std::string HTTPResponse::build_path(const std::string& file_name) const
-{
-        if (_root.empty()) {
-                throw std::runtime_error("Root directory is not set.");
-        }
-        return _root + file_name;
-}
-
 bool HTTPResponse::file_exists(const std::string& path) const
 {
         struct stat sb;
@@ -198,25 +199,26 @@ std::string HTTPResponse::resolve_secure_path(const std::string& request_path) c
 	// Step 2: Canonicalize full_path
 	char resolved[PATH_MAX];
 	if (!realpath(full_path.c_str(), resolved)) {
-		throw std::runtime_error("Failed to resolve path: " + full_path);
+		throw HTTPError(404, "resolve_secure_path: unable to resolve file path: " + full_path);
 	}
 	std::string resolved_path(resolved);
 
 	// Step 3: Canonicalize _root
 	char canonical_root[PATH_MAX];
 	if (!realpath(_root.c_str(), canonical_root)) {
-		throw std::runtime_error("Failed to resolve root path: " + _root);
+		throw HTTPError(500, "resolve_secure_path: failed to resolve server root path: " + _root);
 	}
 	std::string resolved_root(canonical_root);
 
-	// Step 4: Ensure resolved_path is within resolved_root
+	// Step 4: Ensure resolved_path is within resolved_root (security check)
 	if (resolved_path.compare(0, resolved_root.size(), resolved_root) != 0 ||
 	    (resolved_path.size() > resolved_root.size() && resolved_path[resolved_root.size()] != '/')) {
-		throw std::runtime_error("Security violation: directory traversal");
+		throw HTTPError(403, "resolve_secure_path: directory traversal attempt detected.");
 	}
 
 	return resolved_path;
 }
+
 
 
 
@@ -271,10 +273,17 @@ void HTTPResponse::handleGET(const HTTPRequest& request, const ServerConfig& ser
 
                 _status_code = 200;
         }
+        catch (const HTTPResponse::HTTPError& err) {
+	        print_err("Routing error: ", err.message, " (HTTP " + to_string(err.code) + ")");
+	        _status_code = err.code;
+	        _response_msg = generateErrorPage(_status_code);
+                _response_ready = true; // Set response ready even on error
+        }
         catch (const std::exception& e) {
-                std::cerr << "handleGET error: " << e.what() << std::endl;
-                _status_code = 500;
-                _response_msg = generateErrorPage(_status_code);
+                print_err("handleGET error: ", e.what(), "");
+	        _status_code = 500;
+	        _response_msg = generateErrorPage(_status_code);
+                _response_ready = true; // Set response ready even on error
         }
 }
 
