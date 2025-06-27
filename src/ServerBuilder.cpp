@@ -235,16 +235,26 @@ void ServerBuilder::handle_large_client_header_buffers(const std::vector<std::st
  * @throws ConfigParser::ErrorException On invalid codes or syntax.
  */
 void ServerBuilder::handle_error_page(const std::vector<std::string>& parameters, ServerConfig& server_cfg) {
-	if (parameters.size() < 3 || parameters.back() != ";")
-		throw ConfigParser::ErrorException("Invalid syntax for error_page directive");
+        if (parameters.size() != 4 || parameters.back() != ";")
+                throw ConfigParser::ErrorException("Invalid syntax for error_page directive");
 
-	for (size_t i = 1; i < parameters.size() - 2; ++i) {
-		int code = std::atoi(parameters[i].c_str());
-		if (code < 400 || code > 599)
-			throw ConfigParser::ErrorException("Invalid error code: " + parameters[i]);
-		server_cfg.setErrorPage(code, parameters[parameters.size() - 2]);
-	}
+        const std::string& page_path = parameters[parameters.size() - 2];
+
+        for (size_t i = 1; i < parameters.size() - 2; ++i) {
+                const std::string& code_str = parameters[i];
+                for (size_t j = 0; j < code_str.size(); ++j) {
+                        if (!std::isdigit(code_str[j]))
+                                throw ConfigParser::ErrorException("Invalid error code: " + code_str);
+                }
+
+                int code = std::atoi(code_str.c_str());
+                if (code < 400 || code > 599)
+                        throw ConfigParser::ErrorException("Error code out of range: " + code_str);
+
+                server_cfg.setErrorPage(code, page_path);
+        }
 }
+
 
 /**
  * @brief Handles the 'listen' directive defining the port.
@@ -511,6 +521,57 @@ static void handle_location_client_max_body_size(Location& loc, const std::vecto
     	i += 2;
 }
 
+static void handle_location_upload_enabled(Location& loc, const std::vector<std::string>& tokens, size_t& i) {
+	if (i + 2 >= tokens.size() || tokens[i + 2] != ";")
+		throw ConfigParser::ErrorException("Invalid upload_enabled directive in location block");
+
+	const std::string& value = tokens[i + 1];
+	if (value == "on" || value == "true")
+		loc.setUploadEnabled(true);
+	else if (value == "off" || value == "false")
+		loc.setUploadEnabled(false);
+	else
+		throw ConfigParser::ErrorException("Invalid value for upload_enabled: " + value);
+
+	i += 2;
+}
+
+static void handle_location_upload_path(Location& loc, const std::vector<std::string>& tokens, size_t& i) {
+	 // Check syntax: upload_path <path> ;
+	if (i + 2 >= tokens.size() || tokens[i + 2] != ";")
+		throw ConfigParser::ErrorException("Invalid upload_path directive in location block");
+
+	const std::string& path = tokens[i + 1];
+	if (path.empty())
+		throw ConfigParser::ErrorException("upload_path cannot be empty");
+
+	if (!pathExists(path))
+		print_warning("upload_path '", path, "' does not exist at parse time.");
+
+	loc.setUploadPath(path);
+	i += 2;
+}
+
+static void handle_location_error_page(Location& loc, const std::vector<std::string>& tokens, size_t& i) {
+        if (i + 3 >= tokens.size() || tokens[i + 3] != ";")
+                throw ConfigParser::ErrorException("Invalid error_page directive in location block");
+
+        const std::string& code_str = tokens[i + 1];
+        for (size_t j = 0; j < code_str.size(); ++j) {
+                if (!std::isdigit(code_str[j]))
+                        throw ConfigParser::ErrorException("Invalid error code: " + code_str);
+        }
+
+        int code = std::atoi(code_str.c_str());
+        if (code < 400 || code > 599)
+                throw ConfigParser::ErrorException("Error code out of range: " + code_str);
+
+        const std::string& path = tokens[i + 1 + 1]; // second token after directive name
+        loc.setErrorPage(code, path);
+
+        i += 3;
+}
+
 /**
  * @brief Returns a map of supported location directive handlers.
  *
@@ -531,6 +592,9 @@ static const std::map<std::string, LocationHandler>& getLocationHandlers() {
         handlers["cgi_path"] = handle_location_cgi_path;
         handlers["cgi_ext"] = handle_location_cgi_ext;
         handlers["client_max_body_size"] = handle_location_client_max_body_size;
+	handlers["upload_enabled"] = handle_location_upload_enabled;
+	handlers["upload_path"] = handle_location_upload_path;
+	handlers["error_page"] = handle_location_error_page;
     }
     return handlers;
 }
@@ -569,15 +633,22 @@ void ServerBuilder::handle_location(const std::vector<std::string>& parameters, 
         	std::map<std::string, LocationHandler>::const_iterator it = handlers.find(parameters[i]);
         	if (it == handlers.end()) {
             		// throw ConfigParser::ErrorException("Unknown directive: " + parameters[i]);
-			print_warning("Unknown directive: '", parameters[i], "' in location block.");
+			print_warning("Unknown directive: '", parameters[i], "' in location block. ");
+			// Can't skip cause it doesn't garanteed that we will find '}' after unknown directive
+			// Skip unknown directive arguments until ';' or '}'
+			// while (i < parameters.size() && parameters[i] != ";" && parameters[i] != "}") {
+			// 	++i;
+			// }
+			// if (i < parameters.size() && parameters[i] == "}")
+			// 	break; // Exit if we hit the end of the block
         	}
 		else {
         		LocationHandler handler = it->second;
         		handler(location, parameters, i);
 		}
-    }
-
-    server_cfg.addLocation(location);
+    	}
+	location.validateLocation();
+    	server_cfg.addLocation(location);
 }
 
 /**
