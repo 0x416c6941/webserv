@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <vector>
 #include <cctype>
+#include <inttypes.h>
 
 HTTPRequest::HTTPRequest()
 	:	_method_is_set(false),
@@ -14,21 +15,20 @@ HTTPRequest::HTTPRequest()
 {
 }
 
-HTTPRequest::~HTTPRequest()
-{
+void HTTPRequest::reset() {
+	_method_is_set = false;
+	_request_target.clear();
+	_request_target_is_set = false;
+	_request_query.clear();
+	_request_query_is_set = false;
+	_header_fields.clear();
+	_header_complete = false;
+	_body.clear();
+	_body_complete = false;
 }
 
-void HTTPRequest::reset() {
-    _method_is_set = false;
-    _request_target.clear();
-    _request_target_is_set = false;
-    _request_query.clear();
-    _request_query_is_set = false;
-    _header_fields.clear();
-    _header_complete = false;
-
-    _body.clear();
-    _body_complete = false;
+HTTPRequest::~HTTPRequest()
+{
 }
 
 size_t HTTPRequest::process_header_line(const std::string &header_line)
@@ -100,6 +100,44 @@ const std::string &HTTPRequest::get_header_value(const std::string &key) const
 		throw std::range_error("HTTPRequest::get_header_value(): Header with the provided key wasn't set yet.");
 	}
 	return this->_header_fields.at(key);
+}
+
+size_t HTTPRequest::process_body_part(const std::string &buffer)
+{
+	if (this->_body_complete)
+	{
+		throw std::range_error("HTTPRequest::process_body_part(): Body has already been fully parsed.");
+	}
+	else if (this->_header_fields.find("Content-Length")
+		!= this->_header_fields.end())
+	{
+		return this->process_body_part_cl(buffer);
+	}
+	else if (this->_header_fields.find("Transfer-Encoding")
+		!= this->_header_fields.end())
+	{
+		return this->process_body_part_te(buffer);
+	}
+	throw std::runtime_error("HTTPRequest::process_body_part(): Have neither Content-Length nor Transfer-Encoding headers.");
+}
+
+const std::string &HTTPRequest::get_body() const
+{
+	return this->_body;
+}
+
+bool HTTPRequest::is_header_complete() const
+{
+	return this->_header_complete;
+}
+
+bool HTTPRequest::is_body_complete() const
+{
+	if (!(this->_method_is_set) || this->_method != POST)
+	{
+		throw std::domain_error("HTTPRequest::is_body_complete(): Request's method isn't \"POST\".");
+	}
+	return this->_body_complete;
 }
 
 bool HTTPRequest::is_complete() const
@@ -366,13 +404,47 @@ size_t HTTPRequest::handle_header_field(const std::string &header_field)
 	{
 		if (!std::isprint(header_field.at(i)))
 		{
-			throw std::invalid_argument("HTTPRequest::handle_header_field(): Header field's value must consist only of printable non-whitespace characters.");
+			throw std::invalid_argument("HTTPRequest::handle_header_field(): Header field's value must consist only of printable characters.");
 		}
 		value.push_back(header_field.at(i));
 	}
 	(this->_header_fields)[key] = value;
 	// At this point, all bytes in `_header_field` were processed.
 	return header_field.length();
+}
+
+size_t HTTPRequest::process_body_part_cl(const std::string &buffer)
+{
+	const char * const CL_STR = this->_header_fields.at("Content-Length").c_str();
+	char * conv_err_check;	// To check for errors when using strtoumax().
+	const int STRTOUMAX_BASE = 10;
+	unsigned cl_bytes;		// Number in "Content-Length" header.
+	unsigned bytes_to_append;
+
+	errno = 0;	// strtoumax() doesn't modify errno on success.
+	cl_bytes = strtoumax(CL_STR, &conv_err_check, STRTOUMAX_BASE);
+	// Checking for strtoumax() errors.
+	if (*CL_STR == '\0' || *conv_err_check != '\0'
+		|| errno == ERANGE)
+	{
+		throw std::runtime_error("HTTPRequest::process_body_part_cl(): \"Content-Length\" header doesn't contain a valid number.");
+	}
+	else if (this->_body_complete)
+	{
+		throw std::range_error("HTTPRequest::process_body_part_cl(): Body was already processed.");
+	}
+	bytes_to_append = cl_bytes - this->_body.length();	// Underflow should never happen.
+	this->_body.append(buffer, 0, bytes_to_append);
+	if (this->_body.length() == cl_bytes)
+	{
+		this->_body_complete = true;
+		return bytes_to_append;		// We've appended only this part of buffer.
+	}
+	return buffer.length();	// We've appended the whole buffer.
+}
+
+size_t HTTPRequest::process_body_part_te(const std::string &buffer)
+{
 }
 
 

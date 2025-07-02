@@ -7,9 +7,6 @@
 #include <iostream> //for debug
 #include <iomanip> //for debug
 
-//large_client_header_buffers -> We don't store it in server config so we can use "magix_number" here
-// protection against ddos + we 
-
 /**
  * A class containing a received and parsed HTTP/1.1 request.
  * Non-standard header fields are also stored, but they're not processed later.
@@ -20,8 +17,8 @@ class HTTPRequest
 {
 	public:
 		HTTPRequest();
+		void reset();
 		virtual ~HTTPRequest();
-		void 		reset();
 		enum e_method
 		{
 			GET,
@@ -76,6 +73,51 @@ class HTTPRequest
 		const std::string &get_header_value(const std::string &key) const;
 
 		/**
+		 * Process and save body part stored in \p buffer.
+		 * @warning	It's up to you to ensure
+		 * 		that request's method is "POST".
+		 * @throw	invalid_argument	"Transfer-Encoding" field
+		 * 					is set, however \p buffer
+		 * 					isn't a complete chunk.
+		 * @throw	range_error		Body was already processed.
+		 * @throw	runtime_error		Body part in \p buffer
+		 * 					is borked or neither
+		 * 					"Content-Length"
+		 * 					and "Transfer-Encoding"
+		 * 					fields are set.
+		 * @param	buffer	Body part to process.
+		 * @return	Processed bytes in \p buffer.
+		 */
+		size_t process_body_part(const std::string &buffer);
+
+		/**
+		 * Get the body in whatever state it's stored now
+		 * (complete or incomplete).
+		 * To check if body is fully processed and complete,
+		 * use the `is_body_complete()` method.
+		 * @return	Request's body.
+		 */
+		const std::string &get_body() const;
+
+		/**
+		 * Check if request's header was fully parsed yet.
+		 * @return	true, if yes;
+		 * 		false otherwise.
+		 */
+		bool is_header_complete() const;
+
+		/**
+		 * Check if request's body was fully parsed yet.
+		 * @warning	If request's method isn't "POST",
+		 * 		presence of "Content-Length"
+		 *		or "Transfer-Encoding" wouldn't matter.
+		 * @throw	domain_error	Request's method isn't "POST".
+		 * @return	true, if yes;
+		 * 		false otherwise.
+		 */
+		bool is_body_complete() const;
+
+		/*
 		 * Check if request was fully parsed yet.
 		 * @return	true, if yes;
 		 * 		false otherwise.
@@ -87,7 +129,6 @@ class HTTPRequest
  		*/
 		void printDebug() const;
 
-		
 	private:
 		// It doesn't make sense for `HTTPRequest` to be CopyConstructible
 		// or have an ::operator =() available.
@@ -116,7 +157,6 @@ class HTTPRequest
 
 		std::string _body;		// Should be used only in POST methods.
 		bool _body_complete;
-
 
 		/**
 		 * Parse method, request target and
@@ -206,4 +246,35 @@ class HTTPRequest
 		 * @return	Processed bytes in \p header_field.
 		 */
 		size_t handle_header_field(const std::string &header_field);
+
+		/**
+		 * Process and save body part stored in \p buffer.
+		 * If got all bytes specified in "Content-Length",
+		 * sets `_body_complete` to true.
+		 * @warning	Call this method only if "Content-Length" field is set.
+		 * @throw	range_error	Body was already processed.
+		 * @throw	runtime_error	"Content-Length" doesn't contain
+		 * 				a valid number.
+		 * @param	buffer	Body part to process.
+		 * @return	Processed bytes in \p buffer.
+		 */
+		size_t process_body_part_cl(const std::string &buffer);
+
+		/**
+		 * Process and save body part stored in \p buffer.
+		 * If got chunk with size 0, sets `_body_complete` to true.
+		 * @warning	Call this method only if "Transfer-Encoding" field is set.
+		 * @warning	Only "chunked" method is supported.
+		 * @throw	invalid_argument	"Transfer-Encoding" field
+		 * 					is set, however \p buffer
+		 * 					isn't a complete chunk.
+		 * @throw	range_error		Body was already processed.
+		 * @throw	runtime_error		Body part in \p buffer
+		 * 					is borked
+		 * 					or "Transfer-Encoding"
+		 * 					isn't "cnunked".
+		 * @param	buffer	Body part to process.
+		 * @return	Processed bytes in \p buffer.
+		 */
+		size_t process_body_part_te(const std::string &buffer);
 };
