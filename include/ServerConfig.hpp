@@ -33,7 +33,8 @@ private:
 	int createListeningSocket(const std::string& host, uint16_t port, sockaddr_in& out_addr);
 	void setDefaultsIfEmpty(void);
 	void validateListenEndpoint(void);
-	
+	void validateRoot(void);
+
 public:
 	ServerConfig();
 	ServerConfig(const ServerConfig& other);
@@ -83,11 +84,11 @@ public:
 	// helpers
 	bool 				alreadyAddedHost(const std::string& host) const;
 	void 				resetIndex(void);
-	
+
 
 	void				initServerSocket(void);
 	void 				cleanupSocket(void);
-	
+
 	public:
 		class ErrorException : public std::exception
 		{
