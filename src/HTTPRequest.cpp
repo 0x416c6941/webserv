@@ -163,7 +163,8 @@ size_t HTTPRequest::handle_start_line(const std::string &start_line)
 	const std::string START_LINE_END = " HTTP/1.1";
 
 	i = this->set_method(start_line);
-	// " /" after the request method.
+	// " /" after the request method
+	// (we support only the origin-form, absolute-form isn't supported).
 	if (start_line.length() <= i
 		|| start_line.compare(i, AFTER_METHOD.length(), AFTER_METHOD) != 0)
 	{
