@@ -36,3 +36,11 @@ HTTPResponse:
 
 
 - Parsing logic should be revised: if some of the directive is unknown - just skip and log(the same for Location).
+
+
+
+HTTPResponse.cpp:
+190: std::string::size_type pos = path.find_first_of("?#");
+	?
+201: if (!realpath(full_path.c_str(), resolved)) {
+	realpath() isn't on the allowed syscalls list.
