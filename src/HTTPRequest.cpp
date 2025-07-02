@@ -5,6 +5,7 @@
 #include <vector>
 #include <cctype>
 #include <inttypes.h>
+#include <cstdlib>
 
 HTTPRequest::HTTPRequest()
 	:	_method_is_set(false),
@@ -421,6 +422,10 @@ size_t HTTPRequest::process_body_part_cl(const std::string &buffer)
 	unsigned cl_bytes;		// Number in "Content-Length" header.
 	unsigned bytes_to_append;
 
+	if (this->_body_complete)
+	{
+		throw std::range_error("HTTPRequest::process_body_part_cl(): Body was already processed.");
+	}
 	errno = 0;	// strtoumax() doesn't modify errno on success.
 	cl_bytes = strtoumax(CL_STR, &conv_err_check, STRTOUMAX_BASE);
 	// Checking for strtoumax() errors.
@@ -428,10 +433,6 @@ size_t HTTPRequest::process_body_part_cl(const std::string &buffer)
 		|| errno == ERANGE)
 	{
 		throw std::runtime_error("HTTPRequest::process_body_part_cl(): \"Content-Length\" header doesn't contain a valid number.");
-	}
-	else if (this->_body_complete)
-	{
-		throw std::range_error("HTTPRequest::process_body_part_cl(): Body was already processed.");
 	}
 	bytes_to_append = cl_bytes - this->_body.length();	// Underflow should never happen.
 	this->_body.append(buffer, 0, bytes_to_append);
@@ -445,6 +446,60 @@ size_t HTTPRequest::process_body_part_cl(const std::string &buffer)
 
 size_t HTTPRequest::process_body_part_te(const std::string &buffer)
 {
+	const char * const BUFFER_C_STR = buffer.c_str();
+	char * conv_err_check;	// To check for errors when using strtoul().
+	const int STRTOUL_BASE = 16;
+	unsigned long bytes_to_append;
+	size_t pos;
+	const std::string TERMINATOR = "\r\n";
+
+	if (this->_body_complete)
+	{
+		throw std::range_error("HTTPRequest::process_body_part_te(): Body was already processed.");
+	}
+	// Weird case, but let's still handle it.
+	else if (buffer.length() == 0)
+	{
+		throw std::invalid_argument("HTTPRequest::process_body_part_te(): Buffer is empty.");
+	}
+	errno = 0;	// strtoul() doesn't modify errno on success.
+	bytes_to_append = std::strtoul(BUFFER_C_STR, &conv_err_check, STRTOUL_BASE);
+	// strtoul() didn't report any error and buffer contains
+	// only a number of bytes in the chunk.
+	if (*conv_err_check == '\0' && errno == 0)
+	{
+		throw std::invalid_argument("HTTPRequest::process_body_part_te(): Buffer doesn't contain a complete chunk.");
+	}
+	else if (*conv_err_check != '\r' || errno == ERANGE)
+	{
+		throw std::runtime_error("HTTPRequest::process_body_part_te(): Body part is borked.");
+	}
+	pos = static_cast<size_t> (conv_err_check - BUFFER_C_STR);
+	// Checking for terminator after number of bytes in the chunk.
+	if (buffer.length() < pos + TERMINATOR.length())
+	{
+		throw std::invalid_argument("HTTPRequest::process_body_part_te(): Buffer doesn't contain a complete chunk.");
+	}
+	else if (buffer.compare(pos, TERMINATOR.length(), TERMINATOR) != 0)
+	{
+		throw std::runtime_error("HTTPRequest::process_body_part_te(): Body part is borked.");
+	}
+	pos += TERMINATOR.length();
+	if (buffer.length() < pos + bytes_to_append + TERMINATOR.length())
+	{
+		throw std::invalid_argument("HTTPRequest::process_body_part_te(): Buffer doesn't contain a complete chunk.");
+	}
+	// Checking for the chunk's enclosing terminator.
+	else if (buffer.compare(pos + bytes_to_append, TERMINATOR.length(), TERMINATOR) != 0)
+	{
+		throw std::runtime_error("HTTPRequest::process_body_part_te(): Body part is borked.");
+	}
+	this->_body.append(buffer, pos, bytes_to_append);
+	if (bytes_to_append == 0)
+	{
+		this->_body_complete = true;
+	}
+	return pos + bytes_to_append + TERMINATOR.length();
 }
 
 

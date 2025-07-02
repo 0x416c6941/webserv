@@ -263,16 +263,16 @@ class HTTPRequest
 		/**
 		 * Process and save body part stored in \p buffer.
 		 * If got chunk with size 0, sets `_body_complete` to true.
-		 * @warning	Call this method only if "Transfer-Encoding" field is set.
+		 * @warning	Call this method only if "Transfer-Encoding" field
+		 * 		is set to "chunked".
 		 * @warning	Only "chunked" method is supported.
 		 * @throw	invalid_argument	"Transfer-Encoding" field
-		 * 					is set, however \p buffer
+		 * 					is set to "chunked",
+		 * 					however \p buffer
 		 * 					isn't a complete chunk.
 		 * @throw	range_error		Body was already processed.
 		 * @throw	runtime_error		Body part in \p buffer
-		 * 					is borked
-		 * 					or "Transfer-Encoding"
-		 * 					isn't "cnunked".
+		 * 					is borked.
 		 * @param	buffer	Body part to process.
 		 * @return	Processed bytes in \p buffer.
 		 */
