@@ -32,17 +32,6 @@ private:
 	size_t			_header_buffer_bytes_exhausted;
 	size_t			_body_buffer_bytes_exhausted;
 
-	/**
-	* @brief Returns the length of the HTTP header in the request buffer.
-	*
-	* Finds the end-of-header delimiter ("\r\n\r\n") and returns its position
-	* plus the delimiter length. Returns -1 if the header is incomplete.
-	*
-	* @param requestBuffer Raw HTTP request data.
-	* @return int Length of the header including the delimiter, or -1 if not found.
-	*/
-	int 	getHttpHeaderLength(const std::string& requestBuffer);
-
 public:
 	HTTPRequest             _request;
 	HTTPResponse            _response;

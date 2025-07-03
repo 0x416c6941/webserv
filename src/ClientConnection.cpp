@@ -225,28 +225,6 @@ int ClientConnection::parseReadEvent(std::string &buffer)
 	return 0;
 }
 
-/**
- * @brief Returns the length of the HTTP header in the request buffer.
- *
- * Finds the end-of-header delimiter ("\r\n\r\n") and returns its position
- * plus the delimiter length. Returns -1 if the header is incomplete.
- *
- * @param requestBuffer Raw HTTP request data.
- * @return int Length of the header including the delimiter, or -1 if not found.
- */
-int ClientConnection::getHttpHeaderLength(const std::string& requestBuffer) {
-    	std::string headerEnd = "\r\n\r\n";
-    	std::size_t pos = requestBuffer.find(headerEnd);
-
-    	if (pos == std::string::npos) {
-    	    return -1;  // Header not complete
-    	}
-
-    	// Return length including the 4-byte delimiter
-    	return static_cast<int>(pos + headerEnd.length());
-}
-
-
 bool ClientConnection::handleReadEvent()
 {
 	// std::cout <<"Client header bytes: "<< _server->getLargeClientHeaderTotalBytes()<< std::endl;
