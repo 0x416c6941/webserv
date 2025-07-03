@@ -20,6 +20,9 @@ private:
 	std::pair<int, std::string> 	_return;
 	std::string 			_alias;
 	uint64_t 			_client_max_body_size;
+	// We need to keep track if `_client_max_body_size`
+	// was set to 0 or not set at all.
+	bool				_client_max_body_size_set;
 	std::vector<std::string> 	_cgi_path;
 	std::vector<std::string> 	_cgi_ext;
 	std::map<int, std::string> 	_error_pages;
@@ -59,7 +62,14 @@ public:
 	const std::string 				&getAlias() const;
 	const std::vector<std::string> 			&getCgiPath() const;
 	const std::vector<std::string> 			&getCgiExtension() const;
+
+	/**
+	 * Get the `_client_max_body_size`.
+	 * @throw	domain_error	_client_max_body_size_set == false.
+	 * @return	_client_max_body_size.
+	 */
 	const uint64_t	 				&getMaxBodySize() const;
+
 	const std::map<int, std::string> 		&getErrorPages() const;
 	std::string 					getErrorPage(int code) const;
 	const std::string 				&getUploadPath() const;

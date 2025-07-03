@@ -32,6 +32,16 @@ private:
 	size_t			_header_buffer_bytes_exhausted;
 	size_t			_body_buffer_bytes_exhausted;
 
+	/**
+	 * Determines the max body size of files sent to us with "POST" method
+	 * depending on \p path in request target.
+	 * @throw	domain_error	Saving a received file at \p path
+	 * 				is forbidden.
+	 * @param	path	Request target parsed in request header.
+	 * @return	Max body size of received file.
+	 */
+	size_t			getMaxBodySize(const std::string &path) const;
+
 public:
 	HTTPRequest             _request;
 	HTTPResponse            _response;

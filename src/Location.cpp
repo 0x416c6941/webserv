@@ -10,6 +10,7 @@ Location::Location()
           _return(std::make_pair(0, "")),
           _alias(""),
           _client_max_body_size(0),
+          _client_max_body_size_set(false),
           _cgi_path(),
           _cgi_ext(),
           _error_pages(),
@@ -28,6 +29,7 @@ Location& Location::operator=(const Location& other) {
                 _return = other._return;
                 _alias = other._alias;
                 _client_max_body_size = other._client_max_body_size;
+                _client_max_body_size_set = other._client_max_body_size_set;
                 _cgi_path = other._cgi_path;
                 _cgi_ext = other._cgi_ext;
                 _error_pages = other._error_pages;
@@ -47,6 +49,7 @@ Location::Location(const Location& other)
           _return(other._return),
           _alias(other._alias),
           _client_max_body_size(other._client_max_body_size),
+          _client_max_body_size_set(other._client_max_body_size_set),
           _cgi_path(other._cgi_path),
           _cgi_ext(other._cgi_ext),
           _error_pages(other._error_pages),
@@ -66,7 +69,10 @@ void 					Location::setReturn(const std::pair<int, std::string> returnValue) { _
 void 					Location::setAlias(const std::string& alias) { _alias = alias; }
 void 					Location::addCgiPath(const std::string& path) { _cgi_path.push_back(path); }
 void 					Location::addCgiExtension(const std::string& ext) { _cgi_ext.push_back(ext); }
-void 					Location::setMaxBodySize(uint64_t size) { _client_max_body_size = size; }
+void 					Location::setMaxBodySize(uint64_t size) {
+	_client_max_body_size = size;
+	_client_max_body_size_set = true;
+}
 void 					Location::resetMethods() {	_methods.clear(); }
 void 					Location::addMethod(const std::string& method) { _methods.insert(method); }
 void 					Location::setErrorPages(const std::map<int, std::string>& errorPages) { _error_pages = errorPages; }
@@ -84,7 +90,12 @@ std::pair<int, std::string> 		Location::getReturn() const { return _return; }
 const std::string& 			Location::getAlias() const {	return _alias; }
 const std::vector<std::string>& 	Location::getCgiPath() const { return _cgi_path; }
 const std::vector<std::string>& 	Location::getCgiExtension() const { return _cgi_ext; }
-const uint64_t& 			Location::getMaxBodySize() const { return _client_max_body_size; }
+const uint64_t& 			Location::getMaxBodySize() const {
+	if (!_client_max_body_size_set) {
+		throw std::domain_error("Location::getMaxBodySize(): Option wasn't in the config.");
+	}
+	return _client_max_body_size;
+}
 const std::string&			Location::getUploadPath() const{ return _upload_path; }
 const std::map<int, std::string>& 	Location::getErrorPages() const { return _error_pages; }
 const bool& 				Location::getUploadEnabled() const { return _upload_enabled; }

@@ -77,6 +77,38 @@ ClientConnection::~ClientConnection()
 	closeConnection();
 }
 
+size_t ClientConnection::getMaxBodySize(const std::string &path) const {
+	const char * const FORBIDDEN_TEXT = "ClientConnection::getMaxyBodySize(): POST method isn't allowed on the requested location.";
+
+	for (std::vector<Location>::const_iterator it = this->_server->getLocations().begin();
+		it != this->_server->getLocations().end(); ++it) {
+		std::string loc_path = it->getPath();
+		// We assume that location path will always be
+		// at least of length 1, hence not checking it.
+		if (loc_path.at(loc_path.length() - 1) != '/') {
+			loc_path.push_back('/');
+		}
+		// Starting from 1, because in the HTTPRequest parser
+		// the first '/' gets eaten. I'm sorry for being stupid...
+		if (loc_path.compare(1, loc_path.length() - 1, path,
+				0, loc_path.length() - 1) == 0) {
+			if (it->getMethods().find("POST") == it->getMethods().end()) {
+				throw std::domain_error(FORBIDDEN_TEXT);
+			}
+			try {
+				return it->getMaxBodySize();
+			}
+			catch (const std::domain_error &e) {
+				// Max body size wasn't defined for that location.
+				// Using a generic one.
+				return this->_server->getClientMaxBodySize();
+			}
+		}
+	}
+	// Location with such path wasn't found, returning default value...
+	return this->_server->getClientMaxBodySize();
+}
+
 void ClientConnection::setSocket(int socket)
 {
 	_client_socket = socket;
@@ -155,7 +187,7 @@ HTTPRequest& ClientConnection::getRequest()
 int ClientConnection::parseReadEvent(std::string &buffer)
 {
 	const std::string HEADER_DELIM = "\r\n";
-	size_t processed_bytes;
+	size_t processed_bytes, max_body_size;
 
 	if (this->_request.is_complete()) {
 		throw std::range_error("ClientConnection::parseReadEvent(): Request is already fully parsed.");
@@ -205,12 +237,20 @@ int ClientConnection::parseReadEvent(std::string &buffer)
 			}
 			this->_body_buffer_bytes_exhausted += processed_bytes;
 			buffer.erase(0, processed_bytes);
-			if (this->_body_buffer_bytes_exhausted
-				> this->_server->getClientMaxBodySize()) {
-				// Request's body buffer bytes are exhausted.
-				print_err("Request's body is too large, currently processed:",
-					to_string(_body_buffer_bytes_exhausted), "");
-				return 431;
+			try {
+				max_body_size = this->getMaxBodySize(
+						this->_request.get_request_target());
+				if (this->_body_buffer_bytes_exhausted > max_body_size) {
+					// Request's body buffer bytes are exhausted.
+					print_err("Request's body is too large, currently processed: ",
+						to_string(_body_buffer_bytes_exhausted), "");
+					return 431;
+				}
+			}
+			catch (const std::domain_error &e) {
+				print_err("Saving a file is forbidden at: ",
+					this->_request.get_request_target(), "");
+				return 403;
 			}
 		}
 		else {

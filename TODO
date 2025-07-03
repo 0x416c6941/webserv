@@ -46,3 +46,6 @@ HTTPResponse.cpp:
 	realpath() isn't on the allowed syscalls list.
 
 Location::_upload_enabled => ? What if POST is allowed but _upload_enabled is false?
+
+ClientConnection::getMaxBodySize(): return this->_server->getClientMaxBodySize();
+	Is this a fine default behavior if root wasn't found?
