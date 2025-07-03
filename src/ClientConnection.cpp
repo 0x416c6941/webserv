@@ -154,22 +154,77 @@ HTTPRequest& ClientConnection::getRequest()
 
 int ClientConnection::parseReadEvent(std::string &buffer)
 {
-	for (;;) {
-		try {
-			buffer.erase(0, _request.process_header_line(buffer));
-		} catch (const std::invalid_argument &e) {
-			print_err("Invalid request format: ", e.what(), "");
-			return 400;
-		} catch (const std::range_error &e) {
-			print_err("Request parsing error: ", e.what(), "");
-			return 400;
+	const std::string HEADER_DELIM = "\r\n";
+	size_t processed_bytes;
+
+	if (this->_request.is_complete()) {
+		throw std::range_error("ClientConnection::parseReadEvent(): Request is already fully parsed.");
+	}
+	while (buffer.length() > 0) {
+		if (!this->_request.is_header_complete()) {
+			if (buffer.find(HEADER_DELIM) == std::string::npos) {
+				// Currently hold part of start line / header field
+				// isn't complete.
+				return 0;
+			}
+			// Not all exceptions should be caught in this method.
+			try {
+				processed_bytes = _request.process_header_line(buffer);
+			}
+			catch (const std::invalid_argument &e) {
+				print_err("Invalid request format: ", e.what(), "");
+				return 400;
+			}
+			catch (const std::runtime_error &e) {
+				print_err("Malformed request: ", e.what(), "");
+				return 400;
+			}
+			this->_header_buffer_bytes_exhausted += processed_bytes;
+			buffer.erase(0, processed_bytes);
+			if (this->_header_buffer_bytes_exhausted
+				> this->_server->getLargeClientHeaderTotalBytes()) {
+				// Request's header buffer bytes are exhausted.
+				print_err("Request's header is too large, currently processed:",
+					to_string(_header_buffer_bytes_exhausted), "");
+				return 431;
+			}
 		}
-		if (this->_request.is_complete())
-		{
+		else if (this->_request.get_method() == HTTPRequest::POST
+			&& !(this->_request.is_body_complete())) {
+			try {
+				processed_bytes = _request.process_body_part(buffer);
+			}
+			catch (const std::invalid_argument &e) {
+				// "Chunked" encoding is used,
+				// however chunk isn't fully received yet.
+				return 0;
+			}
+			catch (const std::runtime_error &e) {
+				print_err("Request's body parsing error: ", e.what(), "");
+				return 400;
+			}
+			this->_body_buffer_bytes_exhausted += processed_bytes;
+			buffer.erase(0, processed_bytes);
+			if (this->_body_buffer_bytes_exhausted
+				> this->_server->getClientMaxBodySize()) {
+				// Request's body buffer bytes are exhausted.
+				print_err("Request's body is too large, currently processed:",
+					to_string(_body_buffer_bytes_exhausted), "");
+				return 431;
+			}
+		}
+		else {
+			// If we got here, then request header and (or) request body
+			// was (were) successfully parsed
+			// and request is ready to be processed.
 			return 0;
 		}
 	}
+	// All information received in `handleReadEvent()`
+	// was successfully processed and no errors were found (at least yet).
+	return 0;
 }
+
 /**
  * @brief Returns the length of the HTTP header in the request buffer.
  *
@@ -192,17 +247,11 @@ int ClientConnection::getHttpHeaderLength(const std::string& requestBuffer) {
 }
 
 
-/**
- * @brief Handles the read event for the client connection.
- * Reads data from the socket until no more data is available or an error occurs.
- * Parses the request from the received data and updates the last message time.
- *
- * @return true if data was successfully read and parsed, false if an error occurred or the client closed the connection.
- */
 bool ClientConnection::handleReadEvent()
 {
 	// std::cout <<"Client header bytes: "<< _server->getLargeClientHeaderTotalBytes()<< std::endl;
-	enum { BUFFER_SIZE = 2048 }; // 2 KB buffer size for reading data
+	enum { BUFFER_SIZE = 16 }; // 2 KB buffer size for reading data
+
         print_log("handleReadEvent() called for fd ", to_string(_client_socket), "");
 	char buffer[BUFFER_SIZE];
 	ssize_t n = recv(_client_socket, buffer, BUFFER_SIZE, 0);
@@ -219,35 +268,13 @@ bool ClientConnection::handleReadEvent()
 
         }
 	_request_buffer.append(buffer, static_cast<size_t>(n));
-
-	int header_length = getHttpHeaderLength(_request_buffer);
-	if (header_length < 0) {
-		if (_request_buffer.size() > _server->getLargeClientHeaderTotalBytes()) {
-			_request_error = true;
-			_response.set_status_code(431);
-			_response.build_error_response(*_server);
-			print_err("Request too large, size: ", to_string(_request_buffer.size()), "");
-			return true; // Request too large, send error response
-		}
-		return true; // Not enough data yet, wait for more
-
-	}
-	else if (header_length > static_cast<int>(_server->getLargeClientHeaderTotalBytes())) {
-		_request_error = true;
-		_response.set_status_code(431);
-		_response.build_error_response(*_server);
-		print_err("Request too large, size: ", to_string(_request_buffer.size()), "");
-		return true; // Request too large, send error response
-	}
-	// We have a complete header, now parse it
+	// Parse received information.
 	int status = parseReadEvent(_request_buffer);
-
 	if (status != 0) {
 		_request_error = true;
 		_response.set_status_code(status);
 		_response.build_error_response(*_server);
 	}
-
 	return true;
 }
 

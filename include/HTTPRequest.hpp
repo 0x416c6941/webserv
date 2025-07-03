@@ -37,6 +37,8 @@ class HTTPRequest
 		 * 					or contains invalid information.
 		 * @throw	range_error		Request was fully parsed,
 		 * 					yet new information arrived.
+		 * @throw	runtime_error		Received a header field
+		 * 					whose key was already registered.
 		 * @param	header_line	Header line with information to process.
 		 * @return	Processed bytes in \p header_line (including "\r\n").
 		 */

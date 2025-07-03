@@ -72,9 +72,29 @@ public:
 	void                    updateTime();
 
 	// Logic
+	/**
+	 * Reads a limited (by buffer size) part of information
+	 * sent to us by the client and tries to parse it.
+	 * @return	true, if some information was successfully read and parsed;
+	 * 		false, if an error occurred or the client closed the connection.
+	 */
 	bool                    handleReadEvent();
+
 	bool		    	handleWriteEvent();
+
+	/**
+	 * Reads and processes request information from \p buffer.
+	 * @throw	range_error	Request is already complete.
+	 * @param	buffer	Information sent to us by the client,
+	 * 			read in `handleReadEvent()`.
+	 * @return	0, if everything went alright
+	 * 			(this doesn't mean that request is complete,
+	 * 			check request completeness with
+	 * 			`getRequestIsComplete()` method);
+	 * 		HTTP error code instead.
+	 */
 	int                  	parseReadEvent(std::string &buffer);
+
 	void                    closeConnection();
 	void 			reset();
 
