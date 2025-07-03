@@ -53,6 +53,7 @@ void 	ConfigParser::removeComments(std::string &content) {
  */
 size_t ConfigParser::findStartServer(size_t start, const std::string &content)
 {
+    const std::string SERV_KEYWORD = "server";
     size_t i = start;
 
     // 1. Skip leading whitespace and validate nothing invalid comes before "server"
@@ -60,10 +61,11 @@ size_t ConfigParser::findStartServer(size_t start, const std::string &content)
         ++i;
 
     // 2. Check if "server" starts here
-    if (i + 6 > content.size() || content.compare(i, 6, "server") != 0)
+    if (i + SERV_KEYWORD.length() > content.size()
+        || content.compare(i, SERV_KEYWORD.length(), SERV_KEYWORD) != 0)
         throw ErrorException("Expected 'server' directive");
 
-    i += 6;
+    i += SERV_KEYWORD.length();
 
     // 3. Skip whitespace after "server"
     while (i < content.size() && isspace(content[i]))
