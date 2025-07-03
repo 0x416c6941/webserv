@@ -44,3 +44,5 @@ HTTPResponse.cpp:
 	?
 201: if (!realpath(full_path.c_str(), resolved)) {
 	realpath() isn't on the allowed syscalls list.
+
+Location::_upload_enabled => ? What if POST is allowed but _upload_enabled is false?
