@@ -222,7 +222,7 @@ void ServerBuilder::handle_large_client_header_buffers(const std::vector<std::st
 		throw ConfigParser::ErrorException("Buffer count must be between 1 and 1024");
 	uint64_t 	finalBufferSize = validateGetMbs(buffer_size);
 
-	if (bufferCount > 0 && finalBufferSize > MAX_HEADER_CONTENT_LENGTH / bufferCount)
+	if (bufferCount * finalBufferSize > MAX_HEADER_CONTENT_LENGTH)
 		throw ConfigParser::ErrorException("Total buffer size exceeds 40k limit");
 	server_cfg.setLargeClientHeaderBuffers(bufferCount, finalBufferSize);
 }
