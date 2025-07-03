@@ -244,7 +244,7 @@ int ClientConnection::parseReadEvent(std::string &buffer)
 					// Request's body buffer bytes are exhausted.
 					print_err("Request's body is too large, currently processed: ",
 						to_string(_body_buffer_bytes_exhausted), "");
-					return 431;
+					return 413;
 				}
 			}
 			catch (const std::domain_error &e) {
