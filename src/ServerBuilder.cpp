@@ -237,7 +237,8 @@ void ServerBuilder::handle_large_client_header_buffers(const std::vector<std::st
  * @throws ConfigParser::ErrorException On invalid codes or syntax.
  */
 void ServerBuilder::handle_error_page(const std::vector<std::string>& parameters, ServerConfig& server_cfg) {
-        if (parameters.size() != 4 || parameters.back() != ";")
+        enum { MIN_EXPECTED_PARAMS = 4 };
+        if (parameters.size() < MIN_EXPECTED_PARAMS || parameters.back() != ";")
                 throw ConfigParser::ErrorException("Invalid syntax for error_page directive");
 
         const std::string& page_path = parameters[parameters.size() - 2];
