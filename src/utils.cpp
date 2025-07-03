@@ -142,6 +142,7 @@ std::string to_string(size_t value) {
 }
 
 
+// Debug.
 std::string escape_string(const std::string &input) {
 	std::ostringstream oss;
 	for (std::string::const_iterator it = input.begin(); it != input.end(); ++it) {
