@@ -25,10 +25,12 @@ std::vector<std::string> splitParameters(const std::string &directive) {
             tokens.push_back(";");
 
             // If there is more content after ';' (e.g., abc;xyz)
-            std::string after = word.substr(semicolonPos + 1);
-            if (!after.empty())
-                tokens.push_back(after);  // optional: recursively parse
-        } else {
+            if (word.length() > semicolonPos + 1) {
+                // Optional: recursively parse
+                tokens.push_back(word.substr(semicolonPos + 1));
+            }
+        }
+        else {
             tokens.push_back(word);
         }
     }
