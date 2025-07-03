@@ -24,7 +24,14 @@ private:
 	size_t 			_bytes_sent;
 	// TCP is a streaming oriented protocol, we therefore
 	// need a buffer for the request until it's fully parsed.
-	std::string             _request_buffer;
+	std::string		_request_buffer;
+	// Since `_request_buffer` will be dynamically appended
+	// and cleared all the time (during request parsing),
+	// we need to check how many bytes of each header and body buffers
+	// we have already exhausted.
+	size_t			_header_buffer_bytes_exhausted;
+	size_t			_body_buffer_bytes_exhausted;
+
 	/**
 	* @brief Returns the length of the HTTP header in the request buffer.
 	*
@@ -54,6 +61,8 @@ public:
 	bool			getRequestError() const;
 	bool			getResponseReady() const;
 	bool			getMsgSent() const;
+	size_t			getRequestHeaderBufferBytesExhaustion() const;
+	size_t			getRequestBodyBufferBytesExhaustion() const;
 	HTTPRequest&          	getRequest();
 
 	// Mutators

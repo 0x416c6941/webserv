@@ -10,7 +10,9 @@ ClientConnection::ClientConnection(int fd)
 	_request_error(false),
 	_msg_sent(false),
 	_bytes_sent(0),
-	_request_buffer()
+	_request_buffer(),
+	_header_buffer_bytes_exhausted(0),
+	_body_buffer_bytes_exhausted(0)
 	// _response()
 {
     std::memset(&_client_address, 0, sizeof(_client_address));
@@ -26,7 +28,9 @@ ClientConnection::ClientConnection()
 	_request_error(false),
 	_msg_sent(false),
 	_bytes_sent(0),
-	_request_buffer()
+	_request_buffer(),
+	_header_buffer_bytes_exhausted(0),
+	_body_buffer_bytes_exhausted(0)
 	// _response()
 {
     std::memset(&_client_address, 0, sizeof(_client_address));
@@ -42,7 +46,9 @@ ClientConnection::ClientConnection(const ClientConnection& other)
 	  _request_error(other._request_error),
 	  _msg_sent(other._msg_sent),
 	  _bytes_sent(other._bytes_sent),
-	  _request_buffer(other._request_buffer)
+	  _request_buffer(other._request_buffer),
+	  _header_buffer_bytes_exhausted(other._header_buffer_bytes_exhausted),
+	  _body_buffer_bytes_exhausted(other._body_buffer_bytes_exhausted)
 	//   _response(other._response)
 {}
 
@@ -58,6 +64,7 @@ ClientConnection& ClientConnection::operator=(const ClientConnection& other) {
 		_msg_sent = other._msg_sent;
 		_bytes_sent = other._bytes_sent;
 		_request_buffer = other._request_buffer;
+		_header_buffer_bytes_exhausted = other._header_buffer_bytes_exhausted;
 		// _response = other._response;
 	}
 	return *this;
@@ -128,6 +135,16 @@ bool ClientConnection::getResponseReady() const
 bool ClientConnection::getMsgSent() const
 {
 	return _msg_sent;
+}
+
+size_t ClientConnection::getRequestHeaderBufferBytesExhaustion() const
+{
+	return _header_buffer_bytes_exhausted;
+}
+
+size_t ClientConnection::getRequestBodyBufferBytesExhaustion() const
+{
+	return _body_buffer_bytes_exhausted;
 }
 
 HTTPRequest& ClientConnection::getRequest()
@@ -278,10 +295,13 @@ void ClientConnection::reset()
 {
 	_response.reset();
 	_request.reset(); // Clear request data
-	// _request_buffer.clear(); // Clear request buffer
 	_request_error = false; // Reset request error state
 	_msg_sent = false; // Reset message sent flag
 	_bytes_sent = 0; // Reset bytes sent counter
+	// `_request_buffer` shouldn't be cleared after the request was processed,
+	// since some part of a new request might have already been received.
+	_header_buffer_bytes_exhausted = 0;
+	_body_buffer_bytes_exhausted = 0;
 }
 
 void ClientConnection::closeConnection()
