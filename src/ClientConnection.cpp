@@ -343,8 +343,7 @@ void ClientConnection::reset()
 	_request_error = false; // Reset request error state
 	_msg_sent = false; // Reset message sent flag
 	_bytes_sent = 0; // Reset bytes sent counter
-	// `_request_buffer` shouldn't be cleared after the request was processed,
-	// since some part of a new request might have already been received.
+	_request_buffer.clear();
 	_header_buffer_bytes_exhausted = 0;
 	_body_buffer_bytes_exhausted = 0;
 }
