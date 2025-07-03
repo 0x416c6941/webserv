@@ -100,14 +100,13 @@ uint64_t 	validateGetMbs(std::string param) {
 		throw ConfigParser::ErrorException("Invalid number in client or header max_body_size: " + param);
 
 	// Overflow check before multiplication
-	if (size > (ULONG_MAX / multiplier))
+	if (size * multiplier / multiplier != size)
 		throw ConfigParser::ErrorException("client or header max_body_size too large: " + param);
+	size *= multiplier;
 
-	uint64_t finalSize = size * multiplier;
-
-	if (finalSize > MAX_CONTENT_LENGTH)
+	if (size > MAX_CONTENT_LENGTH)
 		throw ConfigParser::ErrorException("client or header max_body_size exceeds maximum allowed (1GB): " + param);
-	return (finalSize);
+	return (size);
 }
 
 
