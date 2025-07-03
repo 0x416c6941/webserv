@@ -139,31 +139,3 @@ std::string to_string(size_t value) {
 	std::sprintf(buf, "%" PRIuMAX, value);
 	return std::string(buf);
 }
-
-
-// Debug.
-std::string escape_string(const std::string &input) {
-	std::ostringstream oss;
-	for (std::string::const_iterator it = input.begin(); it != input.end(); ++it) {
-		char c = *it;
-		switch (c) {
-			case '\n': oss << "\\n"; break;
-			case '\r': oss << "\\r"; break;
-			case '\t': oss << "\\t"; break;
-			case '\\': oss << "\\\\"; break;
-			case '\"': oss << "\\\""; break;
-			default:
-				if (std::isprint(static_cast<unsigned char>(c))) {
-					oss << c;
-				} else {
-					oss << "\\x";
-					oss << std::hex;
-					oss << std::setw(2) << std::setfill('0');
-					oss << static_cast<int>(static_cast<unsigned char>(c));
-					oss << std::dec; // reset to decimal just in case
-				}
-				break;
-		}
-	}
-	return oss.str();
-}

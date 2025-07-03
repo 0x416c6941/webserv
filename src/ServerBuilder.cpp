@@ -395,7 +395,7 @@ static void handle_location_allow_methods(Location& loc, const std::vector<std::
 	}
 
 	if (i >= tokens.size() || tokens[i] != ";") {
-			throw ConfigParser::ErrorException("Missing ';' after allow_methods directive");
+		throw ConfigParser::ErrorException("Missing ';' after allow_methods directive");
 	}
 }
 
