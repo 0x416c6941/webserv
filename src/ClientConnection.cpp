@@ -228,7 +228,7 @@ int ClientConnection::parseReadEvent(std::string &buffer)
 bool ClientConnection::handleReadEvent()
 {
 	// std::cout <<"Client header bytes: "<< _server->getLargeClientHeaderTotalBytes()<< std::endl;
-	enum { BUFFER_SIZE = 16 }; // 2 KB buffer size for reading data
+	enum { BUFFER_SIZE = 2048 }; // 2 KB buffer size for reading data
 
         print_log("handleReadEvent() called for fd ", to_string(_client_socket), "");
 	char buffer[BUFFER_SIZE];
