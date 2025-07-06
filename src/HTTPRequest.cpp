@@ -85,6 +85,33 @@ const std::string &HTTPRequest::get_request_target() const
 	return this->_request_target;
 }
 
+std::string HTTPRequest::get_request_target_filename() const {
+	size_t last_slash_pos;
+
+	if (!(this->_request_target_is_set))
+	{
+		throw std::runtime_error("HTTPRequest::get_request_target_filename(): Request target wasn't set yet.");
+	}
+	last_slash_pos = this->_request_target.find_last_of('/');
+	if (last_slash_pos == std::string::npos) {
+		// No '/' was found in the parsed request target.
+		// Returning the full request target.
+		return this->_request_target;
+	}
+	// Got a directory as the request target.
+	else if (this->_request_target.length() <= (last_slash_pos + 1)) {
+		last_slash_pos = this->_request_target.find_last_of('/', last_slash_pos - 1);
+		if (last_slash_pos == std::string::npos) {
+			// Got last '/' for the directory,
+			// however the first '/' was eaten by our specific parser.
+			return this->_request_target;
+		}
+	}
+	// Got a regular file
+	// (or directory, who's preceding '/' was registed by our specific parser).
+	return this->_request_target.substr(last_slash_pos + 1);
+}
+
 const std::string &HTTPRequest::get_request_query() const
 {
 	if (!(this->_request_query_is_set))
@@ -234,7 +261,12 @@ size_t HTTPRequest::set_request_target_and_query(const std::string &start_line,
 			start_line, pos, end);
 	this->_request_target_is_set = true;
 	pos += ret;
-	if (start_line.length() <= pos || start_line.at(pos) != '?')
+	if (!(this->request_target_no_double_slash_anywhere(this->_request_target))) {
+		// Request target contains two or more consequent slashes,
+		// which shouldn't be the case.
+		throw std::invalid_argument("HTTPRequest::set_request_target_and_query: Request target contains two or more consequent slashes.");
+	}
+	else if (start_line.length() <= pos || start_line.at(pos) != '?')
 	{
 		// Optional query isn't present.
 		return ret;
@@ -263,7 +295,6 @@ size_t HTTPRequest::set_request_target_and_query(const std::string &start_line,
 size_t HTTPRequest::set_request_component(std::string & component,
 		const std::string &start_line, size_t pos, size_t end)
 {
-	size_t i = pos;
 	// RFC 3986 in case of path in request target and request query.
 	const std::string ALLOWED_UNENCODED_CHARS =
 		"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -273,6 +304,7 @@ size_t HTTPRequest::set_request_component(std::string & component,
 		"!$&'()*+,/:;=@";
 	const std::string ALLOWED_CHARS_ONLY_ENCODED =
 		"#?[] %";
+	size_t i = pos;
 
 	// If any information is already stored in `component`, drop it.
 	component.clear();
@@ -299,6 +331,26 @@ size_t HTTPRequest::set_request_component(std::string & component,
 		}
 	}
 	return i - pos;
+}
+
+bool HTTPRequest::request_target_no_double_slash_anywhere(
+		const std::string &request_target) const {
+	// true by default, because our specific parser
+	// eats the first '/' in the request target.
+	bool previous_char_was_slash = true;
+
+	for (size_t i = 0; i < request_target.length(); i++) {
+		if (request_target.at(i) == '/') {
+			if (previous_char_was_slash) {
+				return false;
+			}
+			previous_char_was_slash = true;
+		}
+		else {
+			previous_char_was_slash = false;
+		}
+	}
+	return true;
 }
 
 // Percent encoding is only a thing in start line.
@@ -522,8 +574,10 @@ void HTTPRequest::printDebug() const {
 	}
 
 	// Target
-	if (_request_target_is_set)
+	if (_request_target_is_set) {
 		std::cout << "Target:          " << _request_target << std::endl;
+		std::cout << " Filename        " << this->get_request_target_filename() << std::endl;
+	}
 	else
 		std::cout << "Target:          [NOT SET]" << std::endl;
 

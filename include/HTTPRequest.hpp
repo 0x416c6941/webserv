@@ -59,6 +59,16 @@ class HTTPRequest
 		const std::string &get_request_target() const;
 
 		/**
+		 * Get the request target's file name.
+		 * @warning	Request target may be a directory.
+		 * 		Check if the name ends with '/'
+		 * 		to determine if it is one or not.
+		 * @throw	runtime_error	Request target wasn't set yet.
+		 * @return	Request target's file name.
+		 */
+		std::string get_request_target_filename() const;
+
+		/**
 		 * Get the request query.
 		 * @throw	runtime_error	Request query wasn't set yet.
 		 * @return	Request query (empty string if wasn't present).
@@ -216,6 +226,18 @@ class HTTPRequest
 		 */
 		size_t set_request_component(std::string &component,
 				const std::string &start_line, size_t pos, size_t end);
+
+		/**
+		 * Verifies that \p request_target doesn't contain
+		 * any double (or more) consequent slashes.
+		 * @param	request_target	Request target
+		 * 				set by `set_request_component()`.
+		 * @return	true, if no double (or more) consequent slashes
+		 * 			in \p request_target were found;
+		 * 		false otherwise.
+		 */
+		bool request_target_no_double_slash_anywhere(
+				const std::string &request_target) const;
 
 		/**
 		 * Decodes the percent-encoded character stored in
