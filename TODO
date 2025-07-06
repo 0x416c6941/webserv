@@ -50,6 +50,15 @@ Location::_upload_enabled => ? What if POST is allowed but _upload_enabled is fa
 ClientConnection::getMaxBodySize(): return this->_server->getClientMaxBodySize();
 	Is this a fine default behavior if root wasn't found?
 
+Location::_client_max_body_size
+	In POST, we don't treat this as the maximum file size,
+	but the max buffer size for that file.
+
+	Reasoning: if using chunked encoding, we can send a 50 MB file
+		with hella lot chunks of 1 byte each.
+
+	Should we change this behavior or is it fine as is?
+
 REMAINING:
 	ClientConnection (handleWriteEvent())
 	HTTPResponse
