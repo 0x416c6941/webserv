@@ -77,36 +77,46 @@ ClientConnection::~ClientConnection()
 	closeConnection();
 }
 
-size_t ClientConnection::getMaxBodySize(const std::string &path) const {
-	const char * const FORBIDDEN_TEXT = "ClientConnection::getMaxyBodySize(): POST method isn't allowed on the requested location.";
-
+const Location &ClientConnection::determineLocation(const std::string &target) const {
 	for (std::vector<Location>::const_iterator it = this->_server->getLocations().begin();
 		it != this->_server->getLocations().end(); ++it) {
 		std::string loc_path = it->getPath();
-		// We assume that location path will always be
+		// We assume that location target (path) will always be
 		// at least of length 1, hence not checking it.
 		if (loc_path.at(loc_path.length() - 1) != '/') {
 			loc_path.push_back('/');
 		}
 		// Starting from 1, because in the HTTPRequest parser
 		// the first '/' gets eaten. I'm sorry for being stupid...
-		if (loc_path.compare(1, loc_path.length() - 1, path,
+		if (loc_path.compare(1, loc_path.length() - 1, target,
 				0, loc_path.length() - 1) == 0) {
-			if (it->getMethods().find("POST") == it->getMethods().end()) {
-				throw std::domain_error(FORBIDDEN_TEXT);
-			}
-			try {
-				return it->getMaxBodySize();
-			}
-			catch (const std::domain_error &e) {
-				// Max body size wasn't defined for that location.
-				// Using a generic one.
-				return this->_server->getClientMaxBodySize();
-			}
+			return *it;
 		}
 	}
-	// Location with such path wasn't found, returning default value...
-	return this->_server->getClientMaxBodySize();
+	throw std::out_of_range("ClientConnection::determineLocation: Couldn't determine the Location to which target corresponds to.");
+}
+
+size_t ClientConnection::getMaxBodySize(const std::string &target) const {
+	try {
+		const Location &loc = this->determineLocation(target);
+		if (loc.getMethods().find("POST") == loc.getMethods().end()) {
+			throw std::domain_error("ClientConnection::getMaxBodySize(): POST method isn't allowed on the requested Location.");
+		}
+		// This try-catch block is redundant.
+		try {
+			return loc.getMaxBodySize();
+		}
+		catch (const std::domain_error &e) {
+			// Max body size wasn't defined for that location.
+			// Using a generic one.
+			return this->_server->getClientMaxBodySize();
+		}
+	}
+	catch (const std::out_of_range &e) {
+		// Location with such path wasn't found, returning default value...
+		// TODO: This should probably never happend?
+		return this->_server->getClientMaxBodySize();
+	}
 }
 
 void ClientConnection::setSocket(int socket)

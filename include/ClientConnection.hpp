@@ -33,14 +33,23 @@ private:
 	size_t			_body_buffer_bytes_exhausted;
 
 	/**
+	 * Determines which Location from `_server` corresponds to \p target.
+	 * @throw	out_of_range	Location with such target
+	 * 				isn't defined.
+	 * @param	target	Request target parsed in request header.
+	 * @return	Determined Location.
+	 */
+	const Location		&determineLocation(const std::string &target) const;
+
+	/**
 	 * Determines the max body size of files sent to us with "POST" method
-	 * depending on \p path in request target.
+	 * depending on \p target.
 	 * @throw	domain_error	Saving a received file at \p path
 	 * 				is forbidden.
-	 * @param	path	Request target parsed in request header.
+	 * @param	target	Request target parsed in request header.
 	 * @return	Max body size of received file.
 	 */
-	size_t			getMaxBodySize(const std::string &path) const;
+	size_t			getMaxBodySize(const std::string &target) const;
 
 public:
 	HTTPRequest             _request;
@@ -71,7 +80,7 @@ public:
 	void                    updateTime();
 
 	// Logic
-	/**
+	/**r.reset();
 	 * Reads a limited (by buffer size) part of information
 	 * sent to us by the client and tries to parse it.
 	 * @return	true, if some information was successfully read and parsed;
