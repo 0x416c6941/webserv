@@ -49,3 +49,8 @@ Location::_upload_enabled => ? What if POST is allowed but _upload_enabled is fa
 
 ClientConnection::getMaxBodySize(): return this->_server->getClientMaxBodySize();
 	Is this a fine default behavior if root wasn't found?
+
+REMAINING:
+	ClientConnection (handleWriteEvent())
+	HTTPResponse
+	ServerManager
