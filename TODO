@@ -49,6 +49,7 @@ Location::_upload_enabled => ? What if POST is allowed but _upload_enabled is fa
 
 ClientConnection::getMaxBodySize(): return this->_server->getClientMaxBodySize();
 	Is this a fine default behavior if root wasn't found?
+	Also, should we skip the Location '/' until the very end?
 
 Location::_client_max_body_size
 	In POST, we don't treat this as the maximum file size,
