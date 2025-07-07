@@ -68,6 +68,10 @@ Location::_client_max_body_size
 POST:
 	Do we allow symlinks? Those may be quite dangerous.
 
+Location parsing:
+	If any location target is contained in any other location target (std::string.compare())
+	=> parsing error.
+
 HTTPResponse:: handle_response_routine.
 
 REMAINING:
