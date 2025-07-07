@@ -99,6 +99,9 @@ void    HTTPResponse::handle_response_routine(const ServerConfig& server_config,
 			break;
 		case HTTPRequest::POST:
 			// Handle POST.
+			_status_code = 204;
+			_response_msg = build_response_msg();
+			_response_ready = true;
 			break;
 		case HTTPRequest::DELETE:
 			// Handle DELETE.

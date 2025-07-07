@@ -74,3 +74,9 @@ REMAINING:
 	Location path is a request target redirection / configuration change.
 	We need to check for the optional root parameter in a location directive,
 		not the location path.
+
+HTTPRequest:
+	Instead of get_request_target_filename(),
+	should we just implement a method,
+	that would return the request target
+		stripped of location's path?
