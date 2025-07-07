@@ -48,6 +48,8 @@ HTTPResponse.cpp:
 inet_pton():
 	Syscall is forbidden. Rewrite.
 
+HTTPResponse::get_mime_type: return reference instead
+
 Location::_upload_enabled => ? What if POST is allowed but _upload_enabled is false?
 
 ClientConnection::getMaxBodySize(): return this->_server->getClientMaxBodySize();
