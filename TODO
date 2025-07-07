@@ -51,6 +51,9 @@ inet_pton():
 HTTPResponse::get_mime_type: return reference instead
 
 Location::_upload_enabled => ? What if POST is allowed but _upload_enabled is false?
+	Get rid of this.
+	Also get rid of upload_path.
+		UPD: Do not get rid of this thingy :(
 
 ClientConnection::getMaxBodySize(): return this->_server->getClientMaxBodySize();
 	Is this a fine default behavior if root wasn't found?
