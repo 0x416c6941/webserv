@@ -2,7 +2,6 @@
 #include "../include/ConfigParser.hpp"
 #include <inttypes.h>	// <cinttypes> is available from C++11 onwards, but we use C++98.
 
-
 /**
 * @brief Trims whitespace from both ends of the input string.
 * @param str Input string.
@@ -55,27 +54,24 @@ void print_warning(const std::string &desc, const std::string &line, const std::
 	std::clog << YELLOW << "Warning: " << desc << line << opt_desc << RESET << std::endl;
 }
 
- 
-/**
- * @brief check if path exists
- * 
- * @param path 
- * @return true 
- * @return false 
- */
-bool 		pathExists(const std::string& path) {
+bool 		pathExists(const std::string &path) {
 	struct stat buffer;
 	return (stat(path.c_str(), &buffer) == 0);
 }
 
+bool		isDirectory(const std::string &path) {
+	struct stat sb;
 
+	if (stat(path.c_str(), &sb) != 0) {
+		return false;
+	}
+	return S_ISDIR(sb.st_mode);
+}
 
 /**
- * @brief 
- * 
  * @warning user responsible for providing non-empty param
- * @param param 
- * @return uint64_t 
+ * @param param
+ * @return uint64_t
  */
 uint64_t 	validateGetMbs(std::string param) {
 	if (param.empty())
@@ -120,7 +116,7 @@ std::string to_string(uint16_t value) {
 std::string to_string(uint32_t value) {
     	enum { BUF_SIZE = 11 }; // Max uint32_t = "4294967295" + '\0'
     	char buf[BUF_SIZE];
-    	std::sprintf(buf, "%u", value); 
+    	std::sprintf(buf, "%u", value);
     	return std::string(buf);
 }
 

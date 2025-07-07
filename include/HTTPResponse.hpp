@@ -7,13 +7,13 @@
  * @brief The HTTPResponse class is responsible for constructing a
  * HTTP response message (status line, headers, and body)
  * based on the request and server configuration.
- *
  */
 class HTTPResponse {
 public:
 	HTTPResponse();
+	HTTPResponse(const HTTPResponse& other);
 	// HTTPResponse(const HTTPRequest& request, const ServerConfig& config);
-
+	HTTPResponse& operator=(const HTTPResponse& other);
 	~HTTPResponse();
 
 
@@ -29,22 +29,18 @@ public:
 	std::string 		get_response_msg() const;
 	void 			handle_response_routine(const ServerConfig& server_config, const HTTPRequest& request);
 	void			reset();
-	HTTPResponse(const HTTPResponse& other);
-	HTTPResponse& operator=(const HTTPResponse& other);
 
 public:
 	class HTTPError : public std::exception {
-	public:
-		int code;
-		std::string message;
+		public:
+			// Those shouldn't be public...
+			int code;
+			std::string message;
 
-		HTTPError(int status_code, const std::string& msg)
-			: code(status_code), message(msg) {}
+			HTTPError(int status_code, const std::string &msg);
+			virtual ~HTTPError() throw();
 
-		virtual const char* what() const throw() {
-			return message.c_str();
-		}
-		virtual ~HTTPError() throw() {}
+			virtual const char* what() const throw();
 	};
 
 
@@ -59,17 +55,15 @@ private:
 	// std::string             _resolved_path;
 
 	// helpers
-	bool 		file_exists(const std::string& path) const;
-	bool  		is_directory(const std::string& path) const;
 	bool 		has_permission(const std::string& path, HTTPRequest::e_method method) const;
 	std::string 	resolve_secure_path(const std::string& request_path) const;
+
 	/**
  	* @brief Validates an HTTP request according to HTTP/1.1 protocol rules.
  	*
  	* This function checks the structural validity and completeness of the request.
  	* It ensures that:
  	* - The request is fully parsed.
- 	* - The HTTP method is supported (GET, POST, DELETE).
  	* - The "Host" header is present (as required by HTTP/1.1).
  	* - For POST requests, either "Content-Length" or "Transfer-Encoding" is provided.
  	*

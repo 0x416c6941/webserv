@@ -78,13 +78,14 @@ void print_err(const std::string &desc, const std::string &line, const std::stri
 void print_warning(const std::string &desc, const std::string &line, const std::string &opt_desc);
 
 /**
- * @brief check if path exists
- *
- * @param path
- * @return true
- * @return false
+ * @brief	check if \p path exists
+ * @param	path
+ * @return	true, if yes;
+ * 		false otherwise.
  */
-bool pathExists(const std::string& path);
+bool pathExists(const std::string &path);
+
+bool isDirectory(const std::string &path);
 
 std::string to_string(uint16_t value);
 std::string to_string(uint32_t value);

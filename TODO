@@ -60,6 +60,11 @@ Location::_client_max_body_size
 
 	Should we change this behavior or is it fine as is?
 
+POST:
+	Do we allow symlinks? Those may be quite dangerous.
+
+HTTPResponse:: handle_response_routine.
+
 REMAINING:
 	ClientConnection (handleWriteEvent())
 	HTTPResponse
