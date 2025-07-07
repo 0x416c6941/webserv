@@ -45,6 +45,9 @@ HTTPResponse.cpp:
 201: if (!realpath(full_path.c_str(), resolved)) {
 	realpath() isn't on the allowed syscalls list.
 
+inet_pton():
+	Syscall is forbidden. Rewrite.
+
 Location::_upload_enabled => ? What if POST is allowed but _upload_enabled is false?
 
 ClientConnection::getMaxBodySize(): return this->_server->getClientMaxBodySize();
