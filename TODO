@@ -69,3 +69,8 @@ REMAINING:
 	ClientConnection (handleWriteEvent())
 	HTTPResponse
 	ServerManager
+
+"Warning: location path ... does not exist at parse time."
+	Location path is a request target redirection / configuration change.
+	We need to check for the optional root parameter in a location directive,
+		not the location path.
