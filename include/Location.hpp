@@ -14,7 +14,6 @@ private:
 	std::string 			_path;
 	std::string 			_root;
 	bool 				_autoindex;
-	bool 				_upload_enabled;
 	std::vector<std::string> 	_index;
 	std::set<std::string>	 	_methods;
 	std::pair<int, std::string> 	_return;
@@ -51,7 +50,6 @@ public:
 	void 						setErrorPages(const std::map<int, std::string>& errorPages);
 	void 						setErrorPage(int code, const std::string& path);
 	void 						setUploadPath(const std::string& path);
-	void 						setUploadEnabled(bool enabled);
 
 	const std::string 				&getPath() const;
 	const std::string 				&getRootLocation() const;
@@ -73,7 +71,6 @@ public:
 	const std::map<int, std::string> 		&getErrorPages() const;
 	std::string 					getErrorPage(int code) const;
 	const std::string 				&getUploadPath() const;
-	const bool 					&getUploadEnabled() const;
 
 	void 						validateLocation() const;
 

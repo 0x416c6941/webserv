@@ -524,21 +524,6 @@ static void handle_location_client_max_body_size(Location& loc, const std::vecto
     	i += 2;
 }
 
-static void handle_location_upload_enabled(Location& loc, const std::vector<std::string>& tokens, size_t& i) {
-	if (i + 2 >= tokens.size() || tokens[i + 2] != ";")
-		throw ConfigParser::ErrorException("Invalid upload_enabled directive in location block");
-
-	const std::string& value = tokens[i + 1];
-	if (value == "on" || value == "true")
-		loc.setUploadEnabled(true);
-	else if (value == "off" || value == "false")
-		loc.setUploadEnabled(false);
-	else
-		throw ConfigParser::ErrorException("Invalid value for upload_enabled: " + value);
-
-	i += 2;
-}
-
 static void handle_location_upload_path(Location& loc, const std::vector<std::string>& tokens, size_t& i) {
 	 // Check syntax: upload_path <path> ;
 	if (i + 2 >= tokens.size() || tokens[i + 2] != ";")
@@ -595,7 +580,6 @@ static const std::map<std::string, LocationHandler>& getLocationHandlers() {
         handlers["cgi_path"] = handle_location_cgi_path;
         handlers["cgi_ext"] = handle_location_cgi_ext;
         handlers["client_max_body_size"] = handle_location_client_max_body_size;
-	handlers["upload_enabled"] = handle_location_upload_enabled;
 	handlers["upload_path"] = handle_location_upload_path;
 	handlers["error_page"] = handle_location_error_page;
     }

@@ -4,7 +4,6 @@ Location::Location()
         : _path(""),
           _root(""),
           _autoindex(false),
-          _upload_enabled(false),
           _index(),
           _methods(),
           _return(std::make_pair(0, "")),
@@ -23,7 +22,6 @@ Location& Location::operator=(const Location& other) {
                 _path = other._path;
                 _root = other._root;
                 _autoindex = other._autoindex;
-                _upload_enabled = other._upload_enabled;
                 _index = other._index;
                 _methods = other._methods;
                 _return = other._return;
@@ -43,7 +41,6 @@ Location::Location(const Location& other)
         : _path(other._path),
           _root(other._root),
           _autoindex(other._autoindex),
-          _upload_enabled(other._upload_enabled),
           _index(other._index),
           _methods(other._methods),
           _return(other._return),
@@ -78,7 +75,6 @@ void 					Location::addMethod(const std::string& method) { _methods.insert(metho
 void 					Location::setErrorPages(const std::map<int, std::string>& errorPages) { _error_pages = errorPages; }
 void 					Location::setErrorPage(int code, const std::string& path) { _error_pages[code] = path; }
 void 					Location::setUploadPath(const std::string& path) { _upload_path = path; }
-void 					Location::setUploadEnabled(bool enabled) { _upload_enabled = enabled; }
 
 // Getters
 const std::string& 			Location::getPath() const { return _path; }
@@ -98,7 +94,6 @@ const uint64_t& 			Location::getMaxBodySize() const {
 }
 const std::string&			Location::getUploadPath() const{ return _upload_path; }
 const std::map<int, std::string>& 	Location::getErrorPages() const { return _error_pages; }
-const bool& 				Location::getUploadEnabled() const { return _upload_enabled; }
 
 std::string 				Location::getErrorPage(int code) const {
     std::map<int, std::string>::const_iterator it = _error_pages.find(code);
@@ -116,15 +111,6 @@ void  Location::validateLocation() const {
         if (!_root.empty() && !_alias.empty())
                 throw std::runtime_error("Location validation error: cannot use both root and alias in the same location block.");
 
-        // 3. If upload is enabled
-        if (_upload_enabled) {
-                if (_upload_path.empty())
-                        throw std::runtime_error("Location validation error: upload is enabled but upload_path is not set.");
-
-                if (_methods.find("POST") == _methods.end())
-                        throw std::runtime_error("Location validation error: upload is enabled but POST method is not allowed.");
-        }
-
         // 4. If upload_path is relative, ensure root exists to resolve it
         if (!_upload_path.empty() && _upload_path[0] != '/') {
                 if (_root.empty())
@@ -135,8 +121,7 @@ void  Location::validateLocation() const {
         bool has_handler =
                 (!_root.empty() || !_alias.empty()) ||          // static file serving
                 (_return.first != 0) ||                         // return directive
-                (!_cgi_ext.empty() && !_cgi_path.empty()) ||    // CGI handler
-                (_upload_enabled);                              // upload handling
+                (!_cgi_ext.empty() && !_cgi_path.empty());    // CGI handler
 
         if (!has_handler)
                 throw std::runtime_error("Location validation error: no valid handling strategy defined (no root, alias, return, cgi, or upload).");
@@ -175,7 +160,6 @@ void Location::printDebug() const {
         std::cout << "Max Body Size: " << _client_max_body_size << std::endl;
 
         // Upload
-        std::cout << "Upload Enabled: " << (_upload_enabled ? "yes" : "no") << std::endl;
         std::cout << "Upload Path: " << (_upload_path.empty() ? "(none)" : _upload_path) << std::endl;
 
         // Methods
