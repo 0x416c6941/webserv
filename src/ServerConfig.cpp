@@ -4,7 +4,7 @@ ServerConfig::ServerConfig()
 	: _listen_endpoints(),
 	  _ports(),
 	  _hosts(),
-	  _server_names(),
+	//   _server_names(),
 	  _root(),
 	  _client_max_body_size(DEFAULT_CONTENT_LENGTH),
 	  _index(),
@@ -21,7 +21,7 @@ ServerConfig::ServerConfig(const ServerConfig& other)
 	: _listen_endpoints(other._listen_endpoints),
 	  _ports(other._ports),
 	  _hosts(other._hosts),
-	  _server_names(other._server_names),
+	//   _server_names(other._server_names),
 	  _root(other._root),
 	  _client_max_body_size(other._client_max_body_size),
 	  _index(other._index),
@@ -45,7 +45,7 @@ const std::vector<std::pair<std::string, uint16_t> >& ServerConfig::getListenEnd
 
 const std::vector<uint16_t>& 		ServerConfig::getPorts() const { return _ports; }
 const std::vector<std::string>& 	ServerConfig::getHosts() const { return _hosts; }
-const std::vector<std::string>& 	ServerConfig::getServerNames() const { return _server_names; }
+// const std::vector<std::string>& 	ServerConfig::getServerNames() const { return _server_names; }
 const std::string& 			ServerConfig::getRoot() const { return _root; }
 uint64_t 				ServerConfig::getClientMaxBodySize() const { return _client_max_body_size; }
 const std::vector<std::string>& 	ServerConfig::getIndex() const { return _index; }
@@ -76,8 +76,8 @@ void 					ServerConfig::setPorts(const std::vector<uint16_t>& ports) { _ports = 
 void 					ServerConfig::addPort(uint16_t port) { _ports.push_back(port); }
 void 					ServerConfig::setHosts(const std::vector<std::string>& hosts) { _hosts = hosts; }
 void 					ServerConfig::addHost(const std::string& host) { _hosts.push_back(host); }
-void 					ServerConfig::setServerNames(const std::vector<std::string>& names) { _server_names = names; }
-void 					ServerConfig::addServerName(const std::string& name) { _server_names.push_back(name); }
+// void 					ServerConfig::setServerNames(const std::vector<std::string>& names) { _server_names = names; }
+// void 					ServerConfig::addServerName(const std::string& name) { _server_names.push_back(name); }
 void 					ServerConfig::setRoot(const std::string& root) { _root = root; }
 void 					ServerConfig::setClientMaxBodySize(uint64_t size) { _client_max_body_size = size; }
 void 					ServerConfig::setIndex(const std::vector<std::string>& index) { _index = index; }
