@@ -78,6 +78,17 @@ ClientConnection::~ClientConnection()
 }
 
 const Location &ClientConnection::determineLocation(const std::string &target) const {
+	std::vector<Location>::const_iterator ret
+		= this->_server->getLocations().end();
+	// The point of `ret_path_len`:
+	// let's say we have defined locations with paths "/" and "/some_path/"
+	// and the `target` is "/some_path/some_data".
+	//
+	// We need to keep track of the curent deepest found location path.
+	// If we don't, then if "/" is found as the first location,
+	// it will be returned instead of "/some_path/".
+	size_t ret_path_len = 0;
+
 	for (std::vector<Location>::const_iterator it = this->_server->getLocations().begin();
 		it != this->_server->getLocations().end(); ++it) {
 		std::string loc_path = it->getPath();
@@ -87,13 +98,19 @@ const Location &ClientConnection::determineLocation(const std::string &target) c
 			loc_path.push_back('/');
 		}
 		// Starting from 1, because in the HTTPRequest parser
-		// the first '/' gets eaten. I'm sorry for being stupid...
+		// the first '/' gets eaten.
+		// I'm sorry for being stupid...
 		if (loc_path.compare(1, loc_path.length() - 1, target,
-				0, loc_path.length() - 1) == 0) {
-			return *it;
+				0, loc_path.length() - 1) == 0
+			&& ret_path_len < loc_path.length()) {
+			ret = it;
+			ret_path_len = loc_path.length();
 		}
 	}
-	throw std::out_of_range("ClientConnection::determineLocation: Couldn't determine the Location to which target corresponds to.");
+	if (ret == this->_server->getLocations().end()) {
+		throw std::out_of_range("ClientConnection::determineLocation: Couldn't determine the Location to which target corresponds to.");
+	}
+	return *ret;
 }
 
 size_t ClientConnection::getMaxBodySize(const std::string &target) const {
