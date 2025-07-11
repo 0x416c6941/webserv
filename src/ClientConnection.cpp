@@ -70,47 +70,9 @@ ClientConnection& ClientConnection::operator=(const ClientConnection& other) {
 	return *this;
 }
 
-
-
 ClientConnection::~ClientConnection()
 {
 	closeConnection();
-}
-
-const Location &ClientConnection::determineLocation(const std::string &target) const {
-	std::vector<Location>::const_iterator ret
-		= this->_server->getLocations().end();
-	// The point of `ret_path_len`:
-	// let's say we have defined locations with paths "/" and "/some_path/"
-	// and the `target` is "/some_path/some_data".
-	//
-	// We need to keep track of the curent deepest found location path.
-	// If we don't, then if "/" is found as the first location,
-	// it will be returned instead of "/some_path/".
-	size_t ret_path_len = 0;
-
-	for (std::vector<Location>::const_iterator it = this->_server->getLocations().begin();
-		it != this->_server->getLocations().end(); ++it) {
-		std::string loc_path = it->getPath();
-		// We assume that location target (path) will always be
-		// at least of length 1, hence not checking it.
-		if (loc_path.at(loc_path.length() - 1) != '/') {
-			loc_path.push_back('/');
-		}
-		// Starting from 1, because in the HTTPRequest parser
-		// the first '/' gets eaten.
-		// I'm sorry for being stupid...
-		if (loc_path.compare(1, loc_path.length() - 1, target,
-				0, loc_path.length() - 1) == 0
-			&& ret_path_len < loc_path.length()) {
-			ret = it;
-			ret_path_len = loc_path.length();
-		}
-	}
-	if (ret == this->_server->getLocations().end()) {
-		throw std::out_of_range("ClientConnection::determineLocation: Couldn't determine the Location to which target corresponds to.");
-	}
-	return *ret;
 }
 
 size_t ClientConnection::getMaxBodySize(const std::string &target) const {
@@ -211,6 +173,37 @@ HTTPRequest& ClientConnection::getRequest()
 	return _request;
 }
 
+bool ClientConnection::handleReadEvent()
+{
+	// std::cout <<"Client header bytes: "<< _server->getLargeClientHeaderTotalBytes()<< std::endl;
+	enum { BUFFER_SIZE = 2048 }; // 2 KB buffer size for reading data
+
+        print_log("handleReadEvent() called for fd ", to_string(_client_socket), "");
+	char buffer[BUFFER_SIZE];
+	ssize_t n = recv(_client_socket, buffer, BUFFER_SIZE, 0);
+	if (n < 0) {
+		print_err("recv() failed: ", strerror(errno), "");
+		return false;
+	}
+	if (n == 0) {
+		print_log("Client closed connection", "", "");
+		return false;
+	}
+	if (n > 0) {
+	        print_log("DEBUG: Received request (normal): ", std::string(buffer, static_cast<size_t>(n)), "");
+
+        }
+	_request_buffer.append(buffer, static_cast<size_t>(n));
+	// Parse received information.
+	int status = parseReadEvent(_request_buffer);
+	if (status != 0) {
+		_request_error = true;
+		_response.set_status_code(status);
+		_response.build_error_response(*_server);
+	}
+	return true;
+}
+
 int ClientConnection::parseReadEvent(std::string &buffer)
 {
 	const std::string HEADER_DELIM = "\r\n";
@@ -244,7 +237,7 @@ int ClientConnection::parseReadEvent(std::string &buffer)
 				> this->_server->getLargeClientHeaderTotalBytes()) {
 				// Request's header buffer bytes are exhausted.
 				print_err("Request's header is too large, currently processed:",
-					to_string(_header_buffer_bytes_exhausted), "");
+				to_string(_header_buffer_bytes_exhausted), "");
 				return 431;
 			}
 		}
@@ -292,35 +285,40 @@ int ClientConnection::parseReadEvent(std::string &buffer)
 	return 0;
 }
 
-bool ClientConnection::handleReadEvent()
-{
-	// std::cout <<"Client header bytes: "<< _server->getLargeClientHeaderTotalBytes()<< std::endl;
-	enum { BUFFER_SIZE = 2048 }; // 2 KB buffer size for reading data
+const Location &ClientConnection::determineLocation(const std::string &target) const {
+	std::vector<Location>::const_iterator ret
+		= this->_server->getLocations().end();
+	// The point of `ret_path_len`:
+	// let's say we have defined locations with paths "/" and "/some_path/"
+	// and the `target` is "/some_path/some_data".
+	//
+	// We need to keep track of the curent deepest found location path.
+	// If we don't, then if "/" is found as the first location,
+	// it will be returned instead of "/some_path/".
+	size_t ret_path_len = 0;
 
-        print_log("handleReadEvent() called for fd ", to_string(_client_socket), "");
-	char buffer[BUFFER_SIZE];
-	ssize_t n = recv(_client_socket, buffer, BUFFER_SIZE, 0);
-	if (n < 0) {
-		print_err("recv() failed: ", strerror(errno), "");
-		return false;
+	for (std::vector<Location>::const_iterator it = this->_server->getLocations().begin();
+		it != this->_server->getLocations().end(); ++it) {
+		std::string loc_path = it->getPath();
+		// We assume that location target (path) will always be
+		// at least of length 1, hence not checking it.
+		if (loc_path.at(loc_path.length() - 1) != '/') {
+			loc_path.push_back('/');
+		}
+		// Starting from 1, because in the HTTPRequest parser
+		// the first '/' gets eaten.
+		// I'm sorry for being stupid...
+		if (loc_path.compare(1, loc_path.length() - 1, target,
+				0, loc_path.length() - 1) == 0
+			&& ret_path_len < loc_path.length()) {
+			ret = it;
+			ret_path_len = loc_path.length();
+		}
 	}
-	if (n == 0) {
-		print_log("Client closed connection", "", "");
-		return false;
+	if (ret == this->_server->getLocations().end()) {
+		throw std::out_of_range("ClientConnection::determineLocation: Couldn't determine the Location to which target corresponds to.");
 	}
-	if (n > 0) {
-	        print_log("DEBUG: Received request (normal): ", std::string(buffer, static_cast<size_t>(n)), "");
-
-        }
-	_request_buffer.append(buffer, static_cast<size_t>(n));
-	// Parse received information.
-	int status = parseReadEvent(_request_buffer);
-	if (status != 0) {
-		_request_error = true;
-		_response.set_status_code(status);
-		_response.build_error_response(*_server);
-	}
-	return true;
+	return *ret;
 }
 
 bool	ClientConnection::handleWriteEvent()

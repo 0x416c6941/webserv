@@ -33,15 +33,6 @@ private:
 	size_t			_body_buffer_bytes_exhausted;
 
 	/**
-	 * Determines which Location from `_server` corresponds to \p target.
-	 * @throw	out_of_range	Location with such target
-	 * 				isn't defined.
-	 * @param	target	Request target parsed in request header.
-	 * @return	Determined Location.
-	 */
-	const Location		&determineLocation(const std::string &target) const;
-
-	/**
 	 * Determines the max body size of files sent to us with "POST" method
 	 * depending on \p target.
 	 * @throw	domain_error	Saving a received file at \p path
@@ -88,8 +79,6 @@ public:
 	 */
 	bool                    handleReadEvent();
 
-	bool		    	handleWriteEvent();
-
 	/**
 	 * Reads and processes request information from \p buffer.
 	 * @throw	range_error	Request is already complete.
@@ -102,6 +91,21 @@ public:
 	 * 		HTTP error code instead.
 	 */
 	int                  	parseReadEvent(std::string &buffer);
+
+	/**
+	 * Determines which Location from `_server` corresponds to \p target.
+	 * @throw	out_of_range	Location with such target
+	 * 				isn't defined.
+	 * @param	target	Request target parsed in request header.
+	 * @return	Determined Location.
+	 */
+	const Location		&determineLocation(const std::string &target) const;
+
+	// TODO: Should we send the data with send() in limited packets,
+	// e.g. 2 KBs?
+	// Doing so could potentially prevent problems such as
+	// big files not being able to be sent completely over the network.
+	bool		    	handleWriteEvent();
 
 	void                    closeConnection();
 	void 			reset();
