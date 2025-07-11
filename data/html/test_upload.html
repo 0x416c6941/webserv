@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Test File Upload</title>
+</head>
+<body>
+  <h1>Upload a File to /trash/</h1>
+  <input type="file" id="fileInput">
+  <button onclick="upload()">Upload</button>
+
+  <p>
+    🔙 <a href="/index.html">Back to Index</a> |
+    🗂 <a href="/trash/">View Trash Folder</a>
+  </p>
+
+  <script>
+    function upload() {
+      const fileInput = document.getElementById('fileInput');
+      const file = fileInput.files[0];
+      if (!file) return alert("No file selected.");
+
+      fetch(`/trash/${file.name}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": file.type || "application/octet-stream"
+        },
+        body: file
+      }).then(res => {
+        alert("Upload status: " + res.status);
+      }).catch(err => {
+        alert("Error: " + err);
+      });
+    }
+  </script>
+</body>
+</html>

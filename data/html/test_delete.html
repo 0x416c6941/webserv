@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Test Delete File</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 40px;
+      background: #f5f5f5;
+      color: #333;
+    }
+
+    input {
+      padding: 8px;
+      font-size: 1em;
+      width: 300px;
+    }
+
+    button {
+      padding: 8px 16px;
+      font-size: 1em;
+      margin-left: 10px;
+      cursor: pointer;
+    }
+
+    .links {
+      margin-top: 40px;
+    }
+
+    .links a {
+      margin: 0 15px;
+      text-decoration: none;
+      color: #0077cc;
+    }
+
+    .links a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <h1>Delete a File from /trash/</h1>
+
+  <input type="text" id="filename" placeholder="test.txt">
+  <button onclick="deleteFile()">Delete</button>
+
+  <p id="status"></p>
+
+  <div class="links">
+    🏠 <a href="/index.html">Back to Home</a>
+    🗂 <a href="/trash/">View Trash Folder</a>
+  </div>
+
+  <script>
+    function deleteFile() {
+      const filename = document.getElementById("filename").value;
+      if (!filename) return alert("Please enter a filename.");
+
+      fetch(`/trash/${filename}`, {
+        method: "DELETE"
+      })
+      .then(res => {
+        if (res.status === 204) {
+          document.getElementById("status").textContent = `✅ '${filename}' deleted successfully.`;
+        } else if (res.status === 404) {
+          document.getElementById("status").textContent = `❌ '${filename}' not found.`;
+        } else {
+          document.getElementById("status").textContent = `⚠️ Delete failed (status: ${res.status}).`;
+        }
+      })
+      .catch(err => {
+        document.getElementById("status").textContent = `Error: ${err}`;
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Test POST Request</title>
+</head>
+<body>
+  <h1>Test POST to CGI</h1>
+
+  <h2>Send Name to Shell Script</h2>
+  <form action="/cgi-bin/hello_name.sh" method="POST">
+    <label>Your Name:
+      <input type="text" name="name" />
+    </label>
+    <br><br>
+    <button type="submit">Send POST</button>
+  </form>
+
+  <hr>
+
+  <h2>Add Two Numbers (Python FastCGI)</h2>
+  <form action="/cgi-bin/add.py" method="GET">
+    <label>First number:
+      <input type="number" name="a">
+    </label>
+    <br><br>
+    <label>Second number:
+      <input type="number" name="b">
+    </label>
+    <br><br>
+    <button type="submit">Calculate Sum</button>
+  </form>
+
+  <p><a href="/index.html">⬅️ Back to Homepage</a></p>
+</body>
+</html>

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Webserver Project Start Page</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 40px;
+      background: #f5f5f5;
+      color: #333;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+    }
+
+    p.author {
+      font-size: 1.2em;
+      color: #777;
+      margin-bottom: 40px;
+    }
+
+    .photos {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 30px;
+      margin-bottom: 40px;
+    }
+
+    .photos img {
+      height: 400px;
+      width: auto;
+      object-fit: cover;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    }
+
+    .links a {
+      display: inline-block;
+      margin: 0 20px;
+      font-size: 1.1em;
+      color: #0077cc;
+      text-decoration: none;
+    }
+
+    .links a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <h1>Startup Page for Webserver Project</h1>
+  <p class="author">Authors: hlyshchu & asagymba</p>
+
+  <div class="photos">
+    <img src="/media/hlyshchu.jpg" alt="hlyshchu">
+    <img src="/media/asagymba.jpg" alt="asagymba">
+  </div>
+
+  <div class="links">
+  	🗂 <a href="/trash/">View Trash Folder</a>
+  	⬆️ <a href="/test_upload.html">Upload a File</a>
+    🗑 <a href="/test_delete.html">Delete a File</a>
+    🖥️ <a href="/test_cgi.html">Run CGI Test</a>
+    <!-- 🔁 <a href="/trash_old">Test Redirection to Trash</a> -->
+    📩 <a href="/test_post.html">Test POST Request</a>
+  </div>
+
+</body>
+</html>

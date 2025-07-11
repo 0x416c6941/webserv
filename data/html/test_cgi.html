@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Test CGI Script</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 40px;
+      background: #f5f5f5;
+      color: #333;
+    }
+
+    iframe {
+      width: 600px;
+      height: 200px;
+      border: 1px solid #ccc;
+      margin-top: 20px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    .links {
+      margin-top: 30px;
+    }
+
+    .links a {
+      margin: 0 15px;
+      text-decoration: none;
+      color: #0077cc;
+    }
+
+    .links a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <h1>Test CGI Script</h1>
+  <p>This runs <code>hello.sh</code> via FastCGI.</p>
+
+  <iframe src="/cgi-bin/hello.sh"></iframe>
+
+  <div class="links">
+    🏠 <a href="/index.html">Back to Home</a>
+    🔗 <a href="/cgi-bin/hello.sh" target="_blank">Open hello.sh directly</a>
+  </div>
+</body>
+</html>
