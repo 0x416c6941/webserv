@@ -82,6 +82,7 @@ std::string getReasonPhrase(int status_code) {
 std::string generateErrorBody(int status_code) {
     std::string reason = getReasonPhrase(status_code);
     std::ostringstream body;
+
     body << "<!DOCTYPE html>\n"
          << "<html><head><title>" << status_code << " " << reason << "</title></head>\n"
          << "<body><h1>" << status_code << " " << reason << "</h1>\n"
@@ -93,6 +94,7 @@ std::string generateErrorBody(int status_code) {
 std::string generateErrorHeader(int status_code, size_t content_length) {
     std::string reason = getReasonPhrase(status_code);
     std::ostringstream header;
+
     header << "HTTP/1.1 " << status_code << " " << reason << "\r\n"
            << "Content-Length: " << content_length << "\r\n"
            << "Content-Type: text/html\r\n"
@@ -105,5 +107,6 @@ std::string generateErrorPage(int status_code) {
     std::string reason = getReasonPhrase(status_code);
     std::string body = generateErrorBody(status_code);
     std::string header = generateErrorHeader(status_code, body.size());
+
     return header + body;
 }

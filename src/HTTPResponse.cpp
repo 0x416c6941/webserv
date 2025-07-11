@@ -1,63 +1,56 @@
 #include "../include/HTTPResponse.hpp"
 
-HTTPResponse::HTTPResponse()
-	: _mime(""),
-	  _response_msg(""),
-	  _response_body(""),
-	  _root(""),
+HTTPResponse::HTTPResponse(ServerConfig &server_cfg)
+	: _server_cfg(server_cfg),
 	  _status_code(0),
 	  _response_ready(false)
 {
 }
 
-HTTPResponse::HTTPResponse(const HTTPResponse& other)
-	: _mime(other._mime),
-	  _response_msg(other._response_msg),
-	  _response_body(other._response_body),
-	  _root(other._root),
+HTTPResponse::HTTPResponse(ServerConfig &server_cfg, int status_code)
+	: _server_cfg(server_cfg),
+	  _status_code(status_code),
+	  _response_ready(false)
+{
+}
+
+HTTPResponse::HTTPResponse(const HTTPResponse &other)
+	: _server_cfg(other._server_cfg),
 	  _status_code(other._status_code),
+	  _headers(other._headers),
+	  _response_body(other._response_body),
 	  _response_ready(other._response_ready)
 {
 }
 
-
-HTTPResponse& HTTPResponse::operator=(const HTTPResponse& other)
+HTTPResponse& HTTPResponse::operator=(const HTTPResponse &other)
 {
-	if (this != &other) {
-		_mime = other._mime;
-		_response_msg = other._response_msg;
-		_response_body = other._response_body;
-		_root = other._root;
-		_status_code = other._status_code;
-		_response_ready = other._response_ready;
+	if (this == &other)
+	{
+		return *this;
 	}
+	_server_cfg = other._server_cfg;
+	_status_code = other._status_code;
+	_headers = other._headers;
+	_response_body = other._response_body;
+	_response_ready = other._response_ready;
 	return *this;
 }
-
 
 HTTPResponse::~HTTPResponse()
 {
 }
 
-void HTTPResponse::set_root(const std::string& root)
+void HTTPResponse::build_error_response()
 {
-	_root = root;
-}
+	std::map<int, std::string>::const_iterator it = _server_cfg.getErrorPages().find(_status_code);
 
-void HTTPResponse::set_status_code(int code)
-{
-	_status_code = code;
-}
-
-void HTTPResponse::build_error_response(const ServerConfig& server_config)
-{
-	std::map<int, std::string>::const_iterator it = server_config.getErrorPages().find(_status_code);
-	if (it != server_config.getErrorPages().end()) {
+	if (it != _server_cfg.getErrorPages().end()) {
 		// If an error page is defined for this status code, use it
 		// _response_ready = true;
 	}
 	else {
-		_response_msg = generateErrorPage(_status_code);
+		_response_body = generateErrorBody(_status_code);
 		_response_ready = true;
 	}
 }
@@ -272,7 +265,7 @@ std::string HTTPResponse::build_response_msg() const
 	return response.str();
 }
 
-std::string HTTPResponse::get_mime_type(const std::string &path)
+const std::string &HTTPResponse::get_mime_type(const std::string &path)
 {
 	static std::map<std::string, std::string> mime_map;
 

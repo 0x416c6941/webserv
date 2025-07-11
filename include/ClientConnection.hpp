@@ -18,7 +18,6 @@ private:
 	struct sockaddr_in      _client_address;
 	ServerConfig*           _server;
 	time_t                  _last_msg_time;
-	bool 		  	_request_header_found;
 	bool                    _request_error;
 	bool		    	_msg_sent; // Indicates if the request is fully sent
 	size_t 			_bytes_sent;
@@ -42,14 +41,15 @@ private:
 	 */
 	size_t			getMaxBodySize(const std::string &target) const;
 
+	ClientConnection & operator =(const ClientConnection &other);
+
 public:
 	HTTPRequest             _request;
 	HTTPResponse            _response;
-	ClientConnection();
 	ClientConnection(int fd);
+	ClientConnection();
+	ClientConnection(const ClientConnection &other);
 	~ClientConnection();
-	ClientConnection &operator=(const ClientConnection &rhs); //do we need this? need to update
-	ClientConnection(const ClientConnection &other);	//do we need this? need to update
 
 	// Accessors
 	int                     getSocket() const;

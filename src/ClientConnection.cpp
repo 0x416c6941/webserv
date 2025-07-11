@@ -2,72 +2,49 @@
 
 ClientConnection::ClientConnection(int fd)
 	: _client_socket(fd),
-	_client_address(),
-	_server(NULL),
-	_last_msg_time(std::time(NULL)),
-	// _request(),
-	_request_header_found(false),
-	_request_error(false),
-	_msg_sent(false),
-	_bytes_sent(0),
-	_request_buffer(),
-	_header_buffer_bytes_exhausted(0),
-	_body_buffer_bytes_exhausted(0)
-	// _response()
+	  _client_address(),
+	  _server(NULL),
+	  _last_msg_time(std::time(NULL)),
+	  _request_error(false),
+	  _msg_sent(false),
+	  _bytes_sent(0),
+	  _request_buffer(),
+	  _header_buffer_bytes_exhausted(0),
+	  _body_buffer_bytes_exhausted(0),
+	  _response(*_server)
 {
     std::memset(&_client_address, 0, sizeof(_client_address));
 }
 
 ClientConnection::ClientConnection()
 	: _client_socket(-1),
-	_client_address(),
-	_server(NULL),
-	_last_msg_time(std::time(NULL)),
-	// _request(),
-	_request_header_found(false),
-	_request_error(false),
-	_msg_sent(false),
-	_bytes_sent(0),
-	_request_buffer(),
-	_header_buffer_bytes_exhausted(0),
-	_body_buffer_bytes_exhausted(0)
-	// _response()
+	  _client_address(),
+	  _server(NULL),
+	  _last_msg_time(std::time(NULL)),
+	  _request_error(false),
+	  _msg_sent(false),
+	  _bytes_sent(0),
+	  _request_buffer(),
+	  _header_buffer_bytes_exhausted(0),
+	  _body_buffer_bytes_exhausted(0),
+	  _response(*_server)
 {
     std::memset(&_client_address, 0, sizeof(_client_address));
 }
 
-ClientConnection::ClientConnection(const ClientConnection& other)
+ClientConnection::ClientConnection(const ClientConnection &other)
 	: _client_socket(other._client_socket),
 	  _client_address(other._client_address),
-	  _server(other._server),  // shallow copy (non-owning)
+	  _server(other._server),
 	  _last_msg_time(other._last_msg_time),
-	//   _request(other._request),
-	  _request_header_found(other._request_header_found),
 	  _request_error(other._request_error),
 	  _msg_sent(other._msg_sent),
 	  _bytes_sent(other._bytes_sent),
 	  _request_buffer(other._request_buffer),
 	  _header_buffer_bytes_exhausted(other._header_buffer_bytes_exhausted),
-	  _body_buffer_bytes_exhausted(other._body_buffer_bytes_exhausted)
-	//   _response(other._response)
-{}
-
-ClientConnection& ClientConnection::operator=(const ClientConnection& other) {
-	if (this != &other) {
-		_client_socket = other._client_socket;
-		_client_address = other._client_address;
-		_server = other._server;  // shallow copy (non-owning)
-		_last_msg_time = other._last_msg_time;
-		// _request = other._request;
-		_request_header_found = other._request_header_found;
-		_request_error = other._request_error;
-		_msg_sent = other._msg_sent;
-		_bytes_sent = other._bytes_sent;
-		_request_buffer = other._request_buffer;
-		_header_buffer_bytes_exhausted = other._header_buffer_bytes_exhausted;
-		// _response = other._response;
-	}
-	return *this;
+	  _body_buffer_bytes_exhausted(other._body_buffer_bytes_exhausted),
+	  _response(other._response)
+{
 }
 
 ClientConnection::~ClientConnection()
@@ -78,10 +55,10 @@ ClientConnection::~ClientConnection()
 size_t ClientConnection::getMaxBodySize(const std::string &target) const {
 	try {
 		const Location &loc = this->determineLocation(target);
+
 		if (loc.getMethods().find("POST") == loc.getMethods().end()) {
 			throw std::domain_error("ClientConnection::getMaxBodySize(): POST method isn't allowed on the requested Location.");
 		}
-		// This try-catch block is redundant.
 		try {
 			return loc.getMaxBodySize();
 		}
@@ -92,9 +69,11 @@ size_t ClientConnection::getMaxBodySize(const std::string &target) const {
 		}
 	}
 	catch (const std::out_of_range &e) {
-		// Location with such path wasn't found, returning default value...
-		// TODO: This should probably never happend?
-		return this->_server->getClientMaxBodySize();
+		// Location with such path wasn't found.
+		//
+		// We don't support "allow_methods" directive for "server" blocks
+		// and instead directly support only GET methods.
+		throw std::domain_error("ClientConnection::getMaxBodySize(): POST method isn't allowed on the requested Location.");
 	}
 }
 
@@ -198,8 +177,8 @@ bool ClientConnection::handleReadEvent()
 	int status = parseReadEvent(_request_buffer);
 	if (status != 0) {
 		_request_error = true;
-		_response.set_status_code(status);
-		_response.build_error_response(*_server);
+		_response = HTTPResponse(*_server, status);
+		_response.build_error_response();
 	}
 	return true;
 }
@@ -243,6 +222,15 @@ int ClientConnection::parseReadEvent(std::string &buffer)
 		}
 		else if (this->_request.get_method() == HTTPRequest::POST
 			&& !(this->_request.is_body_complete())) {
+			// Before processing all body parts,
+			// we should ideally check if "Content-Length" field
+			// isn't bigger than "client_max_body_size".
+			// Currently, we read the content until
+			// `client_max_body_size` bytes are read,
+			// and we throw exception only afterwards.
+			//
+			// Still, I believe this isn't an issue
+			// for the PoC project.
 			try {
 				processed_bytes = _request.process_body_part(buffer);
 			}
@@ -363,14 +351,14 @@ void ClientConnection::printDebugRequestParse(){
 
 void ClientConnection::reset()
 {
-	_response.reset();
-	_request.reset(); // Clear request data
 	_request_error = false; // Reset request error state
 	_msg_sent = false; // Reset message sent flag
 	_bytes_sent = 0; // Reset bytes sent counter
 	_request_buffer.clear();
 	_header_buffer_bytes_exhausted = 0;
 	_body_buffer_bytes_exhausted = 0;
+	_request.reset(); // Clear request data
+	_response = HTTPResponse(*_server);
 }
 
 void ClientConnection::closeConnection()

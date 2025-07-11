@@ -85,7 +85,7 @@ const std::string &HTTPRequest::get_request_target() const
 	return this->_request_target;
 }
 
-const std::string &HTTPRequest::get_request_target_strip_location_path(
+std::string HTTPRequest::get_request_target_strip_location_path(
 		const std::string &loc_path) const {
 	std::string ret;
 	enum { ROOT_LOC_PATH_LENGTH = 1 };
@@ -584,7 +584,6 @@ void HTTPRequest::printDebug() const {
 	// Target
 	if (_request_target_is_set) {
 		std::cout << "Target:          " << _request_target << std::endl;
-		std::cout << " Filename        " << this->get_request_target_filename() << std::endl;
 	}
 	else
 		std::cout << "Target:          [NOT SET]" << std::endl;

@@ -319,7 +319,7 @@ void ServerManager::handleClientEvent(int client_fd, uint32_t eventFlag)
 				}
 			}
 			else {
-				conn._response.handle_response_routine(*conn.getServer(), conn.getRequest());
+				conn._response.handle_response_routine(conn.getRequest());
 				// Maybe we should send a response in next iteration???
 				if (conn.getResponseReady() == true){
 				if(!conn.handleWriteEvent()){

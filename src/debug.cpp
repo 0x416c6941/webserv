@@ -5,14 +5,6 @@ void printServerConfig(const ServerConfig& config)
 {
 	std::cout << "====== Server Configuration ======" << std::endl;
 
-	// Server Names
-	const std::vector<std::string>& names = config.getServerNames();
-	std::cout << "Server Names:";
-	if (names.empty()) std::cout << " (none)";
-	else for (size_t i = 0; i < names.size(); ++i)
-		std::cout << " " << names[i];
-	std::cout << std::endl;
-
 	// Listen Endpoints
 	const std::vector<std::pair<std::string, uint16_t> >& endpoints = config.getListenEndpoints();
 	std::cout << "Listen Endpoints:";

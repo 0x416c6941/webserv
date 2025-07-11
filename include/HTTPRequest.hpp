@@ -77,7 +77,7 @@ class HTTPRequest
 		 * 		(will never begin with '/', even if \p loc_path
 		 * 		doesn't end with '/').
 		 */
-		const std::string &get_request_target_strip_location_path(
+		std::string get_request_target_strip_location_path(
 				const std::string &loc_path) const;
 
 		/**

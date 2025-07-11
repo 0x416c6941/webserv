@@ -23,40 +23,10 @@ HTTPResponse.cpp:
 inet_pton():
 	Syscall is forbidden. Rewrite.
 
-HTTPResponse::get_mime_type: return reference instead
-
-Location::_upload_enabled => ? What if POST is allowed but _upload_enabled is false?
-	Get rid of this.
-	Also get rid of upload_path.
-		UPD: Do not get rid of this thingy :(
-
-ClientConnection::getMaxBodySize(): return this->_server->getClientMaxBodySize();
-	Is this a fine default behavior if root wasn't found?
-	Also, should we skip the Location '/' until the very end?
-
-Location::_client_max_body_size
-	In POST, we don't treat this as the maximum file size,
-	but the max buffer size for that file.
-
-	Reasoning: if using chunked encoding, we can send a 50 MB file
-		with hella lot chunks of 1 byte each.
-
-	Should we change this behavior or is it fine as is?
-
 HTTPRequest.cpp:
 	Throw exception if Host header isn't present.
 
-
-Location parsing:
-	If any location target is contained in any other location target (std::string.compare())
-	=> parsing error.
-
 HTTPResponse:: handle_response_routine.
-
-Config parser:
-	Server must support allow_methods
-		If allow_methods directive isn't present => GET is set
-			by default.
 
 REMAINING:
 	ClientConnection (handleWriteEvent())
@@ -67,9 +37,3 @@ REMAINING:
 	Location path is a request target redirection / configuration change.
 	We need to check for the optional root parameter in a location directive,
 		not the location path.
-
-HTTPRequest:
-	Instead of get_request_target_filename(),
-	should we just implement a method,
-	that would return the request target
-		stripped of location's path?
