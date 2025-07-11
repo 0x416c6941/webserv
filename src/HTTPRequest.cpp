@@ -85,31 +85,39 @@ const std::string &HTTPRequest::get_request_target() const
 	return this->_request_target;
 }
 
-std::string HTTPRequest::get_request_target_filename() const {
-	size_t last_slash_pos;
+const std::string &HTTPRequest::get_request_target_strip_location_path(
+		const std::string &loc_path) const {
+	std::string ret;
+	enum { ROOT_LOC_PATH_LENGTH = 1 };
 
 	if (!(this->_request_target_is_set))
 	{
-		throw std::runtime_error("HTTPRequest::get_request_target_filename(): Request target wasn't set yet.");
+		throw std::runtime_error("HTTPRequest::get_request_target_strip_location_path(): Request target wasn't set yet.");
 	}
-	last_slash_pos = this->_request_target.find_last_of('/');
-	if (last_slash_pos == std::string::npos) {
-		// No '/' was found in the parsed request target.
-		// Returning the full request target.
+	else if (loc_path.length() <= 0 || loc_path.at(0) != '/')
+	{
+		throw std::invalid_argument("HTTPRequest::get_request_target_strip_location_path(): Provided location path doesn't start with /.");
+	}
+	// Edge case.
+	if (loc_path.length() == ROOT_LOC_PATH_LENGTH)
+	{
 		return this->_request_target;
 	}
-	// Got a directory as the request target.
-	else if (this->_request_target.length() <= (last_slash_pos + 1)) {
-		last_slash_pos = this->_request_target.find_last_of('/', last_slash_pos - 1);
-		if (last_slash_pos == std::string::npos) {
-			// Got last '/' for the directory,
-			// however the first '/' was eaten by our specific parser.
-			return this->_request_target;
-		}
+	// Starting from 1, because our parser eats the first '/'.
+	// As always, I'm sorry for being stupid...
+	else if (loc_path.compare(1, loc_path.length() - 1,
+				this->_request_target, 0, loc_path.length() - 1)
+		!= 0)
+	{
+		throw std::domain_error("HTTPRequest::get_request_target_strip_location_path(): Provided location path isn't contained in the request target.");
 	}
-	// Got a regular file
-	// (or directory, who's preceding '/' was registed by our specific parser).
-	return this->_request_target.substr(last_slash_pos + 1);
+	ret = this->_request_target;
+	ret.erase(0, loc_path.length() - 1);
+	if (ret.length() > 0 && ret.at(0) == '/')
+	{
+		ret.erase(0, 1);
+	}
+	return ret;
 }
 
 const std::string &HTTPRequest::get_request_query() const

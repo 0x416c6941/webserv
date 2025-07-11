@@ -17,8 +17,9 @@ class HTTPRequest
 {
 	public:
 		HTTPRequest();
-		void reset();
 		virtual ~HTTPRequest();
+		void reset();
+
 		enum e_method
 		{
 			GET,
@@ -59,14 +60,25 @@ class HTTPRequest
 		const std::string &get_request_target() const;
 
 		/**
-		 * Get the request target's file name.
+		 * Get the request target stripped of \p loc_path.
 		 * @warning	Request target may be a directory.
-		 * 		Check if the name ends with '/'
-		 * 		to determine if it is one or not.
-		 * @throw	runtime_error	Request target wasn't set yet.
-		 * @return	Request target's file name.
+		 * 		Check if the name either ends with '/'
+		 * 		or S_ISDIR() after stat() is true
+		 * 		(redirect with 301 in this case).
+		 * @throw	runtime_error		Request target
+		 * 					wasn't set yet.
+		 * @throw	invalid_argument	\p loc_path
+		 * 					doesn't start with '/'.
+		 * @throw	domain_error		Request target
+		 * 					doesn't contain
+		 * 					\p loc_path.
+		 * @param	loc_path	Location path.
+		 * @return	Request target stripped of \p loc_path
+		 * 		(will never begin with '/', even if \p loc_path
+		 * 		doesn't end with '/').
 		 */
-		std::string get_request_target_filename() const;
+		const std::string &get_request_target_strip_location_path(
+				const std::string &loc_path) const;
 
 		/**
 		 * Get the request query.
