@@ -18,7 +18,7 @@ private:
 	std::vector< std::pair<std::string, uint16_t> > _listen_endpoints; // host + port option
 	std::vector<uint16_t> 		_ports;			// Port number
 	std::vector<std::string>	_hosts;			// IP address (IPv4)
-	std::vector<std::string>	_server_names;		// Server name / domain
+	// std::vector<std::string>	_server_names;		// Server name / domain
 	std::string			_root;			// Root directory path
 	uint64_t			_client_max_body_size;	// Max client body size (bytes)
 	std::vector<std::string>	_index;			// Default index file
@@ -44,7 +44,7 @@ public:
 	const std::vector<std::pair<std::string, uint16_t> >& getListenEndpoints() const;
 	const std::vector<uint16_t>& 	getPorts() const;
 	const std::vector<std::string>& getHosts() const;
-	const std::vector<std::string>& getServerNames() const;
+	// const std::vector<std::string>& getServerNames() const;
 	const std::string& 		getRoot() const;
 	uint64_t 			getClientMaxBodySize() const;
 	const std::vector<std::string>& getIndex() const;
@@ -64,8 +64,8 @@ public:
 	void 				addPort(uint16_t port);
 	void 				setHosts(const std::vector<std::string>& hosts);
 	void 				addHost(const std::string& host);
-	void 				setServerNames(const std::vector<std::string>& names);
-	void 				addServerName(const std::string& name);
+	// void 				setServerNames(const std::vector<std::string>& names);
+	// void 				addServerName(const std::string& name);
 	void 				setRoot(const std::string& root);
 	void 				setClientMaxBodySize(uint64_t size);
 	void 				setIndex(const std::vector<std::string>& index);

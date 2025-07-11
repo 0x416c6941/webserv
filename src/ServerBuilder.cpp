@@ -87,30 +87,30 @@ void ServerBuilder::handle_root(const std::vector<std::string>& parameters, Serv
     	server_cfg.setRoot(parameters[1]);
 }
 
-/**
- * @brief Processes the 'server_name' directive.
- *
- * Format: `server_name <name>;`
- *
- * @param parameters Tokenized directive.
- * @param server_cfg Server configuration to update.
- * @throws ConfigParser::ErrorException On incorrect syntax.
- */
-void ServerBuilder::handle_server_name(const std::vector<std::string>& parameters, ServerConfig& server_cfg) {
-	if (parameters.size() < 3 || parameters.back() != ";")
-		throw ConfigParser::ErrorException("Invalid syntax for 'server_name' directive");
+// /**
+//  * @brief Processes the 'server_name' directive.
+//  *
+//  * Format: `server_name <name>;`
+//  *
+//  * @param parameters Tokenized directive.
+//  * @param server_cfg Server configuration to update.
+//  * @throws ConfigParser::ErrorException On incorrect syntax.
+//  */
+// void ServerBuilder::handle_server_name(const std::vector<std::string>& parameters, ServerConfig& server_cfg) {
+// 	if (parameters.size() < 3 || parameters.back() != ";")
+// 		throw ConfigParser::ErrorException("Invalid syntax for 'server_name' directive");
 
-	// Add each name (parameters[1] to parameters[n - 2])
-	for (size_t i = 1; i < parameters.size() - 1; ++i) {
-		const std::string& name = parameters[i];
+// 	// Add each name (parameters[1] to parameters[n - 2])
+// 	for (size_t i = 1; i < parameters.size() - 1; ++i) {
+// 		const std::string& name = parameters[i];
 
-		// Must not be empty, no spaces
-		if (name.empty() || name.find(' ') != std::string::npos)
-			throw ConfigParser::ErrorException("Invalid server_name: '" + name + "'");
+// 		// Must not be empty, no spaces
+// 		if (name.empty() || name.find(' ') != std::string::npos)
+// 			throw ConfigParser::ErrorException("Invalid server_name: '" + name + "'");
 
-		server_cfg.addServerName(name);
-	}
-}
+// 		server_cfg.addServerName(name);
+// 	}
+// }
 
 
 /**
@@ -649,7 +649,7 @@ HandlerFunc ServerBuilder::getHandler(const std::string& directive) {
 	if (handlers.empty()) {
 		handlers["listen"] = &ServerBuilder::handle_listen;
 		handlers["host"] = &ServerBuilder::handle_host;
-		handlers["server_name"] = &ServerBuilder::handle_server_name;
+		// handlers["server_name"] = &ServerBuilder::handle_server_name;
 		handlers["root"] = &ServerBuilder::handle_root;
 		handlers["client_max_body_size"] = &ServerBuilder::handle_mbs;
 		handlers["autoindex"] = &ServerBuilder::handle_autoindex;
