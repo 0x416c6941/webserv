@@ -115,8 +115,17 @@ void HTTPResponse::build_error_response()
 
 void HTTPResponse::handle_response_routine(const HTTPRequest &request)
 {
-	HTTPRequest::e_method method = request.get_method();
+	// Pointer to Location corresponding to request path in `request`.
+	const Location *lp;
+	// For resolving request path.
+	std::string request_relative_path;
+	std::string resolved_path;
+	// Request handler method.
+	void (HTTPResponse::*handler)(const HTTPRequest &request,
+			const Location *lp,
+			const std::string &resolved_request_path);
 
+	// Checking for usage errors.
 	if (_server_cfg == NULL)
 	{
 		throw std::runtime_error(std::string("HTTPResponse::handle_response_routine(): ")
@@ -127,26 +136,72 @@ void HTTPResponse::handle_response_routine(const HTTPRequest &request)
 		throw std::runtime_error(std::string("HTTPResponse::handle_response_routine(): ")
 				+ "Response message is already prepared.");
 	}
-	switch (method)
+	// Getting Location pointer.
+	try
+	{
+		const Location &loc = _server_cfg->determineLocation(
+				request.get_request_path_decoded());
+
+		lp = &loc;
+	}
+	catch (const std::out_of_range &e)
+	{
+		lp = NULL;
+	}
+	// Resolving request path.
+	if (lp != NULL)
+	{
+		request_relative_path = request.get_request_path_decoded_strip_location_path(
+				lp->getPath());
+	}
+	else
+	{
+		request_relative_path = request.get_request_path_decoded();
+		// Request path initial '/'.
+		request_relative_path.erase(0, 1);
+	}
+	try
+	{
+		if (lp != NULL)
+		{
+			resolved_path = this->resolve_path(lp->getPath(),
+					request_relative_path);
+		}
+		else
+		{
+			resolved_path = this->resolve_path(_server_cfg->getRoot(),
+					request_relative_path);
+		}
+	}
+	catch (const directory_traversal_detected &e)
+	{
+		_status_code = 406;	// I guess 406 is good in this case?
+		build_error_response();
+		return;
+	}
+	// Setting handler.
+	switch (request.get_method())
 	{
 		case HTTPRequest::GET:
-			handle_get(request);
+			handler = &HTTPResponse::handle_get;
 			break;
 		case HTTPRequest::POST:
 			// Temporary stub.
 			_status_code = 405;
 			this->build_error_response();
-			break;
+			return;
 		case HTTPRequest::DELETE:
 			// Temporary stub.
 			_status_code = 405;
 			this->build_error_response();
-			break;
+			return;
 		default:
 			// This should never occur.
 			_status_code = 500;
 			this->build_error_response();
+			return;
 	}
+	(this->*handler)(request, lp, resolved_path);
 }
 
 bool HTTPResponse::is_response_ready() const
@@ -216,47 +271,6 @@ bool HTTPResponse::has_permission(const std::string& path, HTTPRequest::e_method
 	}
 	return (access(path.c_str(), mode) == 0);
 }
-
-std::string HTTPResponse::resolve_secure_path(const std::string& request_path) const
-{
-	// Step 1: Normalize input.
-	std::string path = request_path.empty() ? "/" : request_path;
-	std::string::size_type pos = path.find_first_of("?#");
-
-	if (pos != std::string::npos)
-	{
-		path = path.substr(0, pos);
-	}
-	if (!path.empty() && path[0] == '/')
-	{
-		path = path.substr(1);
-	}
-
-	std::string full_path = _root + "/" + path;
-	// Step 2: Canonicalize full_path.
-	char resolved[PATH_MAX];
-	if (!realpath(full_path.c_str(), resolved))
-	{
-		throw HTTPError(404, "resolve_secure_path: unable to resolve file path: " + full_path);
-	}
-	std::string resolved_path(resolved);
-
-	// Step 3: Canonicalize _root
-	char canonical_root[PATH_MAX];
-	if (!realpath(_root.c_str(), canonical_root))
-	{
-		throw HTTPError(500, "resolve_secure_path: failed to resolve server root path: " + _root);
-	}
-	std::string resolved_root(canonical_root);
-
-	// Step 4: Ensure resolved_path is within resolved_root (security check)
-	if (resolved_path.compare(0, resolved_root.size(), resolved_root) != 0 ||
-	    (resolved_path.size() > resolved_root.size() && resolved_path[resolved_root.size()] != '/'))
-	{
-		throw HTTPError(403, "resolve_secure_path: directory traversal attempt detected.");
-	}
-	return resolved_path;
-}
  */
 
 std::string HTTPResponse::get_mime_type(const std::string &path)
@@ -297,60 +311,17 @@ std::string HTTPResponse::get_mime_type(const std::string &path)
 	return "application/octet-stream";
 }
 
-void HTTPResponse::handle_get(const HTTPRequest& request)
+void HTTPResponse::handle_get(const HTTPRequest& request, const Location *lp,
+		const std::string &resolved_request_path)
 {
-	// Location pointer.
-	const Location *lp;
-	std::string request_relative_path;
-	std::string resolved_path;
+	(void) request;
+	(void) resolved_request_path;
 
-	try
-	{
-		const Location &loc = _server_cfg->determineLocation(
-				request.get_request_path_decoded());
-
-		lp = &loc;
-	}
-	catch (const std::out_of_range &e)
-	{
-		lp = NULL;
-	}
 	// Checking if "GET" method is allowed.
 	if (lp != NULL
 		&& lp->getMethods().find("GET") == lp->getMethods().end())
 	{
 		_status_code = 405;
-		build_error_response();
-		return;
-	}
-	// Getting request relative path.
-	if (lp != NULL)
-	{
-		request_relative_path = request.get_request_path_decoded_strip_location_path(
-				lp->getPath());
-	}
-	else
-	{
-		request_relative_path = request.get_request_path_decoded();
-		// Request path initial '/'.
-		request_relative_path.erase(0, 1);
-	}
-	try
-	{
-		if (lp != NULL)
-		{
-			resolved_path = this->resolve_path(lp->getPath(),
-					request_relative_path);
-		}
-		else
-		{
-			resolved_path = this->resolve_path(_server_cfg->getRoot(),
-					request_relative_path);
-		}
-	}
-	catch (const directory_traversal_detected &e)
-	{
-		_status_code = 406;	// I guess 406 is good in this case?
 		build_error_response();
 		return;
 	}
