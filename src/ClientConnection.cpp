@@ -11,7 +11,7 @@ ClientConnection::ClientConnection(int fd)
 	  _request_buffer(),
 	  _header_buffer_bytes_exhausted(0),
 	  _body_buffer_bytes_exhausted(0),
-	  _response(_server)
+	  _response()
 {
     std::memset(&_client_address, 0, sizeof(_client_address));
 }
@@ -27,7 +27,7 @@ ClientConnection::ClientConnection()
 	  _request_buffer(),
 	  _header_buffer_bytes_exhausted(0),
 	  _body_buffer_bytes_exhausted(0),
-	  _response(_server)
+	  _response()
 {
     std::memset(&_client_address, 0, sizeof(_client_address));
 }
@@ -186,6 +186,7 @@ void ClientConnection::setAddress(const struct sockaddr_in &addr)
 void ClientConnection::setServer(ServerConfig &server)
 {
 	_server = &server;
+	_response.set_server_cfg(_server);
 }
 
 void ClientConnection::updateTime()
@@ -273,7 +274,8 @@ bool ClientConnection::handleReadEvent()
 	int status = parseReadEvent(_request_buffer);
 	if (status != 0) {
 		_request_error = true;
-		_response = HTTPResponse(_server, status);
+		_response = HTTPResponse(status);
+		_response.set_server_cfg(_server);
 		_response.build_error_response();
 	}
 	return true;
@@ -317,40 +319,40 @@ const Location &ClientConnection::determineLocation(const std::string &target) c
 
 bool	ClientConnection::handleWriteEvent()
 {
-	const std::string& response_msg = _response.get_response_msg();
-	if (response_msg.empty()) {
-		print_err("Smth went wrong. No response to send", "", "");
-		return false; // Nothing to send, skip write event
-	}
+	const std::string &response_msg = _response.get_response_msg();
 	size_t total_size = response_msg.size();
-	if (_bytes_sent >= total_size) {
-		print_warning("All bytes already sent, but EPOLLOUT fired", "", "");
-		return true; // Defensive, shouldn't happen
-	}
-	const char* data_ptr = response_msg.c_str() + _bytes_sent;
+	const char * data_ptr = response_msg.c_str() + _bytes_sent;
 	size_t remaining = total_size - _bytes_sent;
-	ssize_t n = send(_client_socket, data_ptr, remaining, 0);
+	// Let's send response in small packets.
+	enum { MAX_BYTES_TO_SEND = 16 };
+	ssize_t n;
+
+	if (remaining <= MAX_BYTES_TO_SEND)
+	{
+		n = send(_client_socket, data_ptr, remaining, 0);
+	}
+	else
+	{
+		n = send(_client_socket, data_ptr, MAX_BYTES_TO_SEND, 0);
+	}
 	if (n < 0) {
-		// Treat all n < 0 as retry later (since errno is forbidden)
-		print_log("send() would block or failed, will retry", "", "");
-		return true;
+		print_warning("send() failed", "", "");
+		return false;
 	}
 	if (n == 0) {
 		print_log("Client closed connection", "", "");
 		return false;
 	}
-
 	_bytes_sent += static_cast<size_t>(n);
 	if (_bytes_sent == total_size) {
 		print_log("Response fully sent", "", "");
-		_bytes_sent = 0;
 		_msg_sent = true;
 	}
-
 	return true;
 }
 
-void ClientConnection::printDebugRequestParse(){
+void ClientConnection::printDebugRequestParse()
+{
 	_request.printDebug();
 }
 
@@ -364,7 +366,8 @@ void ClientConnection::reset()
 	_header_buffer_bytes_exhausted = 0;
 	_body_buffer_bytes_exhausted = 0;
 	_request.reset(); // Clear request data
-	_response = HTTPResponse(_server);
+	_response = HTTPResponse();
+	_response.set_server_cfg(_server);
 }
 
 void ClientConnection::closeConnection()
