@@ -1,17 +1,30 @@
-#include "../include/HTTPResponse.hpp"
+#include "HTTPResponse.hpp"
+#include "ServerConfig.hpp"
+#include <cstddef>
+#include <stdexcept>
 
-HTTPResponse::HTTPResponse(ServerConfig &server_cfg)
+HTTPResponse::HTTPResponse(ServerConfig *server_cfg)
 	: _server_cfg(server_cfg),
 	  _status_code(0),
 	  _response_ready(false)
 {
+	if (server_cfg == NULL)
+	{
+		throw std::invalid_argument(std::string("HTTPResponse::HTTPResponse():")
+				+ " server_cfg can't be NULL.");
+	}
 }
 
-HTTPResponse::HTTPResponse(ServerConfig &server_cfg, int status_code)
+HTTPResponse::HTTPResponse(ServerConfig *server_cfg, int status_code)
 	: _server_cfg(server_cfg),
 	  _status_code(status_code),
 	  _response_ready(false)
 {
+	if (server_cfg == NULL)
+	{
+		throw std::invalid_argument(std::string("HTTPResponse::HTTPResponse():")
+				+ " server_cfg can't be NULL.");
+	}
 }
 
 HTTPResponse::HTTPResponse(const HTTPResponse &other)

@@ -11,7 +11,7 @@ ClientConnection::ClientConnection(int fd)
 	  _request_buffer(),
 	  _header_buffer_bytes_exhausted(0),
 	  _body_buffer_bytes_exhausted(0),
-	  _response(*_server)
+	  _response(_server)
 {
     std::memset(&_client_address, 0, sizeof(_client_address));
 }
@@ -27,7 +27,7 @@ ClientConnection::ClientConnection()
 	  _request_buffer(),
 	  _header_buffer_bytes_exhausted(0),
 	  _body_buffer_bytes_exhausted(0),
-	  _response(*_server)
+	  _response(_server)
 {
     std::memset(&_client_address, 0, sizeof(_client_address));
 }
@@ -177,7 +177,7 @@ bool ClientConnection::handleReadEvent()
 	int status = parseReadEvent(_request_buffer);
 	if (status != 0) {
 		_request_error = true;
-		_response = HTTPResponse(*_server, status);
+		_response = HTTPResponse(_server, status);
 		_response.build_error_response();
 	}
 	return true;
@@ -358,7 +358,7 @@ void ClientConnection::reset()
 	_header_buffer_bytes_exhausted = 0;
 	_body_buffer_bytes_exhausted = 0;
 	_request.reset(); // Clear request data
-	_response = HTTPResponse(*_server);
+	_response = HTTPResponse(_server);
 }
 
 void ClientConnection::closeConnection()
