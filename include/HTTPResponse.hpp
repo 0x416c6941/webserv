@@ -43,13 +43,15 @@ class HTTPResponse
 
 		/**
 		 * Build an error response based on `_status_code`.
-		 * @throw	runtime_error	`_server_cfg` wasn't set.
+		 * @throw	runtime_error	`_server_cfg` wasn't set
+		 * 				or response is already prepared.
 		 */
 		void 		build_error_response();
 
 		/**
 		 * Handle \p request and generate response to it.
-		 * @throw	runtime_error	`_server_cfg` wasn't set.
+		 * @throw	runtime_error	`_server_cfg` wasn't set
+		 * 				or response is already prepared.
 		 * @param	request	Request to handle.
 		 */
 		void 		handle_response_routine(const HTTPRequest &request);
@@ -73,7 +75,7 @@ class HTTPResponse
 		 * This will be the case if we're sending either
 		 * an error response,
 		 * or if we got "Connection: close" header in the request.
-		 * @throw	runtime_error
+		 * @throw	runtime_error	Response isn't ready yet.
 		 * @return	true, if connection should be closed
 		 * 		after response is set.
 		 * @return	false, if connection should NOT be closed

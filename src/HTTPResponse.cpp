@@ -63,6 +63,11 @@ void HTTPResponse::build_error_response()
 		throw std::runtime_error(std::string("HTTPResponse::build_error_response(): ")
 				+ "server_cfg can't be NULL.");
 	}
+	else if (_response_ready)
+	{
+		throw std::runtime_error(std::string("HTTPResponse::build_error_response(): ")
+				+ "Response message is already prepared.");
+	}
 
 	std::map<int, std::string>::const_iterator it = _server_cfg->getErrorPages().find(_status_code);
 
@@ -143,6 +148,11 @@ void HTTPResponse::handle_response_routine(const HTTPRequest &request)
 		throw std::runtime_error(std::string("HTTPResponse::handle_response_routine(): ")
 				+ "server_cfg can't be NULL.");
 	}
+	else if (_response_ready)
+	{
+		throw std::runtime_error(std::string("HTTPResponse::handle_response_routine(): ")
+				+ "Response message is already prepared.");
+	}
 	_status_code = 501;
 	this->build_error_response();
 }
@@ -180,8 +190,12 @@ std::string HTTPResponse::get_response_msg()
 
 bool HTTPResponse::should_close_connection() const
 {
-	// 4xx and 5xx are error codes.
-	if (_status_code >= 400
+	if (!_response_ready)
+	{
+		throw std::runtime_error(std::string("HTTPResponse::should_close_connection(): ")
+				+ "Response message isn't ready yet.");
+	}
+	else if (_status_code >= 400	// 4xx and 5xx are error codes.
 		|| (_headers.find("Connection") != _headers.end()
 			&& _headers.at("Connection").compare("close") == 0))
 	{
