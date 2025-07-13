@@ -144,7 +144,7 @@ void HTTPResponse::handle_response_routine(const HTTPRequest &request)
 			break;
 		default:
 			// This should never occur.
-			_status_code = 405;
+			_status_code = 500;
 			this->build_error_response();
 	}
 }
