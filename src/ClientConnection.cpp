@@ -52,6 +52,102 @@ ClientConnection::~ClientConnection()
 	closeConnection();
 }
 
+int ClientConnection::parseReadEvent(std::string &buffer)
+{
+	const std::string HEADER_DELIM = "\r\n";
+	size_t processed_bytes, max_body_size;
+
+	if (this->_request.is_complete()) {
+		throw std::range_error("ClientConnection::parseReadEvent(): Request is already fully parsed.");
+	}
+	while (buffer.length() > 0) {
+		if (!this->_request.is_header_complete()) {
+			if (buffer.find(HEADER_DELIM) == std::string::npos) {
+				// Currently hold part of start line / header field
+				// isn't complete.
+				return 0;
+			}
+			// Not all exceptions should be caught in this method.
+			try {
+				processed_bytes = _request.process_header_line(buffer);
+			}
+			catch (const std::invalid_argument &e) {
+				print_err("Invalid request format: ", e.what(), "");
+				return 400;
+			}
+			catch (const std::runtime_error &e) {
+				print_err("Malformed request: ", e.what(), "");
+				return 400;
+			}
+			this->_header_buffer_bytes_exhausted += processed_bytes;
+			buffer.erase(0, processed_bytes);
+			if (this->_header_buffer_bytes_exhausted
+				> this->_server->getLargeClientHeaderTotalBytes()) {
+				// Request's header buffer bytes are exhausted.
+				print_err("Request's header is too large, currently processed:",
+				to_string(_header_buffer_bytes_exhausted), "");
+				return 431;
+			}
+		}
+		else if (this->_request.get_method() == HTTPRequest::POST
+			&& !(this->_request.is_body_complete())) {
+			// Before processing all body parts,
+			// we should ideally check if "Content-Length" field
+			// isn't bigger than "client_max_body_size".
+			// Currently, we read the content until
+			// `client_max_body_size` bytes are read,
+			// and we throw exception only afterwards.
+			//
+			// Still, I believe this isn't an issue
+			// for the PoC project.
+			try {
+				processed_bytes = _request.process_body_part(buffer);
+			}
+			catch (const std::invalid_argument &e) {
+				// "Chunked" encoding is used,
+				// however chunk isn't fully received yet.
+				return 0;
+			}
+			catch (const std::runtime_error &e) {
+				print_err("Request's body parsing error: ", e.what(), "");
+				return 400;
+			}
+			catch (const std::domain_error &e) {
+				// Have neither "Content-Length",
+				// nor "Transfer-Encoding" fields in the request.
+				print_err("Request's body parsing error: ", e.what(), "");
+				return 411;
+			}
+			this->_body_buffer_bytes_exhausted += processed_bytes;
+			buffer.erase(0, processed_bytes);
+			try {
+				max_body_size = this->getMaxBodySize(
+						this->_request.get_request_target());
+				if (this->_body_buffer_bytes_exhausted > max_body_size) {
+					// Request's body buffer bytes are exhausted.
+					print_err("Request's body is too large, currently processed: ",
+						to_string(_body_buffer_bytes_exhausted), "");
+					return 413;
+				}
+			}
+			catch (const std::domain_error &e) {
+				print_err("Saving a file is forbidden at: ",
+					this->_request.get_request_target(), "");
+				return 403;
+			}
+		}
+		else {
+			// If we got here, then request header and (or) request body
+			// was (were) successfully parsed
+			// and request is ready to be processed.
+			return 0;
+		}
+	}
+	// All information received in `handleReadEvent()`
+	// was successfully processed and no errors were found (at least yet).
+	return 0;
+}
+
 size_t ClientConnection::getMaxBodySize(const std::string &target) const {
 	try {
 		const Location &loc = this->determineLocation(target);
@@ -181,102 +277,6 @@ bool ClientConnection::handleReadEvent()
 		_response.build_error_response();
 	}
 	return true;
-}
-
-int ClientConnection::parseReadEvent(std::string &buffer)
-{
-	const std::string HEADER_DELIM = "\r\n";
-	size_t processed_bytes, max_body_size;
-
-	if (this->_request.is_complete()) {
-		throw std::range_error("ClientConnection::parseReadEvent(): Request is already fully parsed.");
-	}
-	while (buffer.length() > 0) {
-		if (!this->_request.is_header_complete()) {
-			if (buffer.find(HEADER_DELIM) == std::string::npos) {
-				// Currently hold part of start line / header field
-				// isn't complete.
-				return 0;
-			}
-			// Not all exceptions should be caught in this method.
-			try {
-				processed_bytes = _request.process_header_line(buffer);
-			}
-			catch (const std::invalid_argument &e) {
-				print_err("Invalid request format: ", e.what(), "");
-				return 400;
-			}
-			catch (const std::runtime_error &e) {
-				print_err("Malformed request: ", e.what(), "");
-				return 400;
-			}
-			this->_header_buffer_bytes_exhausted += processed_bytes;
-			buffer.erase(0, processed_bytes);
-			if (this->_header_buffer_bytes_exhausted
-				> this->_server->getLargeClientHeaderTotalBytes()) {
-				// Request's header buffer bytes are exhausted.
-				print_err("Request's header is too large, currently processed:",
-				to_string(_header_buffer_bytes_exhausted), "");
-				return 431;
-			}
-		}
-		else if (this->_request.get_method() == HTTPRequest::POST
-			&& !(this->_request.is_body_complete())) {
-			// Before processing all body parts,
-			// we should ideally check if "Content-Length" field
-			// isn't bigger than "client_max_body_size".
-			// Currently, we read the content until
-			// `client_max_body_size` bytes are read,
-			// and we throw exception only afterwards.
-			//
-			// Still, I believe this isn't an issue
-			// for the PoC project.
-			try {
-				processed_bytes = _request.process_body_part(buffer);
-			}
-			catch (const std::invalid_argument &e) {
-				// "Chunked" encoding is used,
-				// however chunk isn't fully received yet.
-				return 0;
-			}
-			catch (const std::runtime_error &e) {
-				print_err("Request's body parsing error: ", e.what(), "");
-				return 400;
-			}
-			catch (const std::domain_error &e) {
-				// Have neither "Content-Length",
-				// nor "Transfer-Encoding" fields in the request.
-				print_err("Request's body parsing error: ", e.what(), "");
-				return 411;
-			}
-			this->_body_buffer_bytes_exhausted += processed_bytes;
-			buffer.erase(0, processed_bytes);
-			try {
-				max_body_size = this->getMaxBodySize(
-						this->_request.get_request_target());
-				if (this->_body_buffer_bytes_exhausted > max_body_size) {
-					// Request's body buffer bytes are exhausted.
-					print_err("Request's body is too large, currently processed: ",
-						to_string(_body_buffer_bytes_exhausted), "");
-					return 413;
-				}
-			}
-			catch (const std::domain_error &e) {
-				print_err("Saving a file is forbidden at: ",
-					this->_request.get_request_target(), "");
-				return 403;
-			}
-		}
-		else {
-			// If we got here, then request header and (or) request body
-			// was (were) successfully parsed
-			// and request is ready to be processed.
-			return 0;
-		}
-	}
-	// All information received in `handleReadEvent()`
-	// was successfully processed and no errors were found (at least yet).
-	return 0;
 }
 
 const Location &ClientConnection::determineLocation(const std::string &target) const {

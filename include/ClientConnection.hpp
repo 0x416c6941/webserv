@@ -32,6 +32,19 @@ private:
 	size_t			_body_buffer_bytes_exhausted;
 
 	/**
+	 * Reads and processes request information from \p buffer.
+	 * @throw	range_error	Request is already complete.
+	 * @param	buffer	Information sent to us by the client,
+	 * 			read in `handleReadEvent()`.
+	 * @return	0, if everything went alright
+	 * 			(this doesn't mean that request is complete,
+	 * 			check request completeness with
+	 * 			`getRequestIsComplete()` method);
+	 * 		HTTP error code instead.
+	 */
+	int                  	parseReadEvent(std::string &buffer);
+
+	/**
 	 * Determines the max body size of files sent to us with "POST" method
 	 * depending on \p target.
 	 * @throw	domain_error	Saving a received file at \p path
@@ -80,19 +93,6 @@ public:
 	bool                    handleReadEvent();
 
 	/**
-	 * Reads and processes request information from \p buffer.
-	 * @throw	range_error	Request is already complete.
-	 * @param	buffer	Information sent to us by the client,
-	 * 			read in `handleReadEvent()`.
-	 * @return	0, if everything went alright
-	 * 			(this doesn't mean that request is complete,
-	 * 			check request completeness with
-	 * 			`getRequestIsComplete()` method);
-	 * 		HTTP error code instead.
-	 */
-	int                  	parseReadEvent(std::string &buffer);
-
-	/**
 	 * Determines which Location from `_server` corresponds to \p target.
 	 * @throw	out_of_range	Location with such target
 	 * 				isn't defined.
@@ -110,7 +110,7 @@ public:
 	void                    closeConnection();
 	void 			reset();
 
-	//Debug
+	// Debug
 	void 			printDebugRequestParse();
 
 };
