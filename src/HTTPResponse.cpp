@@ -2,6 +2,8 @@
 #include "ServerConfig.hpp"
 #include <cstddef>
 #include <stdexcept>
+#include <map>
+#include "Webserv.hpp"
 
 HTTPResponse::HTTPResponse(ServerConfig *server_cfg)
 	: _server_cfg(server_cfg),
@@ -56,16 +58,25 @@ HTTPResponse::~HTTPResponse()
 
 void HTTPResponse::build_error_response()
 {
-	std::map<int, std::string>::const_iterator it = _server_cfg.getErrorPages().find(_status_code);
+	std::map<int, std::string>::const_iterator it = _server_cfg->getErrorPages().find(_status_code);
 
-	if (it != _server_cfg.getErrorPages().end()) {
-		// If an error page is defined for this status code, use it
-		// _response_ready = true;
+	if (it != _server_cfg->getErrorPages().end())
+	{
+		try
+		{
+			_response_body = read_file(it->second);
+			_response_ready = true;
+			return;
+		}
+		catch (const std::ios_base::failure &e)
+		{
+			print_err("Couldn't read error page: ", e.what(), "");
+		}
 	}
-	else {
-		_response_body = generateErrorBody(_status_code);
-		_response_ready = true;
-	}
+	// Either the error page for this error code doesn't exist,
+	// or file reading failed.
+	_response_body = generateErrorBody(_status_code);
+	_response_ready = true;
 }
 
 bool HTTPResponse::is_response_ready() const
