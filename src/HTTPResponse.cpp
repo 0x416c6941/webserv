@@ -5,28 +5,18 @@
 #include <map>
 #include "Webserv.hpp"
 
-HTTPResponse::HTTPResponse(ServerConfig *server_cfg)
-	: _server_cfg(server_cfg),
-	  _status_code(0),
+HTTPResponse::HTTPResponse()
+	: _server_cfg(NULL),
+	  _status_code(100),		// Temporary code.
 	  _response_ready(false)
 {
-	if (server_cfg == NULL)
-	{
-		throw std::invalid_argument(std::string("HTTPResponse::HTTPResponse():")
-				+ " server_cfg can't be NULL.");
-	}
 }
 
-HTTPResponse::HTTPResponse(ServerConfig *server_cfg, int status_code)
-	: _server_cfg(server_cfg),
+HTTPResponse::HTTPResponse(int status_code)
+	: _server_cfg(NULL),
 	  _status_code(status_code),
 	  _response_ready(false)
 {
-	if (server_cfg == NULL)
-	{
-		throw std::invalid_argument(std::string("HTTPResponse::HTTPResponse():")
-				+ " server_cfg can't be NULL.");
-	}
 }
 
 HTTPResponse::HTTPResponse(const HTTPResponse &other)
@@ -56,39 +46,51 @@ HTTPResponse::~HTTPResponse()
 {
 }
 
+void HTTPResponse::set_server_cfg(ServerConfig *server_cfg)
+{
+	if (server_cfg == NULL)
+	{
+		throw std::invalid_argument(std::string("HTTPResponse::set_server_cfg(): ")
+				+ "server_cfg can't be NULL.");
+	}
+	_server_cfg = server_cfg;
+}
+
 void HTTPResponse::build_error_response()
 {
+	if (_server_cfg == NULL)
+	{
+		throw std::runtime_error(std::string("HTTPResponse::build_error_response(): ")
+				+ "server_cfg can't be NULL.");
+	}
+
 	std::map<int, std::string>::const_iterator it = _server_cfg->getErrorPages().find(_status_code);
 
+	_headers["Connection"] = "close";
 	if (it != _server_cfg->getErrorPages().end())
 	{
 		try
 		{
 			_response_body = read_file(it->second);
+			// If MIME is not HTML,
+			// then something is definitely wrong.
+			_headers["Content-Type"] = get_mime_type(it->second);
 			_response_ready = true;
 			return;
 		}
 		catch (const std::ios_base::failure &e)
 		{
-			print_err("Couldn't read error page: ", e.what(), "");
+			print_warning("Couldn't read error page: ", e.what(), "");
 		}
 	}
 	// Either the error page for this error code doesn't exist,
 	// or file reading failed.
 	_response_body = generateErrorBody(_status_code);
+	_headers["Content-Type"] = "text/html";
 	_response_ready = true;
 }
 
-bool HTTPResponse::is_response_ready() const
-{
-	return _response_ready;
-}
-
-std::string HTTPResponse::get_response_msg() const
-{
-	return _response_msg;
-}
-
+/*
 void    HTTPResponse::handle_response_routine(const ServerConfig& server_config, const HTTPRequest& request)
 {
 	if (_response_msg.size() > 0)
@@ -130,17 +132,65 @@ void    HTTPResponse::handle_response_routine(const ServerConfig& server_config,
 			return;
 	}
 }
-
-void    HTTPResponse::reset()
+ */
+// TODO: Temporary code.
+void HTTPResponse::handle_response_routine(const HTTPRequest &request)
 {
-	_response_msg.clear();
-	_status_code = 200;
-	_response_ready = false;
-	_response_body.clear();
-	_response_msg.clear();
-	_mime.clear();
+	(void) request;
+
+	if (_server_cfg == NULL)
+	{
+		throw std::runtime_error(std::string("HTTPResponse::handle_response_routine(): ")
+				+ "server_cfg can't be NULL.");
+	}
+	_status_code = 501;
+	this->build_error_response();
 }
 
+bool HTTPResponse::is_response_ready() const
+{
+	return _response_ready;
+}
+
+std::string HTTPResponse::get_response_msg()
+{
+	std::ostringstream response;
+
+	if (!_response_ready)
+	{
+		throw std::runtime_error(std::string("HTTPResponse::get_response_msg(): ")
+				+ "Response message isn't ready yet.");
+	}
+	// Start line.
+	response << "HTTP/1.1 " << _status_code << " " << getReasonPhrase(_status_code) << "\r\n";
+	// Taking care of header fields that must always be present,
+	// but that may be not set by `build_error_response()`
+	// or `handle_response_routine()`.
+	this->append_required_headers();
+	// Headers.
+	for (std::map<std::string, std::string>::const_iterator it = _headers.begin();
+		it != _headers.end(); ++it)
+	{
+		response << it->first << ": " << it->second << "\r\n";
+	}
+	response << "\r\n";		// End of headers.
+	response << _response_body;	// Body content.
+	return response.str();
+}
+
+bool HTTPResponse::should_close_connection() const
+{
+	// 4xx and 5xx are error codes.
+	if (_status_code >= 400
+		|| (_headers.find("Connection") != _headers.end()
+			&& _headers.at("Connection").compare("close") == 0))
+	{
+		return true;
+	}
+	return false;
+}
+
+/*
 HTTPResponse::HTTPError::HTTPError(int status_code, const std::string &msg)
 	: code(status_code), message(msg)
 {
@@ -216,80 +266,9 @@ std::string HTTPResponse::resolve_secure_path(const std::string& request_path) c
 	}
 	return resolved_path;
 }
+ */
 
-bool HTTPResponse::validate_request(const HTTPRequest &request)
-{
-	try
-	{
-		if (!request.is_complete())
-		{
-			_status_code = 400;
-			return false;	// Should never happen.
-		}
-		HTTPRequest::e_method method = request.get_method();
-		// All requests must contain a "Host" header.
-		try
-		{
-			request.get_header_value("Host");
-		} catch (const std::out_of_range &e)
-		{
-			_status_code = 400; // Bad Request (missing host).
-			return false;
-		}
-
-		// Additional checks for POST
-		// Should we check the body here?
-		// TODO: No. we should not.
-		// This check is done during POST body reading.
-		if (method == HTTPRequest::POST) {
-			bool hasContentLength = false;
-			bool hasTransferEncoding = false;
-
-			try
-			{
-				request.get_header_value("Content-Length");
-				hasContentLength = true;
-			} catch (...)
-			{
-			}
-			try
-			{
-				request.get_header_value("Transfer-Encoding");
-				hasTransferEncoding = true;
-			} catch (...) {}
-            		if (!hasContentLength && !hasTransferEncoding) {
-				// Either length or encoding is required.
-				_status_code = 411;
-				return false;
-			}
-		}
-		_status_code = 200; // OK, just in case (it's already 200 by default).
-	}
-	catch (const std::exception& e)
-	{
-		std::cerr << "Validation error: " << e.what() << std::endl;
-		_status_code = 400;
-		return false; // Fallback to Bad Request on unexpected error.
-	}
-	// Request is valid.
-	return true;
-}
-
-std::string HTTPResponse::build_response_msg() const
-{
-	std::ostringstream response;
-
-	response << "HTTP/1.1 " << _status_code << " " << getReasonPhrase(_status_code) << "\r\n";
-	response << "Server: Webserv_hlyshchu_asagymba\r\n";
-	response << "Connection: keep-alive\r\n";
-	response << "Content-Type: " << _mime << "\r\n";
-	response << "Content-Length: " << _response_body.size() << "\r\n";
-	response << "\r\n";		// End of headers.
-	response << _response_body;	// Add the body content.
-	return response.str();
-}
-
-const std::string &HTTPResponse::get_mime_type(const std::string &path)
+std::string HTTPResponse::get_mime_type(const std::string &path)
 {
 	static std::map<std::string, std::string> mime_map;
 
@@ -327,6 +306,7 @@ const std::string &HTTPResponse::get_mime_type(const std::string &path)
 	return "application/octet-stream";
 }
 
+/*
 void HTTPResponse::handleGET(const HTTPRequest& request, const ServerConfig& server_config)
 {
 	const std::vector<Location> loc = server_config.getLocations();	// Unused for now, but should be checked later.
@@ -388,4 +368,11 @@ void HTTPResponse::handleGET(const HTTPRequest& request, const ServerConfig& ser
 		_response_msg = generateErrorPage(_status_code);
 		_response_ready = true; // Set response ready even on error
 	}
+}
+ */
+
+void HTTPResponse::append_required_headers()
+{
+	_headers["Server"] = "webserv of hlyshchu and asagymba";
+	_headers["Content_Length"] = to_string(_response_body.length());
 }
