@@ -39,18 +39,23 @@ size_t HTTPRequest::process_header_line(const std::string &header_line)
 
 	if (this->_header_complete)
 	{
-		throw std::range_error("HTTPRequest::process_info(): Request has already been fully parsed.");
+		throw std::range_error("HTTPRequest::process_header_line(): Request has already been fully parsed.");
 	}
 	ft_pos = header_line.find(FIELD_TERMINATOR);
 	if (ft_pos == std::string::npos)
 	{
-		throw std::invalid_argument("HTTPRequest::process_info(): Some line isn't properly terminated.");
+		throw std::invalid_argument("HTTPRequest::process_header_line(): Some line isn't properly terminated.");
 	}
 	else if (ft_pos == 0)
 	{
 		if (!(this->_method_is_set))
 		{
-			throw std::invalid_argument("HTTPRequest::process_info(): Found \"r\"n immediately after the request beginning.");
+			throw std::invalid_argument("HTTPRequest::process_header_line(): Found \"r\"n immediately after the request beginning.");
+		}
+		else if (this->_header_fields.find("Host")
+			== this->_header_fields.end())
+		{
+			throw std::runtime_error("HTTPRequest::process_header_line(): \"Host\" header field isn't present.");
 		}
 		this->_header_complete = true;
 		return FIELD_TERMINATOR.length();
@@ -85,6 +90,7 @@ const std::string &HTTPRequest::get_request_target() const
 	return this->_request_target;
 }
 
+// TODO: Additional testing required.
 std::string HTTPRequest::get_request_target_strip_location_path(
 		const std::string &loc_path) const {
 	std::string ret;
@@ -94,9 +100,10 @@ std::string HTTPRequest::get_request_target_strip_location_path(
 	{
 		throw std::runtime_error("HTTPRequest::get_request_target_strip_location_path(): Request target wasn't set yet.");
 	}
-	else if (loc_path.length() <= 0 || loc_path.at(0) != '/')
+	else if (loc_path.length() <= 0 || loc_path.at(0) != '/'
+		|| loc_path.at(loc_path.length() - 1) != '/')
 	{
-		throw std::invalid_argument("HTTPRequest::get_request_target_strip_location_path(): Provided location path doesn't start with /.");
+		throw std::invalid_argument("HTTPRequest::get_request_target_strip_location_path(): Provided location path doesn't start or end with /.");
 	}
 	// Edge case.
 	if (loc_path.length() == ROOT_LOC_PATH_LENGTH)
@@ -113,10 +120,6 @@ std::string HTTPRequest::get_request_target_strip_location_path(
 	}
 	ret = this->_request_target;
 	ret.erase(0, loc_path.length() - 1);
-	if (ret.length() > 0 && ret.at(0) == '/')
-	{
-		ret.erase(0, 1);
-	}
 	return ret;
 }
 
@@ -154,7 +157,7 @@ size_t HTTPRequest::process_body_part(const std::string &buffer)
 	{
 		return this->process_body_part_te(buffer);
 	}
-	throw std::runtime_error("HTTPRequest::process_body_part(): Have neither Content-Length nor Transfer-Encoding headers.");
+	throw std::domain_error("HTTPRequest::process_body_part(): Have neither Content-Length nor Transfer-Encoding headers.");
 }
 
 const std::string &HTTPRequest::get_body() const

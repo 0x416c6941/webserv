@@ -243,6 +243,12 @@ int ClientConnection::parseReadEvent(std::string &buffer)
 				print_err("Request's body parsing error: ", e.what(), "");
 				return 400;
 			}
+			catch (const std::domain_error &e) {
+				// Have neither "Content-Length",
+				// nor "Transfer-Encoding" fields in the request.
+				print_err("Request's body parsing error: ", e.what(), "");
+				return 411;
+			}
 			this->_body_buffer_bytes_exhausted += processed_bytes;
 			buffer.erase(0, processed_bytes);
 			try {

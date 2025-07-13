@@ -39,7 +39,10 @@ class HTTPRequest
 		 * @throw	range_error		Request was fully parsed,
 		 * 					yet new information arrived.
 		 * @throw	runtime_error		Received a header field
-		 * 					whose key was already registered.
+		 * 					whose key was already registered
+		 * 					or got the terminating "\r\n"
+		 * 					sequence, yet "Host" header field
+		 * 					wasn't set.
 		 * @param	header_line	Header line with information to process.
 		 * @return	Processed bytes in \p header_line (including "\r\n").
 		 */
@@ -61,6 +64,7 @@ class HTTPRequest
 
 		/**
 		 * Get the request target stripped of \p loc_path.
+		 * @warning	\p loc_path must begin and end with '/'.
 		 * @warning	Request target may be a directory.
 		 * 		Check if the name either ends with '/'
 		 * 		or S_ISDIR() after stat() is true
@@ -68,14 +72,13 @@ class HTTPRequest
 		 * @throw	runtime_error		Request target
 		 * 					wasn't set yet.
 		 * @throw	invalid_argument	\p loc_path
-		 * 					doesn't start with '/'.
+		 * 					doesn't start
+		 * 					or end with '/'.
 		 * @throw	domain_error		Request target
 		 * 					doesn't contain
 		 * 					\p loc_path.
 		 * @param	loc_path	Location path.
-		 * @return	Request target stripped of \p loc_path
-		 * 		(will never begin with '/', even if \p loc_path
-		 * 		doesn't end with '/').
+		 * @return	Request target stripped of \p loc_path.
 		 */
 		std::string get_request_target_strip_location_path(
 				const std::string &loc_path) const;
@@ -105,9 +108,9 @@ class HTTPRequest
 		 * 					isn't a complete chunk.
 		 * @throw	range_error		Body was already processed.
 		 * @throw	runtime_error		Body part in \p buffer
-		 * 					is borked or neither
-		 * 					"Content-Length"
-		 * 					and "Transfer-Encoding"
+		 * 					is borked.
+		 * @throw	domain_error		Neither "Content-Length"
+		 * 					nor "Transfer-Encoding"
 		 * 					fields are set.
 		 * @param	buffer	Body part to process.
 		 * @return	Processed bytes in \p buffer.
