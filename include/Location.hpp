@@ -38,7 +38,14 @@ public:
 	~Location();
 
 	// Setters
+	/**
+	 * Set \p path.
+	 * @throw	std::invalid_argument	\p path doesn't begin or end
+	 * 					with '/'.
+	 * @param	path	Request path.
+	 */
 	void 						setPath(const std::string& path);
+
 	void 						setRootLocation(const std::string& root);
 	void 						setAutoindex(bool value);
 	void 						addIndexLocation(const std::string& index);

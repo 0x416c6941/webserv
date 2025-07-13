@@ -58,7 +58,16 @@ Location::Location(const Location& other)
 Location::~Location() {}
 
 // Setters
-void 					Location::setPath(const std::string& path) { _path = path; }
+void Location::setPath(const std::string& path)
+{
+	if (path.length() == 0 || path.at(0) != '/'
+		|| path.at(path.length() - 1) != '/')
+	{
+		throw std::invalid_argument(std::string("Location::setPath(): ")
+				+ path + " doesn't begin or end with '/'.");
+	}
+	_path = path;
+}
 void 					Location::setRootLocation(const std::string& root) { _root = root; }
 void 					Location::setAutoindex(bool value) { _autoindex = value; }
 void 					Location::addIndexLocation(const std::string& index) { _index.push_back(index); }
