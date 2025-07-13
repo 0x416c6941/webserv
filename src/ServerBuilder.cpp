@@ -686,5 +686,18 @@ ServerConfig ServerBuilder::build(const std::vector<std::string>& directives) {
 			handler(tokens, server_cfg);
 		}
 	}
+	// CGI paths count must correspond to count of CGI extensions.
+	// Basically, we provide a path to a handler to each CGI extension type.
+	for (std::vector<Location>::const_iterator it = server_cfg.getLocations().begin();
+		it != server_cfg.getLocations().end(); ++it)
+	{
+		if (it->getCgiPath().size() != it->getCgiExtension().size())
+		{
+			throw ConfigParser::ErrorException("ServerBuilder::build(): "
+					+ "Location \"" + it->getPath()
+					+ "\": amount of CGI paths isn't equal to "
+					+ "amount of CGI extensions provided.");
+		}
+	}
 	return server_cfg;
 }

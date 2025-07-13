@@ -19,9 +19,11 @@ private:
 	std::pair<int, std::string> 	_return;
 	std::string 			_alias;
 	uint64_t 			_client_max_body_size;
+
 	// We need to keep track if `_client_max_body_size`
 	// was set to 0 or not set at all.
 	bool				_client_max_body_size_set;
+
 	std::vector<std::string> 	_cgi_path;
 	std::vector<std::string> 	_cgi_ext;
 	std::map<int, std::string> 	_error_pages;
