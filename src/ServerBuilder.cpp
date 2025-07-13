@@ -607,9 +607,6 @@ void ServerBuilder::handle_location(const std::vector<std::string>& parameters, 
         	throw ConfigParser::ErrorException("Invalid or missing URI for location block");
 
     	Location location;
-    	if (!pathExists(parameters[1]))
-		print_warning("location path '", parameters[1], "' does not exist at parse time.");
-
     	location.setPath(parameters[1]);
 
     	const std::map<std::string, LocationHandler>& handlers = getLocationHandlers();
