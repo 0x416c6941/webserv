@@ -693,7 +693,7 @@ ServerConfig ServerBuilder::build(const std::vector<std::string>& directives) {
 	{
 		if (it->getCgiPath().size() != it->getCgiExtension().size())
 		{
-			throw ConfigParser::ErrorException("ServerBuilder::build(): "
+			throw ConfigParser::ErrorException(std::string("ServerBuilder::build(): ")
 					+ "Location \"" + it->getPath()
 					+ "\": amount of CGI paths isn't equal to "
 					+ "amount of CGI extensions provided.");
