@@ -492,7 +492,7 @@ void HTTPResponse::generate_301(const std::string &redir_path)
 {
 	_status_code = 301;
 	_headers["Location"] = redir_path;
-	_response_body = "Moved_permanently to";
+	_response_body = "Moved_permanently to ";
 	_response_body += redir_path;
 	_response_body += '\n';
 }
