@@ -420,6 +420,7 @@ bool HTTPRequest::request_path_decoded_no_double_slash_anywhere(
 }
 
 // Percent encoding is only a thing in start line.
+// Or, well, if it can be everywhere, we only support a subset of RFC.
 char HTTPRequest::decode_percent_encoded_character(const std::string &start_line,
 		size_t &pos)
 {
@@ -427,40 +428,42 @@ char HTTPRequest::decode_percent_encoded_character(const std::string &start_line
 	const size_t LITERALS_AFTER_PERCENT = 2;	// E.g. "%20".
 	const int BASE = 0x10;				// 16, since working with HEX.
 
-	while (pos < start_line.length() && start_line.at(pos) == '%')
+	++pos;	// Skip '%'.
+	// We write a PoC.
+	// Complex webservers would find that e.g. "%D0%BC" is unicode
+	// and interpret this sequence as one character, however in our case
+	// such support of sequence of bytes is redundant.
+	for (size_t i = 0; i < LITERALS_AFTER_PERCENT; i++)
 	{
-		pos++;	// Skip '%'.
-		for (size_t i = 0; i < LITERALS_AFTER_PERCENT; i++)
+		if (!(pos < start_line.length()))
 		{
-			if (!(pos < start_line.length()))
-			{
-				throw std::invalid_argument("HTTPRequest::decode_percent_encoded_character(): Expected some literal after % sign.");
-			}
-			else if (std::isdigit(start_line.at(pos)))
-			{
-				if (static_cast<char>(ret * BASE + (start_line.at(pos) - '0'))
-					< ret)
-				{
-					throw std::range_error("HTTPRequest::decode_percent_encoded_character(): Only ASCII characters are supported as percent-encoded characters.");
-				}
-				ret = ret * BASE + (start_line.at(pos) - '0');
-			}
-			else if (std::toupper(start_line.at(pos)) >= 'A'
-				&& std::toupper(start_line.at(pos)) <= 'F')
-			{
-				if (static_cast<char>(ret * BASE + (std::toupper(start_line.at(pos)) - 'A' + 10))
-					< ret)
-				{
-					throw std::range_error("HTTPRequest::decode_percent_encoded_character(): Only ASCII characters are supported as percent-encoded characters.");
-				}
-				ret = ret * BASE + (std::toupper(start_line.at(pos)) - 'A' + 10);
-			}
-			else
-			{
-				throw std::invalid_argument("HTTPRequest::decode_percent_encoded_character(): Some literal after % sign is invalid.");
-			}
-			pos++;
+			throw std::invalid_argument(std::string("HTTPRequest::decode_percent_encoded_character(): ")
+					+ "Expected some literal after % sign.");
 		}
+		else if (std::isdigit(start_line.at(pos)))
+		{
+			if (static_cast<char>(ret * BASE + (start_line.at(pos) - '0'))
+				< ret)
+			{
+				throw std::range_error("HTTPRequest::decode_percent_encoded_character(): Only ASCII characters are supported as percent-encoded characters.");
+			}
+			ret = ret * BASE + (start_line.at(pos) - '0');
+		}
+		else if (std::toupper(start_line.at(pos)) >= 'A'
+			&& std::toupper(start_line.at(pos)) <= 'F')
+		{
+			if (static_cast<char>(ret * BASE + (std::toupper(start_line.at(pos)) - 'A' + 10))
+				< ret)
+			{
+				throw std::range_error("HTTPRequest::decode_percent_encoded_character(): Only ASCII characters are supported as percent-encoded characters.");
+			}
+			ret = ret * BASE + (std::toupper(start_line.at(pos)) - 'A' + 10);
+		}
+		else
+		{
+			throw std::invalid_argument("HTTPRequest::decode_percent_encoded_character(): Some literal after % sign is invalid.");
+		}
+		pos++;
 	}
 	return ret;
 }
@@ -653,7 +656,7 @@ void HTTPRequest::printDebug() const {
 	if (_request_query_is_set)
 	{
 		std::cout << "Query original:  " << _request_query_original << std::endl;
-		std::cout << "Query decoded :  " << _request_query_decoded << std::endl;
+		std::cout << "Query decoded:   " << _request_query_decoded << std::endl;
 	}
 	else
 	{

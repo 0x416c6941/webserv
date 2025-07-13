@@ -292,6 +292,7 @@ class HTTPRequest
 		/**
 		 * Decodes the percent-encoded character stored in
 		 * \p start_line at \p pos.
+		 * @warning	Only ASCII characters are supported.
 		 * @throw	invalid_argument	\p start_line
 		 * 					contains
 		 * 					invalid information.
