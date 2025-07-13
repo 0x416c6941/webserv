@@ -1,6 +1,10 @@
-#include "../include/Webserv.hpp"
-#include "../include/ConfigParser.hpp"
+#include "Webserv.hpp"
+#include "ConfigParser.hpp"
 #include <inttypes.h>	// <cinttypes> is available from C++11 onwards, but we use C++98.
+#include <string>
+#include <istream>
+#include <sstream>
+#include <stdexcept>
 
 /**
 * @brief Trims whitespace from both ends of the input string.
@@ -134,4 +138,33 @@ std::string to_string(size_t value) {
 	char buf[BUF_SIZE];
 	std::sprintf(buf, "%" PRIuMAX, value);
 	return std::string(buf);
+}
+
+std::string read_file(const std::string &path)
+{
+	std::ifstream file;
+	std::string line;
+	std::stringstream ret;
+
+	file.open(path.c_str());
+	if (!file.is_open())
+	{
+		throw std::ios_base::failure(std::string("read_file(): Couldn't open file: ")
+				+ path + '.');
+	}
+	for (;;)
+	{
+		std::getline(file, line);
+		if (file.fail() && !file.eof())
+		{
+			throw std::ios_base::failure(std::string("read_file: ")
+					+ path + " is corrupted.");
+		}
+		else if (!file.eof())
+		{
+			break;
+		}
+		ret << line << '\n';
+	}
+	return ret.str();
 }
