@@ -79,6 +79,11 @@ int ClientConnection::parseReadEvent(std::string &buffer)
 				print_err("Malformed request: ", e.what(), "");
 				return 400;
 			}
+			catch (const HTTPRequest::method_not_allowed &e)
+			{
+				print_err("Unsupported method: ", e.what(), "");
+				return 405;
+			}
 			this->_header_buffer_bytes_exhausted += processed_bytes;
 			buffer.erase(0, processed_bytes);
 			if (this->_header_buffer_bytes_exhausted

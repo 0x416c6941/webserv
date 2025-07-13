@@ -6,6 +6,8 @@
 #include <cctype>
 #include <inttypes.h>
 #include <cstdlib>
+#include <iostream>		// Debug.
+#include <iomanip>		// Debug.
 
 HTTPRequest::HTTPRequest()
 	:	_method_is_set(false),
@@ -14,6 +16,10 @@ HTTPRequest::HTTPRequest()
 		_request_target_is_set(false),
 		_header_complete(false),
 		_body_complete(false)
+{
+}
+
+HTTPRequest::~HTTPRequest()
 {
 }
 
@@ -33,8 +39,14 @@ void HTTPRequest::reset() {
 	_body_complete = false;
 }
 
-HTTPRequest::~HTTPRequest()
+HTTPRequest::method_not_allowed::method_not_allowed(const char * msg)
+	: m_msg(msg)
 {
+}
+
+const char * HTTPRequest::method_not_allowed::what() const throw()
+{
+	return m_msg;
 }
 
 size_t HTTPRequest::process_header_line(const std::string &header_line)
@@ -274,7 +286,7 @@ size_t HTTPRequest::set_method(const std::string &start_line)
 		_method_is_set = true;
 		return DELETE_STR.length();
 	}
-	throw std::invalid_argument("HTTPRequest::set_method(): Request method isn't supported.");
+	throw method_not_allowed("HTTPRequest::set_method(): Request method isn't supported.");
 }
 
 // Request query may be empty,

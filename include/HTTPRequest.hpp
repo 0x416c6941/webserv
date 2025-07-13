@@ -1,11 +1,10 @@
 #pragma once
 
+#include <stdexcept>
 #include <vector>
 #include <string>
 #include <map>
 #include <cstddef>
-#include <iostream> //for debug
-#include <iomanip> //for debug
 
 /**
  * A class containing a received and parsed HTTP/1.1 request.
@@ -27,6 +26,17 @@ class HTTPRequest
 			DELETE
 		};
 
+		class method_not_allowed : public std::exception
+		{
+			private:
+				const char * m_msg;
+
+			public:
+				method_not_allowed(const char * msg);
+
+				const char * what() const throw();
+		};
+
 		/**
 		 * Processes line in \p header_line
 		 * until the field terminator ("\r\n") is met:
@@ -43,6 +53,8 @@ class HTTPRequest
 		 * 					or got the terminating "\r\n"
 		 * 					sequence, yet "Host" header field
 		 * 					wasn't set.
+		 * @throw	method_not_allowed	Got unsupported
+		 * 					request method.
 		 * @param	header_line	Header line with information to process.
 		 * @return	Processed bytes in \p header_line (including "\r\n").
 		 */
