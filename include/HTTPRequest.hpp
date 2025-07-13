@@ -56,39 +56,61 @@ class HTTPRequest
 		enum e_method get_method() const;
 
 		/**
-		 * Get the request target.
-		 * @throw	runtime_error	Request target wasn't set yet.
-		 * @return	Request target.
+		 * Get the request path with some characters possibly encoded.
+		 * @throw	runtime_error	Request path wasn't set yet.
+		 * @return	Encoded request path.
 		 */
-		const std::string &get_request_target() const;
+		const std::string &get_request_path_original() const;
 
 		/**
-		 * Get the request target stripped of \p loc_path.
+		 * Get the request path with possibly encoded characters decoded.
+		 * @throw	runtime_error	Request path wasn't set yet.
+		 * @return	Decoded request path.
+		 */
+		const std::string &get_request_path_decoded() const;
+
+		/**
+		 * Gets the request path with possibly encoded characters decoded
+		 * and stripped of \p loc_path.
 		 * @warning	\p loc_path must begin and end with '/'.
-		 * @warning	Request target may be a directory.
+		 * @warning	Request path may be a directory.
 		 * 		Check if the name either ends with '/'
 		 * 		or S_ISDIR() after stat() is true
 		 * 		(redirect with 301 in this case).
-		 * @throw	runtime_error		Request target
+		 * @throw	runtime_error		Request path
 		 * 					wasn't set yet.
 		 * @throw	invalid_argument	\p loc_path
 		 * 					doesn't start
 		 * 					or end with '/'.
-		 * @throw	domain_error		Request target
+		 * @throw	domain_error		Request path
 		 * 					doesn't contain
 		 * 					\p loc_path.
 		 * @param	loc_path	Location path.
-		 * @return	Request target stripped of \p loc_path.
+		 * @return	Decoded request path stripped of \p loc_path.
 		 */
-		std::string get_request_target_strip_location_path(
+		std::string get_request_path_decoded_strip_location_path(
 				const std::string &loc_path) const;
 
 		/**
-		 * Get the request query.
+		 * Get the request query with some characters possibly encoded.
 		 * @throw	runtime_error	Request query wasn't set yet.
-		 * @return	Request query (empty string if wasn't present).
+		 * @return	Encoded request query (empty string if was empty).
 		 */
-		const std::string &get_request_query() const;
+		const std::string &get_request_query_original() const;
+
+		/**
+		 * Get the request query with possibly encoded characters decoded.
+		 * @throw	runtime_error	Request query wasn't set yet.
+		 * @return	Decoded request query (empty string if was empty).
+		 */
+		const std::string &get_request_query_decoded() const;
+
+		/**
+		 * Get the request target with some characters possibly encoded.
+		 * @throw	runtime_error	Request target wasn't set yet.
+		 * @return	Encoded request target.
+		 */
+		const std::string &get_request_target() const;
 
 		/**
 		 * Get the value of a header with the \p key.
@@ -161,13 +183,20 @@ class HTTPRequest
 		// or have an ::operator =() available.
 		HTTPRequest(const HTTPRequest &src);
 		HTTPRequest &operator = (const HTTPRequest &src);
+
 		// All possible information from the start line.
 		enum e_method _method;
-		bool _method_is_set;		// To check if `_method` is initialized.
+		bool _method_is_set;
+		std::string _request_path_original;
+		std::string _request_path_decoded;
+		bool _request_path_is_set;
+		// Request query is optional.
+		std::string _request_query_original;
+		std::string _request_query_decoded;
+		bool _request_query_is_set;
+		// Request path + request query combined together.
 		std::string _request_target;
 		bool _request_target_is_set;
-		std::string _request_query;	// Optional.
-		bool _request_query_is_set;
 
 		// Header fields in format "key:OWS value OWS".
 		//
@@ -177,7 +206,7 @@ class HTTPRequest
 		// Additionally, POST method must also include
 		// either the "Content-Length" or "Transfer-Encoding" field.
 		// If both are present, "Transfer-Encoding" takes precedence.
-		// Without both, the server should respond with 411.
+		// Without neither of those, the server should respond with 411.
 		std::map<std::string, std::string> _header_fields;
 
 		bool _header_complete;		// If header's request is fully parsed.
@@ -208,8 +237,10 @@ class HTTPRequest
 		size_t set_method(const std::string &start_line);
 
 		/**
-		 * Set the `_request_target` and `_request_query`
-		 * to those from \p start_line.
+		 * Parses the `_request_path*`, `_request_query*`
+		 * and `_request_target` from \p start_line.
+		 * @warning	Only origin form (e.g. "/path")
+		 * 		is supported as a `_request_path*`.
 		 * @throw	invalid_argument	\p start_line
 		 * 					contains
 		 * 					invalid information.
@@ -219,8 +250,8 @@ class HTTPRequest
 		 * 				in \p start_line starts.
 		 * @return	Processed bytes in \p start_line.
 		 */
-		size_t set_request_target_and_query(const std::string &start_line,
-				size_t pos);
+		size_t set_request_path_query_and_target(
+				const std::string &start_line, size_t pos);
 
 		/**
 		 * Parses a request component from \p start_line
@@ -230,29 +261,33 @@ class HTTPRequest
 		 * @throw	invalid_argument	\p start_line
 		 * 					contains
 		 * 					invalid information.
-		 * @param	component	Component to set.
-		 * 				percent-unencoded character.
+		 * @param	comp_original	Where to store
+		 * 				encoded component.
+		 * @param	comp_decoded	Where to store
+		 * 				decoded component.
 		 * @param	start_line	The start line of the request
 		 * 				with the "\r\n" erased.
 		 * @param	pos		Where the request component
 		 * 				in \p start_line starts.
-		 * @param	end		Where does the request component end.
+		 * @param	end		Where does the request component
+		 * 				in \p start_line end.
 		 * @return	Processed bytes in \p start_line.
 		 */
-		size_t set_request_component(std::string &component,
+		size_t set_request_component(
+				std::string &comp_original, std::string &comp_decoded,
 				const std::string &start_line, size_t pos, size_t end);
 
 		/**
-		 * Verifies that \p request_target doesn't contain
+		 * Verifies that \p request_path_decoded doesn't contain
 		 * any double (or more) consequent slashes.
-		 * @param	request_target	Request target
-		 * 				set by `set_request_component()`.
+		 * @param	request_path_decoded	Decoded request path
+		 * 					set by `set_request_component()`.
 		 * @return	true, if no double (or more) consequent slashes
-		 * 			in \p request_target were found;
-		 * 		false otherwise.
+		 * 			in \p request_path_decoded were found.
+		 * @return	false otherwise.
 		 */
-		bool request_target_no_double_slash_anywhere(
-				const std::string &request_target) const;
+		bool request_path_decoded_no_double_slash_anywhere(
+				const std::string &request_path_decoded) const;
 
 		/**
 		 * Decodes the percent-encoded character stored in

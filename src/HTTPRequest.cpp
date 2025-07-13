@@ -2,15 +2,16 @@
 #include <cstddef>
 #include <string>
 #include <stdexcept>
-#include <vector>
+#include "Webserv.hpp"		// utils.
 #include <cctype>
 #include <inttypes.h>
 #include <cstdlib>
 
 HTTPRequest::HTTPRequest()
 	:	_method_is_set(false),
-		_request_target_is_set(false),
+		_request_path_is_set(false),
 		_request_query_is_set(false),
+		_request_target_is_set(false),
 		_header_complete(false),
 		_body_complete(false)
 {
@@ -18,10 +19,14 @@ HTTPRequest::HTTPRequest()
 
 void HTTPRequest::reset() {
 	_method_is_set = false;
+	_request_path_original.clear();
+	_request_path_decoded.clear();
+	_request_path_is_set = false;
+	_request_query_original.clear();
+	_request_query_decoded.clear();
+	_request_query_is_set = false;
 	_request_target.clear();
 	_request_target_is_set = false;
-	_request_query.clear();
-	_request_query_is_set = false;
 	_header_fields.clear();
 	_header_complete = false;
 	_body.clear();
@@ -81,55 +86,80 @@ enum HTTPRequest::e_method HTTPRequest::get_method() const
 	return this->_method;
 }
 
-const std::string &HTTPRequest::get_request_target() const
+const std::string &HTTPRequest::get_request_path_original() const
 {
-	if (!(this->_request_target_is_set))
+	if (!(this->_request_path_is_set))
 	{
-		throw std::runtime_error("HTTPRequest::get_request_target(): Request target wasn't set yet.");
+		throw std::runtime_error(std::string("HTTPRequest::get_request_path_original(): ")
+				+ "Request path wasn't set yet.");
 	}
-	return this->_request_target;
+	return this->_request_path_original;
 }
 
-// TODO: Additional testing required.
-std::string HTTPRequest::get_request_target_strip_location_path(
+const std::string &HTTPRequest::get_request_path_decoded() const
+{
+	if (!(this->_request_path_is_set))
+	{
+		throw std::runtime_error(std::string("HTTPRequest::get_request_path_decoded(): ")
+				+ "Request path wasn't set yet.");
+	}
+	return this->_request_path_decoded;
+}
+
+std::string HTTPRequest::get_request_path_decoded_strip_location_path(
 		const std::string &loc_path) const {
 	std::string ret;
-	enum { ROOT_LOC_PATH_LENGTH = 1 };
 
-	if (!(this->_request_target_is_set))
+	if (!(this->_request_path_is_set))
 	{
-		throw std::runtime_error("HTTPRequest::get_request_target_strip_location_path(): Request target wasn't set yet.");
+		throw std::runtime_error(std::string("HTTPRequest::get_request_path_decoded_strip_location_path(): ")
+				+ "Request path wasn't set yet.");
 	}
 	else if (loc_path.length() <= 0 || loc_path.at(0) != '/'
 		|| loc_path.at(loc_path.length() - 1) != '/')
 	{
-		throw std::invalid_argument("HTTPRequest::get_request_target_strip_location_path(): Provided location path doesn't start or end with /.");
+		throw std::invalid_argument(std::string("HTTPRequest::get_request_path_decoded_strip_location_path(): ")
+				+ "Provided location path doesn't start or end with '/'.");
 	}
-	// Edge case.
-	if (loc_path.length() == ROOT_LOC_PATH_LENGTH)
+	if (loc_path.compare(0, loc_path.length(),
+			this->_request_path_decoded, 0, loc_path.length()) != 0)
 	{
-		return this->_request_target;
+		throw std::domain_error(std::string("HTTPRequest::get_request_path_decoded_strip_location_path(): ")
+				+ "Provided location path isn't contained in the request path.");
 	}
-	// Starting from 1, because our parser eats the first '/'.
-	// As always, I'm sorry for being stupid...
-	else if (loc_path.compare(1, loc_path.length() - 1,
-				this->_request_target, 0, loc_path.length() - 1)
-		!= 0)
-	{
-		throw std::domain_error("HTTPRequest::get_request_target_strip_location_path(): Provided location path isn't contained in the request target.");
-	}
-	ret = this->_request_target;
+	ret = this->_request_path_decoded;
 	ret.erase(0, loc_path.length() - 1);
 	return ret;
 }
 
-const std::string &HTTPRequest::get_request_query() const
+const std::string &HTTPRequest::get_request_query_original() const
 {
 	if (!(this->_request_query_is_set))
 	{
-		throw std::runtime_error("HTTPRequest::get_request_query(): Request query wasn't set yet.");
+		throw std::runtime_error(std::string("HTTPRequest::get_request_query_original(): ")
+				+ "Request query wasn't set yet.");
 	}
-	return this->_request_query;
+	return this->_request_query_original;
+}
+
+const std::string &HTTPRequest::get_request_query_decoded() const
+{
+	if (!(this->_request_query_is_set))
+	{
+		throw std::runtime_error(std::string("HTTPRequest::get_request_query_decoded(): ")
+				+ "Request query wasn't set yet.");
+	}
+	return this->_request_query_decoded;
+}
+
+const std::string &HTTPRequest::get_request_target() const
+{
+	if (!(this->_request_target_is_set))
+	{
+		throw std::runtime_error(std::string("HTTPRequest::get_request_target(): ")
+				+ "Request target wasn't set yet.");
+	}
+	return this->_request_target;
 }
 
 const std::string &HTTPRequest::get_header_value(const std::string &key) const
@@ -197,25 +227,22 @@ bool HTTPRequest::is_complete() const
 size_t HTTPRequest::handle_start_line(const std::string &start_line)
 {
 	size_t i;
-	const std::string AFTER_METHOD = " /";
 	const std::string START_LINE_END = " HTTP/1.1";
 
 	i = this->set_method(start_line);
-	// " /" after the request method
-	// (we support only the origin-form, absolute-form isn't supported).
-	if (start_line.length() <= i
-		|| start_line.compare(i, AFTER_METHOD.length(), AFTER_METHOD) != 0)
+	// ' ' after the request method.
+	if (start_line.length() <= i || start_line.at(i) != ' ')
 	{
 		throw std::invalid_argument("HTTPRequest::handle_start_line(): Start line is malformed.");
 	}
-	i += AFTER_METHOD.length();
-	// Request target and query.
+	i++;
+	// Request path, query and target.
 	if (start_line.length() <= i)
 	{
 		throw std::invalid_argument("HTTPRequest::handle_start_line(): Start line is malformed.");
 	}
-	i += this->set_request_target_and_query(start_line, i);
-	// " HTTP/1.1" after request target and query.
+	i += this->set_request_path_query_and_target(start_line, i);
+	// " HTTP/1.1" after request target.
 	if (start_line.length() != i + START_LINE_END.length()
 		|| start_line.compare(i, START_LINE_END.length(), START_LINE_END) != 0)
 	{
@@ -249,15 +276,15 @@ size_t HTTPRequest::set_method(const std::string &start_line)
 	throw std::invalid_argument("HTTPRequest::set_method(): Request method isn't supported.");
 }
 
-// Both request target and query may be empty,
+// Request query may be empty,
 // e.g. this start line: "GET /? HTTP/1.1\r\n" is perfectly valid.
-size_t HTTPRequest::set_request_target_and_query(const std::string &start_line,
+size_t HTTPRequest::set_request_path_query_and_target(const std::string &start_line,
 		size_t pos)
 {
 	size_t ret = 0;
 	size_t end;
 
-	// Finding the end of the request target.
+	// Finding the end of the request path.
 	end = start_line.find('?', pos);
 	if (end == std::string::npos)
 	{
@@ -267,46 +294,63 @@ size_t HTTPRequest::set_request_target_and_query(const std::string &start_line,
 			end = start_line.length();
 		}
 	}
-	// _request_target.
-	ret += this->set_request_component(this->_request_target,
+	// `_request_path*` and appending encoded version to `_request_target`.
+	ret += this->set_request_component(
+			this->_request_path_original, this->_request_path_decoded,
 			start_line, pos, end);
-	this->_request_target_is_set = true;
+	this->_request_path_is_set = true;
+	this->_request_target = this->_request_path_original;
 	pos += ret;
-	if (!(this->request_target_no_double_slash_anywhere(this->_request_target))) {
-		// Request target contains two or more consequent slashes,
+	// Checking if the encoded request path is in origin form.
+	if (this->_request_path_original.length() == 0
+		|| this->_request_path_original.at(0) != '/')
+	{
+		throw std::invalid_argument(std::string("HTTPRequest::set_request_path_query_and_target(): ")
+				+ "Only origin form is supported as an encoded request path.");
+	}
+	else if (!(this->request_path_decoded_no_double_slash_anywhere(
+				this->_request_path_decoded)))
+	{
+		// Decoded request path contains two or more consequent slashes,
 		// which shouldn't be the case.
-		throw std::invalid_argument("HTTPRequest::set_request_target_and_query: Request target contains two or more consequent slashes.");
+		throw std::invalid_argument(std::string("HTTPRequest::set_request_path_query_and_target(): ")
+				+ "Decoded request path contains two or more consequent slashes.");
 	}
 	else if (start_line.length() <= pos || start_line.at(pos) != '?')
 	{
 		// Optional query isn't present.
 		return ret;
 	}
-	// _request_query.
+	// `_request_query*` and appending it to `_request_target`.
 	if (start_line.length() <= ++pos)
 	{
-		throw std::invalid_argument("HTTPRequest::set_request_target_and_query(): Start line unexpectedly ends after ? sign.");
+		throw std::invalid_argument(std::string("HTTPRequest::set_request_path_query_and_target(): ")
+				+ "Start line unexpectedly ends after ? sign.");
 	}
-	ret++;	// Skipped the '?' sign.
+	_request_target.push_back('?');
+	ret++;				// '?' sign.
 	// Finding the end of the request query.
-	// Request query may also be empty, as well request target,
-	// e.g. this start line: "GET /? HTTP/1.1\r\n" is valid.
 	end = start_line.find(' ', pos);
 	if (end == std::string::npos)
 	{
 		end = start_line.length();
 	}
-	ret += this->set_request_component(this->_request_query,
+	// `_request_query*` and appending encoded version to `_request_target`.
+	ret += this->set_request_component(
+			this->_request_query_original, this->_request_query_decoded,
 			start_line, pos, end);
 	this->_request_query_is_set = true;
+	this->_request_target += this->_request_query_original;
 	pos += ret;
 	return ret;
 }
 
-size_t HTTPRequest::set_request_component(std::string & component,
-		const std::string &start_line, size_t pos, size_t end)
+size_t HTTPRequest::set_request_component(
+		std::string &comp_original, std::string &comp_decoded,
+		const std::string &start_line, const size_t POS, const size_t END)
 {
-	// RFC 3986 in case of path in request target and request query.
+	size_t i = POS;
+	// RFC 3986 in case of request path and request query.
 	const std::string ALLOWED_UNENCODED_CHARS =
 		"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 		"abcdefghijklmnopqrstuvwxyz"
@@ -315,11 +359,18 @@ size_t HTTPRequest::set_request_component(std::string & component,
 		"!$&'()*+,/:;=@";
 	const std::string ALLOWED_CHARS_ONLY_ENCODED =
 		"#?[] %";
-	size_t i = pos;
 
-	// If any information is already stored in `component`, drop it.
-	component.clear();
-	while (i < end)
+	if (POS > END)
+	{
+		throw std::invalid_argument(std::string("HTTPRequest::set_request_component(): ")
+				+ "POS: " + to_string(POS) +
+				+ " is bigger than END: " + to_string(END) + '.');
+	}
+	// If any information is already stored in `comp_original`
+	// or `comp_decoded`, drop it.
+	comp_original.clear();
+	comp_decoded.clear();
+	while (i < END)
 	{
 		if (start_line.at(i) == '%')
 		{
@@ -328,30 +379,33 @@ size_t HTTPRequest::set_request_component(std::string & component,
 			if (ALLOWED_UNENCODED_CHARS.find(pec) == std::string::npos
 				&& ALLOWED_CHARS_ONLY_ENCODED.find(pec) == std::string::npos)
 			{
-				throw std::invalid_argument("HTTPRequest::set_request_component(): Start line contains illegal encoded characters.");
+				throw std::invalid_argument(std::string("HTTPRequest::set_request_component(): ")
+						+ "Start line contains illegal encoded characters.");
 			}
-			component.push_back(pec);
+			comp_decoded.push_back(pec);
 		}
 		else if (ALLOWED_UNENCODED_CHARS.find(start_line.at(i)) != std::string::npos)
 		{
-			component.push_back(start_line.at(i++));
+			comp_decoded.push_back(start_line.at(i++));
 		}
 		else
 		{
-			throw std::invalid_argument("HTTPRequest::set_request_component(): Start line contains illegal unencoded characters.");
+			throw std::invalid_argument(std::string("HTTPRequest::set_request_component(): ")
+					+ "Start line contains illegal encoded characters.");
 		}
 	}
-	return i - pos;
+	comp_original = start_line.substr(POS, END - POS);
+	return i - POS;
 }
 
-bool HTTPRequest::request_target_no_double_slash_anywhere(
-		const std::string &request_target) const {
+bool HTTPRequest::request_path_decoded_no_double_slash_anywhere(
+		const std::string &request_path_decoded) const {
 	// true by default, because our specific parser
 	// eats the first '/' in the request target.
 	bool previous_char_was_slash = true;
 
-	for (size_t i = 0; i < request_target.length(); i++) {
-		if (request_target.at(i) == '/') {
+	for (size_t i = 0; i < request_path_decoded.length(); i++) {
+		if (request_path_decoded.at(i) == '/') {
 			if (previous_char_was_slash) {
 				return false;
 			}
@@ -584,30 +638,58 @@ void HTTPRequest::printDebug() const {
 		std::cout << "Method:          [NOT SET]" << std::endl;
 	}
 
-	// Target
-	if (_request_target_is_set) {
+	// Path.
+	if (_request_path_is_set)
+	{
+		std::cout << "Path original:   " << _request_path_original << std::endl;
+		std::cout << "Path decoded:    " << _request_path_decoded << std::endl;
+	}
+	else
+	{
+		std::cout << "Path:            [NOT SET]" << std::endl;
+	}
+	// Query.
+	if (_request_query_is_set)
+	{
+		std::cout << "Query original:  " << _request_query_original << std::endl;
+		std::cout << "Query decoded :  " << _request_query_decoded << std::endl;
+	}
+	else
+	{
+		std::cout << "Query:           [NOT SET]" << std::endl;
+	}
+	// Target.
+	if (_request_target_is_set)
+	{
 		std::cout << "Target:          " << _request_target << std::endl;
 	}
 	else
+	{
 		std::cout << "Target:          [NOT SET]" << std::endl;
-
-	// Query
-	if (_request_query_is_set)
-		std::cout << "Query:           " << _request_query << std::endl;
-	else
-		std::cout << "Query:           [NOT SET]" << std::endl;
-
-	// Headers
+	}
+	// Headers.
 	std::cout << "Header Fields:" << std::endl;
-	if (_header_fields.empty()) {
+	if (_header_fields.empty())
+	{
 		std::cout << "  [NONE]" << std::endl;
-	} else {
-		for (std::map<std::string, std::string>::const_iterator it = _header_fields.begin(); it != _header_fields.end(); ++it) {
-			std::cout << "  " << std::setw(16) << std::left << it->first << ": " << it->second << std::endl;
+	}
+	else
+	{
+		for (std::map<std::string, std::string>::const_iterator it = _header_fields.begin();
+			it != _header_fields.end(); ++it)
+		{
+			std::cout << "  " << std::setw(16) << std::left << it->first
+				  << ": " << it->second << std::endl;
 		}
 	}
-
-	// Completion flag
-	std::cout << "Request Complete: " << (this->_header_complete ? "Yes" : "No") << std::endl;
+	// Completion flag.
+	std::cout << "Request complete: " << (this->is_complete() ? "Yes" : "No") << std::endl;
+	if (_body_complete)
+	{
+		std::cout << "Body:" << std::endl;
+		std::cout << "================" << std::endl;
+		std::cout << _body << std::endl;
+		std::cout << "================" << std::endl;
+	}
 	std::cout << "====================================\n" << std::endl;
 }
