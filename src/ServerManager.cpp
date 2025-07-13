@@ -306,34 +306,28 @@ void ServerManager::handleClientEvent(int client_fd, uint32_t eventFlag)
 	{
 		if (conn.getRequestError() || conn.getRequestIsComplete())
 		{
-			if (conn.getResponseReady() == true){
-				if(!conn.handleWriteEvent()){
+			if (conn.getResponseReady() == true)
+			{
+				if (!conn.handleWriteEvent())
+				{
 					print_log("EPOLLOUT event for client fd: ", to_string(client_fd), " - closing connection");
 					closeClientConnection(client_fd);
-					return;
 				}
 				if (conn.getMsgSent() == true) {
 					print_log("EPOLLOUT event for client fd: ", to_string(client_fd), " - response sent");
-					// // After sending the response, we can clean up the request and response objects
+					if (conn._response.should_close_connection())
+					{
+						print_log("Closing connection with client fd: ",
+							to_string(client_fd), " - conn._response.should_close_connection() is true");
+						closeClientConnection(client_fd);
+						return;
+					}
+					// After sending the response, we can clean up the request and response objects
 					conn.reset();
 				}
 			}
 			else {
 				conn._response.handle_response_routine(conn.getRequest());
-				// Maybe we should send a response in next iteration???
-				if (conn.getResponseReady() == true){
-				if(!conn.handleWriteEvent()){
-					print_log("EPOLLOUT event for client fd: ", to_string(client_fd), " - closing connection");
-					closeClientConnection(client_fd);
-					return;
-				}
-					if (conn.getMsgSent() == true) {
-						print_log("EPOLLOUT event for client fd: ", to_string(client_fd), " - response sent");
-						// After sending the response, we can clean up the request and response objects
-						conn.reset();
-					}
-				}
-				return; // Nothing to send, skip write event
 			}
 		}
 	}
