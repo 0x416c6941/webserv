@@ -144,7 +144,7 @@ std::string read_file(const std::string &path)
 {
 	std::ifstream file;
 	std::string line;
-	std::stringstream ret;
+	std::ostringstream ret;
 
 	file.open(path.c_str());
 	if (!file.is_open())
