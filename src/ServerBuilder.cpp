@@ -496,7 +496,7 @@ static void handle_location_cgi_ext(Location& loc, const std::vector<std::string
 		if (tokens[i] == ";")
 			break;
 
-		loc.addCgiPath(tokens[i]);
+		loc.addCgiExtension(tokens[i]);
 		valueAdded = true;
 		++i;
 	}
