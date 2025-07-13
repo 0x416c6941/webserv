@@ -46,13 +46,13 @@ private:
 
 	/**
 	 * Determines the max body size of files sent to us with "POST" method
-	 * depending on \p target.
+	 * depending on \p request_path.
 	 * @throw	domain_error	Saving a received file at \p path
 	 * 				is forbidden.
-	 * @param	target	Request target parsed in request header.
+	 * @param	request_path	Request path parsed in request header.
 	 * @return	Max body size of received file.
 	 */
-	size_t			getMaxBodySize(const std::string &target) const;
+	size_t			getMaxBodySize(const std::string &request_path) const;
 
 	ClientConnection & operator =(const ClientConnection &other);
 
@@ -83,8 +83,8 @@ public:
 	void                    setServer(ServerConfig &server);
 	void                    updateTime();
 
-	// Logic
-	/**r.reset();
+	// Logic.
+	/**
 	 * Reads a limited (by buffer size) part of information
 	 * sent to us by the client and tries to parse it.
 	 * @return	true, if some information was successfully read and parsed;
@@ -93,18 +93,14 @@ public:
 	bool                    handleReadEvent();
 
 	/**
-	 * Determines which Location from `_server` corresponds to \p target.
-	 * @throw	out_of_range	Location with such target
-	 * 				isn't defined.
-	 * @param	target	Request target parsed in request header.
-	 * @return	Determined Location.
+	 * Send a response to the client.
+	 * @warning	This function will often need to be called multiple times.
+	 * 		Response is send in limited buffers.
+	 * 		Call `getMsgSent()` to see if full response
+	 * 		was set yet.
+	 * @return	true, if some part of a response was successfully sent;
+	 * 		false, if an error occurred or the client closed the connection.
 	 */
-	const Location		&determineLocation(const std::string &target) const;
-
-	// TODO: Should we send the data with send() in limited packets,
-	// e.g. 2 KBs?
-	// Doing so could potentially prevent problems such as
-	// big files not being able to be sent completely over the network.
 	bool		    	handleWriteEvent();
 
 	void                    closeConnection();

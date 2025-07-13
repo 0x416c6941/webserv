@@ -85,6 +85,15 @@ public:
 	bool 				alreadyAddedHost(const std::string& host) const;
 	void 				resetIndex(void);
 
+	/**
+	 * Determines which Location corresponds to \p request_path.
+	 * @throw	out_of_range	Location with such target
+	 * 				isn't defined.
+	 * @param	request_path	Request path parsed in request header.
+	 * @return	Determined Location.
+	 */
+	const Location			&determineLocation(const std::string &request_path) const;
+
 
 	void				initServerSocket(void);
 	void 				cleanupSocket(void);

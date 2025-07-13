@@ -107,6 +107,42 @@ bool 					ServerConfig::alreadyAddedHost(const std::string& host) const {
 
 void 					ServerConfig::resetIndex() { _index.clear(); }
 
+const Location				&ServerConfig::determineLocation(
+		const std::string &request_path) const
+{
+	std::vector<Location>::const_iterator ret
+		= _locations.end();
+	// The point of `ret_path_len`:
+	// let's say we have defined locations with paths "/" and "/some_path/"
+	// and the `request_path` is "/some_path/some_data".
+	//
+	// We need to keep track of the curent deepest found location path.
+	// If we don't, then if "/" is found as the first location,
+	// it will be returned instead of "/some_path/".
+	size_t ret_path_len = 0;
+
+	for (std::vector<Location>::const_iterator it = _locations.begin();
+		it != _locations.end(); ++it) {
+		std::string loc_path = it->getPath();
+		// We assume that location target (path) will always be
+		// at least of length 1,
+		// hence not checking for possible out of bounds access.
+		if (loc_path.at(loc_path.length() - 1) != '/') {
+			loc_path.push_back('/');
+		}
+		if (loc_path.compare(0, loc_path.length(), request_path) == 0
+			&& ret_path_len < loc_path.length()) {
+			ret = it;
+			ret_path_len = loc_path.length();
+		}
+	}
+	if (ret == _locations.end()) {
+		throw std::out_of_range("ClientConnection::determineLocation: Couldn't determine the Location to which target corresponds to.");
+	}
+	return *ret;
+}
+
+
 /**
  * @brief Sets default server configuration values if not explicitly provided.
  *

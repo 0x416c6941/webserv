@@ -148,12 +148,13 @@ int ClientConnection::parseReadEvent(std::string &buffer)
 	return 0;
 }
 
-size_t ClientConnection::getMaxBodySize(const std::string &target) const {
+size_t ClientConnection::getMaxBodySize(const std::string &request_path) const {
 	try {
-		const Location &loc = this->determineLocation(target);
+		const Location &loc = _server->determineLocation(request_path);
 
 		if (loc.getMethods().find("POST") == loc.getMethods().end()) {
-			throw std::domain_error("ClientConnection::getMaxBodySize(): POST method isn't allowed on the requested Location.");
+			throw std::domain_error(std::string("ClientConnection::getMaxBodySize(): ")
+					+ "POST method isn't allowed on the requested Location.");
 		}
 		try {
 			return loc.getMaxBodySize();
@@ -169,7 +170,8 @@ size_t ClientConnection::getMaxBodySize(const std::string &target) const {
 		//
 		// We don't support "allow_methods" directive for "server" blocks
 		// and instead directly support only GET methods.
-		throw std::domain_error("ClientConnection::getMaxBodySize(): POST method isn't allowed on the requested Location.");
+		throw std::domain_error(std::string("ClientConnection::getMaxBodySize(): ")
+				+ "POST method isn't allowed on the requested Location.");
 	}
 }
 
@@ -279,42 +281,6 @@ bool ClientConnection::handleReadEvent()
 		_response.build_error_response();
 	}
 	return true;
-}
-
-const Location &ClientConnection::determineLocation(const std::string &target) const {
-	std::vector<Location>::const_iterator ret
-		= this->_server->getLocations().end();
-	// The point of `ret_path_len`:
-	// let's say we have defined locations with paths "/" and "/some_path/"
-	// and the `target` is "/some_path/some_data".
-	//
-	// We need to keep track of the curent deepest found location path.
-	// If we don't, then if "/" is found as the first location,
-	// it will be returned instead of "/some_path/".
-	size_t ret_path_len = 0;
-
-	for (std::vector<Location>::const_iterator it = this->_server->getLocations().begin();
-		it != this->_server->getLocations().end(); ++it) {
-		std::string loc_path = it->getPath();
-		// We assume that location target (path) will always be
-		// at least of length 1, hence not checking it.
-		if (loc_path.at(loc_path.length() - 1) != '/') {
-			loc_path.push_back('/');
-		}
-		// Starting from 1, because in the HTTPRequest parser
-		// the first '/' gets eaten.
-		// I'm sorry for being stupid...
-		if (loc_path.compare(1, loc_path.length() - 1, target,
-				0, loc_path.length() - 1) == 0
-			&& ret_path_len < loc_path.length()) {
-			ret = it;
-			ret_path_len = loc_path.length();
-		}
-	}
-	if (ret == this->_server->getLocations().end()) {
-		throw std::out_of_range("ClientConnection::determineLocation: Couldn't determine the Location to which target corresponds to.");
-	}
-	return *ret;
 }
 
 bool	ClientConnection::handleWriteEvent()
