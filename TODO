@@ -23,8 +23,8 @@ HTTPResponse.cpp:
 inet_pton():
 	Syscall is forbidden. Rewrite.
 
-HTTPRequest.cpp:
-	Throw exception if Host header isn't present.
+HTTPResponse:: mime.
+	Connection: close?
 
 HTTPResponse:: handle_response_routine.
 
