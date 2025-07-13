@@ -137,4 +137,15 @@ class HTTPResponse
 		 */
 		std::string	resolve_path(const std::string &root,
 				const std::string &request_relative_path) const;
+
+		/**
+		 * We don't have to support custom return pages.
+		 * To make things easier, let's just generate them in code.
+		 * @brief	Generate 301 page ("Content-Type"
+		 * 		will be "plain/text; charset=UTF-8").
+		 * 		Sets `_status_code`, "Location" header
+		 * 		and `_response_body`.
+		 * @param	redir_path	Redirection path.
+		 */
+		void		generate_301(const std::string &redir_path);
 };

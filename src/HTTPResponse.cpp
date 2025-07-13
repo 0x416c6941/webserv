@@ -276,9 +276,11 @@ std::string HTTPResponse::get_mime_type(const std::string &path)
 	return "application/octet-stream";
 }
 
-void HTTPResponse::handle_get(const HTTPRequest& request, const Location *lp)
+void HTTPResponse::handle_get(const HTTPRequest &request, const Location *lp)
 {
-	std::string request_relative_path;
+	std::string request_dir_relative_to_root;
+	std::string request_location_path;
+	std::string request_dir_root;
 	std::string resolved_path;
 
 	// Checking if "GET" method is allowed.
@@ -289,36 +291,77 @@ void HTTPResponse::handle_get(const HTTPRequest& request, const Location *lp)
 		build_error_response();
 		return;
 	}
-	// Resolving request path.
+	// Resolving request dirs, paths, etc.
 	if (lp != NULL)
 	{
-		request_relative_path = request.get_request_path_decoded_strip_location_path(
+		request_dir_relative_to_root = request.get_request_path_decoded_strip_location_path(
 				lp->getPath());
-	}
-	else
-	{
-		request_relative_path = request.get_request_path_decoded();
-		// Request path initial '/'.
-		request_relative_path.erase(0, 1);
-	}
-	try
-	{
-		if (lp != NULL)
+		request_location_path = lp->getPath();
+		if (!(lp->getRootLocation().empty()))
 		{
-			resolved_path = this->resolve_path(lp->getPath(),
-					request_relative_path);
+			request_dir_root = lp->getRootLocation();
+		}
+		else if (!(lp->getAlias().empty()))
+		{
+			request_dir_root = lp->getAlias();
 		}
 		else
 		{
-			resolved_path = this->resolve_path(_server_cfg->getRoot(),
-					request_relative_path);
+			request_dir_root = _server_cfg->getRoot();
 		}
+		if (request_dir_root.at(request_dir_root.length() - 1) != '/')
+		{
+			request_dir_root.push_back('/');
+		}
+	}
+	else
+	{
+		request_dir_relative_to_root = request.get_request_path_decoded();
+		// Request path initial '/'.
+		request_dir_relative_to_root.erase(0, 1);
+		request_location_path = '/';
+		request_dir_root = _server_cfg->getRoot();
+		if (request_dir_root.at(request_dir_root.length() - 1) != '/')
+		{
+			request_dir_root.push_back('/');
+		}
+	}
+	try
+	{
+		resolved_path = this->resolve_path(request_dir_root,
+				request_dir_relative_to_root);
 	}
 	catch (const directory_traversal_detected &e)
 	{
 		_status_code = 406;	// I guess 406 is good in this case?
 		build_error_response();
 		return;
+	}
+	// Every code up to this line will be copy-pasted
+	// in other (POST, DELETE) methods.
+	//
+	// This solution is not elegant,
+	// but it's sufficient for the evaluation.
+	// -------------------------------------------------------------------
+	if (isDirectory(resolved_path))
+	{
+		if (resolved_path.at(resolved_path.length() - 1) != '/')
+		{
+			generate_301(request_location_path
+				+ request_dir_relative_to_root + '/');
+			try
+			{
+				_headers["Connection"] = request.get_header_value(
+						"Connection");
+			}
+			catch (const std::range_error &e)
+			{
+				_headers["Connection"] = "keep-alive";
+			}
+			_response_ready = true;
+			print_log("Sent the 301: ", _response_body, "");
+			return;
+		}
 	}
 	// TODO.
 	_headers["Connection"] = "close";
@@ -443,4 +486,13 @@ std::string HTTPResponse::resolve_path(const std::string &root,
 		}
 	}
 	return root + request_relative_path;
+}
+
+void HTTPResponse::generate_301(const std::string &redir_path)
+{
+	_status_code = 301;
+	_headers["Location"] = redir_path;
+	_response_body = "Moved_permanently to";
+	_response_body += redir_path;
+	_response_body += '\n';
 }
