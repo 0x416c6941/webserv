@@ -122,7 +122,7 @@ std::string HTTPRequest::get_request_path_decoded_strip_location_path(
 				+ "Provided location path doesn't start or end with '/'.");
 	}
 	if (loc_path.compare(0, loc_path.length(),
-			this->_request_path_decoded, 0, loc_path.length()) != 0)
+			this->_request_path_decoded) != 0)
 	{
 		throw std::domain_error(std::string("HTTPRequest::get_request_path_decoded_strip_location_path(): ")
 				+ "Provided location path isn't contained in the request path.");
@@ -239,6 +239,7 @@ size_t HTTPRequest::handle_start_line(const std::string &start_line)
 	// Request path, query and target.
 	if (start_line.length() <= i)
 	{
+		// Got e.g. "GET " as a start line.
 		throw std::invalid_argument("HTTPRequest::handle_start_line(): Start line is malformed.");
 	}
 	i += this->set_request_path_query_and_target(start_line, i);
@@ -319,6 +320,7 @@ size_t HTTPRequest::set_request_path_query_and_target(const std::string &start_l
 	else if (start_line.length() <= pos || start_line.at(pos) != '?')
 	{
 		// Optional query isn't present.
+		this->_request_target_is_set = true;
 		return ret;
 	}
 	// `_request_query*` and appending it to `_request_target`.
@@ -341,6 +343,7 @@ size_t HTTPRequest::set_request_path_query_and_target(const std::string &start_l
 			start_line, pos, end);
 	this->_request_query_is_set = true;
 	this->_request_target += this->_request_query_original;
+	this->_request_target_is_set = true;
 	pos += ret;
 	return ret;
 }
@@ -400,9 +403,7 @@ size_t HTTPRequest::set_request_component(
 
 bool HTTPRequest::request_path_decoded_no_double_slash_anywhere(
 		const std::string &request_path_decoded) const {
-	// true by default, because our specific parser
-	// eats the first '/' in the request target.
-	bool previous_char_was_slash = true;
+	bool previous_char_was_slash = false;
 
 	for (size_t i = 0; i < request_path_decoded.length(); i++) {
 		if (request_path_decoded.at(i) == '/') {
