@@ -44,6 +44,12 @@ HTTPRequest::method_not_allowed::method_not_allowed(const char * msg)
 {
 }
 
+HTTPRequest::method_not_allowed::method_not_allowed(const std::string &msg)
+	: m_msg(msg.c_str())
+{
+}
+
+
 const char * HTTPRequest::method_not_allowed::what() const throw()
 {
 	return m_msg;
@@ -133,14 +139,14 @@ std::string HTTPRequest::get_request_path_decoded_strip_location_path(
 		throw std::invalid_argument(std::string("HTTPRequest::get_request_path_decoded_strip_location_path(): ")
 				+ "Provided location path doesn't start or end with '/'.");
 	}
-	if (loc_path.compare(0, loc_path.length(),
-			this->_request_path_decoded) != 0)
+	if (this->_request_path_decoded.compare(0,
+				loc_path.length(), loc_path) != 0)
 	{
 		throw std::domain_error(std::string("HTTPRequest::get_request_path_decoded_strip_location_path(): ")
 				+ "Provided location path isn't contained in the request path.");
 	}
 	ret = this->_request_path_decoded;
-	ret.erase(0, loc_path.length() - 1);
+	ret.erase(0, loc_path.length());
 	return ret;
 }
 
@@ -286,7 +292,8 @@ size_t HTTPRequest::set_method(const std::string &start_line)
 		_method_is_set = true;
 		return DELETE_STR.length();
 	}
-	throw method_not_allowed("HTTPRequest::set_method(): Request method isn't supported.");
+	throw method_not_allowed(std::string("HTTPRequest::set_method(): ")
+			+ "Request method isn't supported.");
 }
 
 // Request query may be empty,

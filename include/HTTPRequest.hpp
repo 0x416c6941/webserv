@@ -33,6 +33,7 @@ class HTTPRequest
 
 			public:
 				method_not_allowed(const char * msg);
+				method_not_allowed(const std::string &msg);
 
 				const char * what() const throw();
 		};

@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <map>
 #include "Webserv.hpp"
+#include "Location.hpp"
 
 HTTPResponse::HTTPResponse()
 	: _server_cfg(NULL),
@@ -44,6 +45,23 @@ HTTPResponse& HTTPResponse::operator=(const HTTPResponse &other)
 
 HTTPResponse::~HTTPResponse()
 {
+}
+
+HTTPResponse::directory_traversal_detected::directory_traversal_detected(
+		const char * msg)
+	: m_msg(msg)
+{
+}
+
+HTTPResponse::directory_traversal_detected::directory_traversal_detected(
+		const std::string &msg)
+	: m_msg(msg.c_str())
+{
+}
+
+const char * HTTPResponse::directory_traversal_detected::what() const throw()
+{
+	return m_msg;
 }
 
 void HTTPResponse::set_server_cfg(ServerConfig *server_cfg)
@@ -95,53 +113,9 @@ void HTTPResponse::build_error_response()
 	_response_ready = true;
 }
 
-/*
-void    HTTPResponse::handle_response_routine(const ServerConfig& server_config, const HTTPRequest& request)
-{
-	if (_response_msg.size() > 0)
-	{
-		_response_msg.clear();
-	}
-	_response_ready = false;
-	set_root(server_config.getRoot());
-	// Basic validation, probably unnecessary.
-	if (!validate_request(request)) {
-		build_error_response(server_config);
-		return;
-	}
-	HTTPRequest::e_method method = request.get_method();
-	switch (method) {
-		case HTTPRequest::GET:
-			handleGET(request, server_config);
-			// TODO: What if _status_code isn't 200?...
-			if (_status_code == 200)
-			{
-				// Build the response msg with headers.
-				_response_msg = build_response_msg();
-				_response_ready = true;
-			}
-			break;
-		case HTTPRequest::POST:
-			// Handle POST.
-			_status_code = 204;
-			_response_msg = build_response_msg();
-			_response_ready = true;
-			break;
-		case HTTPRequest::DELETE:
-			// Handle DELETE.
-			break;
-		default:
-			// Unknown method (should not NEVER happen).
-			_status_code = 405;
-			build_error_response(server_config);
-			return;
-	}
-}
- */
-// TODO: Temporary code.
 void HTTPResponse::handle_response_routine(const HTTPRequest &request)
 {
-	(void) request;
+	HTTPRequest::e_method method = request.get_method();
 
 	if (_server_cfg == NULL)
 	{
@@ -153,8 +127,26 @@ void HTTPResponse::handle_response_routine(const HTTPRequest &request)
 		throw std::runtime_error(std::string("HTTPResponse::handle_response_routine(): ")
 				+ "Response message is already prepared.");
 	}
-	_status_code = 501;
-	this->build_error_response();
+	switch (method)
+	{
+		case HTTPRequest::GET:
+			handle_get(request);
+			break;
+		case HTTPRequest::POST:
+			// Temporary stub.
+			_status_code = 405;
+			this->build_error_response();
+			break;
+		case HTTPRequest::DELETE:
+			// Temporary stub.
+			_status_code = 405;
+			this->build_error_response();
+			break;
+		default:
+			// This should never occur.
+			_status_code = 405;
+			this->build_error_response();
+	}
 }
 
 bool HTTPResponse::is_response_ready() const
@@ -195,9 +187,8 @@ bool HTTPResponse::should_close_connection() const
 		throw std::runtime_error(std::string("HTTPResponse::should_close_connection(): ")
 				+ "Response message isn't ready yet.");
 	}
-	else if (_status_code >= 400	// 4xx and 5xx are error codes.
-		|| (_headers.find("Connection") != _headers.end()
-			&& _headers.at("Connection").compare("close") == 0))
+	else if (_headers.find("Connection") != _headers.end()
+			&& _headers.at("Connection").compare("close") == 0)
 	{
 		return true;
 	}
@@ -205,20 +196,6 @@ bool HTTPResponse::should_close_connection() const
 }
 
 /*
-HTTPResponse::HTTPError::HTTPError(int status_code, const std::string &msg)
-	: code(status_code), message(msg)
-{
-}
-
-HTTPResponse::HTTPError::~HTTPError() throw()
-{
-}
-
-const char *HTTPResponse::HTTPError::what() const throw()
-{
-	return message.c_str();
-}
-
 bool HTTPResponse::has_permission(const std::string& path, HTTPRequest::e_method method) const
 {
 	int mode = 0;
@@ -320,9 +297,70 @@ std::string HTTPResponse::get_mime_type(const std::string &path)
 	return "application/octet-stream";
 }
 
-/*
-void HTTPResponse::handleGET(const HTTPRequest& request, const ServerConfig& server_config)
+void HTTPResponse::handle_get(const HTTPRequest& request)
 {
+	// Location pointer.
+	const Location *lp;
+	std::string request_relative_path;
+	std::string resolved_path;
+
+	try
+	{
+		const Location &loc = _server_cfg->determineLocation(
+				request.get_request_path_decoded());
+
+		lp = &loc;
+	}
+	catch (const std::out_of_range &e)
+	{
+		lp = NULL;
+	}
+	// Checking if "GET" method is allowed.
+	if (lp != NULL
+		&& lp->getMethods().find("GET") == lp->getMethods().end())
+	{
+		_status_code = 405;
+		build_error_response();
+		return;
+	}
+	// Getting request relative path.
+	if (lp != NULL)
+	{
+		request_relative_path = request.get_request_path_decoded_strip_location_path(
+				lp->getPath());
+	}
+	else
+	{
+		request_relative_path = request.get_request_path_decoded();
+		// Request path initial '/'.
+		request_relative_path.erase(0, 1);
+	}
+	try
+	{
+		if (lp != NULL)
+		{
+			resolved_path = this->resolve_path(lp->getPath(),
+					request_relative_path);
+		}
+		else
+		{
+			resolved_path = this->resolve_path(_server_cfg->getRoot(),
+					request_relative_path);
+		}
+	}
+	catch (const directory_traversal_detected &e)
+	{
+		_status_code = 406;	// I guess 406 is good in this case?
+		build_error_response();
+		return;
+	}
+	// TODO.
+	_headers["Connection"] = "close";
+	_response_ready = true;
+
+
+
+	/*
 	const std::vector<Location> loc = server_config.getLocations();	// Unused for now, but should be checked later.
 
         try
@@ -382,11 +420,61 @@ void HTTPResponse::handleGET(const HTTPRequest& request, const ServerConfig& ser
 		_response_msg = generateErrorPage(_status_code);
 		_response_ready = true; // Set response ready even on error
 	}
+	*/
 }
- */
 
 void HTTPResponse::append_required_headers()
 {
-	_headers["Server"] = "webserv of hlyshchu and asagymba";
+	_headers["Server"] = "hlyshchu_asagymba";
 	_headers["Content_Length"] = to_string(_response_body.length());
+}
+
+std::string HTTPResponse::resolve_path(const std::string &root,
+		const std::string &request_relative_path) const
+{
+	// Checking for possible directory traversal in `request_relative_path`.
+	size_t depth = 0;
+	bool in_directory = false;
+
+	if (request_relative_path.length() != 0
+		&& request_relative_path.at(0) == '/')
+	{
+		throw std::invalid_argument(std::string("HTTPResponse::resolve_path(): ")
+				+ "Provided request path is not relative: "
+				+ request_relative_path);
+	}
+	for (size_t i = 0; i < request_relative_path.length(); i++)
+	{
+		if (request_relative_path.at(i) == '.'
+			&& !in_directory
+			&& (i + 1 < request_relative_path.length()
+				&& request_relative_path.at(i + 1) == '.'))
+		{
+			// More than 3 levels of indentation is bad.
+			// Still, let's proceed as is...
+			if (depth-- == 0)
+			{
+				throw directory_traversal_detected(std::string(
+							"HTTPResponse::resolve_path(): ")
+						+ "Detected directory traversal.");
+			}
+			i++;	// Skip the second dot.
+		}
+		else if (request_relative_path.at(i) == '/')
+		{
+			// Not checking for double slashes.
+			// Double slashes in the request path
+			// are already checked for during HTTPRequest parsing.
+			if (in_directory)
+			{
+				depth++;
+			}
+			in_directory = false;
+		}
+		else
+		{
+			in_directory = true;
+		}
+	}
+	return root + request_relative_path;
 }
