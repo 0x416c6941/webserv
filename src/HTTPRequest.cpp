@@ -322,7 +322,7 @@ size_t HTTPRequest::set_request_path_query_and_target(const std::string &start_l
 	this->_request_target = this->_request_path_original;
 	pos += ret;
 	// Checking if the encoded request path is in origin form.
-	if (this->_request_path_original.length() == 0
+	if (this->_request_path_original.length() <= 0
 		|| this->_request_path_original.at(0) != '/')
 	{
 		throw std::invalid_argument(std::string("HTTPRequest::set_request_path_query_and_target(): ")

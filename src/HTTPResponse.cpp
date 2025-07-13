@@ -5,6 +5,9 @@
 #include <map>
 #include "Webserv.hpp"
 #include "Location.hpp"
+#include <sys/types.h>
+#include <dirent.h>
+#include <errno.h>
 
 HTTPResponse::HTTPResponse()
 	: _server_cfg(NULL),
@@ -309,10 +312,6 @@ void HTTPResponse::handle_get(const HTTPRequest &request, const Location *lp)
 		{
 			request_dir_root = _server_cfg->getRoot();
 		}
-		if (request_dir_root.at(request_dir_root.length() - 1) != '/')
-		{
-			request_dir_root.push_back('/');
-		}
 	}
 	else
 	{
@@ -321,10 +320,11 @@ void HTTPResponse::handle_get(const HTTPRequest &request, const Location *lp)
 		request_dir_relative_to_root.erase(0, 1);
 		request_location_path = '/';
 		request_dir_root = _server_cfg->getRoot();
-		if (request_dir_root.at(request_dir_root.length() - 1) != '/')
-		{
+	}
+	if (request_dir_root.length() <= 0
+		|| request_dir_root.at(request_dir_root.length() - 1) != '/')
+	{
 			request_dir_root.push_back('/');
-		}
 	}
 	try
 	{
@@ -345,7 +345,9 @@ void HTTPResponse::handle_get(const HTTPRequest &request, const Location *lp)
 	// -------------------------------------------------------------------
 	if (isDirectory(resolved_path))
 	{
-		if (resolved_path.at(resolved_path.length() - 1) != '/')
+		if (request_dir_relative_to_root.length() > 0
+			&& request_dir_relative_to_root.at(
+				request_dir_relative_to_root.length() - 1) != '/')
 		{
 			generate_301(request_location_path
 				+ request_dir_relative_to_root + '/');
@@ -362,80 +364,42 @@ void HTTPResponse::handle_get(const HTTPRequest &request, const Location *lp)
 			print_log("Sent the 301: ", _response_body, "");
 			return;
 		}
+		else if (lp->getAutoindex() == true)
+		{
+			try
+			{
+				generate_auto_index(resolved_path);
+			}
+			catch (const std::ios_base::failure &e)
+			{
+				_status_code = 500;
+				build_error_response();
+				return;
+			}
+			try
+			{
+				_headers["Connection"] = request.get_header_value(
+						"Connection");
+			}
+			catch (const std::range_error &e)
+			{
+				_headers["Connection"] = "keep-alive";
+			}
+			_response_ready = true;
+			print_log("Sent the autoindex at: ", resolved_path, "");
+			return;
+		}
+		// else go through all index files.
 	}
-	// TODO.
+	// TODO (CGI part will start here).
 	_headers["Connection"] = "close";
 	_response_ready = true;
-
-
-
-	/*
-	const std::vector<Location> loc = server_config.getLocations();	// Unused for now, but should be checked later.
-
-        try
-	{
-		std::string requested_path = request.get_request_target();
-		std::string full_path = resolve_secure_path(requested_path);
-
-		// If it's a directory, try to append "/index.html"
-		if (isDirectory(full_path)) {
-			if (!full_path.empty() && full_path[full_path.length() - 1] != '/')
-				full_path += '/';
-			full_path += "index.html";
-		}
-		// File must exist
-		if (!pathExists(full_path)) {
-			_status_code = 404; // Not found.
-			_response_msg = generateErrorPage(_status_code);
-			return;
-		}
-		// Must not be a directory (even after index.html fallback)
-		if (isDirectory(full_path)) {
-			_status_code = 403;
-			_response_msg = generateErrorPage(_status_code);
-			return;
-		}
-		// Must have read permissions
-		if (!has_permission(full_path, HTTPRequest::GET)) {
-			_status_code = 403; // Forbidden.
-			_response_msg = generateErrorPage(_status_code);
-			return;
-		}
-		// Read file contents
-		std::ifstream file(full_path.c_str());
-		if (!file)
-		{
-			_status_code = 500; // Internal Server Error
-			_response_msg = generateErrorPage(_status_code);
-			return;
-		}
-		_mime = get_mime_type(full_path);
-		std::ostringstream content;
-		content << file.rdbuf();
-		_response_body = content.str();
-		_status_code = 200;
-	}
-	catch (const HTTPResponse::HTTPError& err)
-	{
-		print_err("Routing error: ", err.what(), " (HTTP " + to_string(err.code) + ")");
-		_status_code = err.code;
-		_response_msg = generateErrorPage(_status_code);
-		_response_ready = true; // Set response ready even on error.
-	}
-	catch (const std::exception& e)
-	{
-		print_err("handleGET error: ", e.what(), "");
-		_status_code = 500;
-		_response_msg = generateErrorPage(_status_code);
-		_response_ready = true; // Set response ready even on error
-	}
-	*/
 }
 
 void HTTPResponse::append_required_headers()
 {
 	_headers["Server"] = "hlyshchu_asagymba";
-	_headers["Content_Length"] = to_string(_response_body.length());
+	_headers["Content-Length"] = to_string(_response_body.length());
 }
 
 std::string HTTPResponse::resolve_path(const std::string &root,
@@ -445,7 +409,7 @@ std::string HTTPResponse::resolve_path(const std::string &root,
 	size_t depth = 0;
 	bool in_directory = false;
 
-	if (request_relative_path.length() != 0
+	if (request_relative_path.length() > 0
 		&& request_relative_path.at(0) == '/')
 	{
 		throw std::invalid_argument(std::string("HTTPResponse::resolve_path(): ")
@@ -495,4 +459,51 @@ void HTTPResponse::generate_301(const std::string &redir_path)
 	_response_body = "Moved_permanently to ";
 	_response_body += redir_path;
 	_response_body += '\n';
+}
+
+void HTTPResponse::generate_auto_index(const std::string &path)
+{
+	DIR *dir;
+	struct dirent *dir_ent;
+
+	_status_code = 200;
+	_headers["Content-Type"] = "text/html";
+	dir = opendir(path.c_str());
+	if (dir == NULL)
+	{
+		throw std::ios_base::failure(std::string("HTTPResponse::generate_auto_index: ")
+				+ "Couldn't open the directory at: " + path);
+	}
+	errno = 0;
+	_response_body = "<html>\n";
+	_response_body += "<head>\n";
+	_response_body += "<title>Index</title>\n";
+	_response_body += "</head>\n";
+	_response_body += "<body>\n";
+	while ((dir_ent = readdir(dir)) != NULL)
+	{
+		// Let's skip those, ok?
+		if (strcmp(dir_ent->d_name, ".") == 0
+			|| strcmp(dir_ent->d_name, "..") == 0)
+		{
+			continue;
+		}
+		_response_body += "<a href=\"";
+		_response_body += + dir_ent->d_name;
+		_response_body += "\">";
+		_response_body += dir_ent->d_name;
+		_response_body += "</a><br />\n";
+	}
+	if (errno != 0)
+	{
+		throw std::ios_base::failure(std::string("HTTPResponse::generate_auto_index: ")
+				+ "Couldn't read the directory at: " + path);
+	}
+	else if (closedir(dir) == -1)
+	{
+		throw std::ios_base::failure(std::string("HTTPResponse::generate_auto_index: ")
+				+ "Couldn't close the directory at: " + path);
+	}
+	_response_body += "</body>\n";
+	_response_body += "</html>\n";
 }

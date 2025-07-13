@@ -148,4 +148,15 @@ class HTTPResponse
 		 * @param	redir_path	Redirection path.
 		 */
 		void		generate_301(const std::string &redir_path);
+
+		/**
+		 * Generate directory listing page
+		 * with files and directories at \p path (excluding . and ..).
+		 * "Content-Type" will be "text/html"
+		 * and `_status_code` will be 200.
+		 * @throw	std::ios_base::failure	Got IO error.
+		 * @param	dir	Directory to list files
+		 * 			and directories in.
+		 */
+		void		generate_auto_index(const std::string &path);
 };
