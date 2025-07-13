@@ -97,15 +97,13 @@ class HTTPResponse
 		 * If any error is encountered,
 		 * respective error response is built.
 		 * @brief	Handle the "GET" request method.
-		 * @param	request			Request to handle.
-		 * @param	lp			Pointer to a location
-		 * 					corresponding to request path
-		 * 					in \p request.
-		 * @param	resolved_request_path	Resolved request path.
+		 * @param	request		Request to handle.
+		 * @param	lp		Pointer to a location
+		 * 				corresponding to request path
+		 * 				in \p request.
 		 */
 		void 		handle_get(const HTTPRequest& request,
-				const Location *lp,
-				const std::string &resolved_request_path);
+				const Location *lp);
 
 		// handle_post(), handle_delete().
 

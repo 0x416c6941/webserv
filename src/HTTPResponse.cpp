@@ -117,13 +117,9 @@ void HTTPResponse::handle_response_routine(const HTTPRequest &request)
 {
 	// Pointer to Location corresponding to request path in `request`.
 	const Location *lp;
-	// For resolving request path.
-	std::string request_relative_path;
-	std::string resolved_path;
 	// Request handler method.
 	void (HTTPResponse::*handler)(const HTTPRequest &request,
-			const Location *lp,
-			const std::string &resolved_request_path);
+			const Location *lp);
 
 	// Checking for usage errors.
 	if (_server_cfg == NULL)
@@ -148,37 +144,6 @@ void HTTPResponse::handle_response_routine(const HTTPRequest &request)
 	{
 		lp = NULL;
 	}
-	// Resolving request path.
-	if (lp != NULL)
-	{
-		request_relative_path = request.get_request_path_decoded_strip_location_path(
-				lp->getPath());
-	}
-	else
-	{
-		request_relative_path = request.get_request_path_decoded();
-		// Request path initial '/'.
-		request_relative_path.erase(0, 1);
-	}
-	try
-	{
-		if (lp != NULL)
-		{
-			resolved_path = this->resolve_path(lp->getPath(),
-					request_relative_path);
-		}
-		else
-		{
-			resolved_path = this->resolve_path(_server_cfg->getRoot(),
-					request_relative_path);
-		}
-	}
-	catch (const directory_traversal_detected &e)
-	{
-		_status_code = 406;	// I guess 406 is good in this case?
-		build_error_response();
-		return;
-	}
 	// Setting handler.
 	switch (request.get_method())
 	{
@@ -201,7 +166,7 @@ void HTTPResponse::handle_response_routine(const HTTPRequest &request)
 			this->build_error_response();
 			return;
 	}
-	(this->*handler)(request, lp, resolved_path);
+	(this->*handler)(request, lp);
 }
 
 bool HTTPResponse::is_response_ready() const
@@ -311,17 +276,47 @@ std::string HTTPResponse::get_mime_type(const std::string &path)
 	return "application/octet-stream";
 }
 
-void HTTPResponse::handle_get(const HTTPRequest& request, const Location *lp,
-		const std::string &resolved_request_path)
+void HTTPResponse::handle_get(const HTTPRequest& request, const Location *lp)
 {
-	(void) request;
-	(void) resolved_request_path;
+	std::string request_relative_path;
+	std::string resolved_path;
 
 	// Checking if "GET" method is allowed.
 	if (lp != NULL
 		&& lp->getMethods().find("GET") == lp->getMethods().end())
 	{
 		_status_code = 405;
+		build_error_response();
+		return;
+	}
+	// Resolving request path.
+	if (lp != NULL)
+	{
+		request_relative_path = request.get_request_path_decoded_strip_location_path(
+				lp->getPath());
+	}
+	else
+	{
+		request_relative_path = request.get_request_path_decoded();
+		// Request path initial '/'.
+		request_relative_path.erase(0, 1);
+	}
+	try
+	{
+		if (lp != NULL)
+		{
+			resolved_path = this->resolve_path(lp->getPath(),
+					request_relative_path);
+		}
+		else
+		{
+			resolved_path = this->resolve_path(_server_cfg->getRoot(),
+					request_relative_path);
+		}
+	}
+	catch (const directory_traversal_detected &e)
+	{
+		_status_code = 406;	// I guess 406 is good in this case?
 		build_error_response();
 		return;
 	}
