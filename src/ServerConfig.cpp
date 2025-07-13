@@ -123,14 +123,8 @@ const Location				&ServerConfig::determineLocation(
 
 	for (std::vector<Location>::const_iterator it = _locations.begin();
 		it != _locations.end(); ++it) {
-		std::string loc_path = it->getPath();
-		// We assume that location target (path) will always be
-		// at least of length 1,
-		// hence not checking for possible out of bounds access.
-		if (loc_path.at(loc_path.length() - 1) != '/') {
-			loc_path.push_back('/');
-		}
-		if (loc_path.compare(0, loc_path.length(), request_path) == 0
+		const std::string &loc_path = it->getPath();
+		if (request_path.compare(0, loc_path.length(), loc_path) == 0
 			&& ret_path_len < loc_path.length()) {
 			ret = it;
 			ret_path_len = loc_path.length();
