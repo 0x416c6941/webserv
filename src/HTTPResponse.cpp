@@ -360,14 +360,18 @@ std::string HTTPResponse::get_mime_type(const std::string &path)
 	return "application/octet-stream";
 }
 
+void HTTPResponse::append_required_headers()
+{
+	_headers["Server"] = "hlyshchu_asagymba";
+	_headers["Content-Length"] = to_string(_response_body.length());
+}
+
 void HTTPResponse::handle_get(const HTTPRequest &request, const Location *lp,
 		std::string &request_dir_relative_to_root,
 		std::string &request_location_path,
 		std::string &request_dir_root,
 		std::string &resolved_path)
 {
-	(void) request_dir_root;
-
 	if (isDirectory(resolved_path))
 	{
 		if (request_dir_relative_to_root.length() > 0
@@ -376,21 +380,24 @@ void HTTPResponse::handle_get(const HTTPRequest &request, const Location *lp,
 		{
 			generate_301(request_location_path
 				+ request_dir_relative_to_root + '/');
-			try
-			{
-				_headers["Connection"] = request.get_header_value(
-						"Connection");
-			}
-			catch (const std::range_error &e)
-			{
-				_headers["Connection"] = "keep-alive";
-			}
+			set_connection_header(request);
 			_response_ready = true;
 			print_log("Sent the 301: ", _response_body, "");
 			return;
 		}
-		// TODO: else go through all index files.
-		// If no index files are present, handle autoindex.
+		else if (find_first_available_index(lp,
+					request_dir_root,
+					request_dir_relative_to_root) == 0)
+		{
+			// find_first_available_index() found
+			// an available index and appended it's location
+			// relative to `request_dir_root`
+			// to `request_dir_relative_to_root`.
+			// Update `resolved_path` in this case.
+			resolved_path = request_dir_root
+				+ request_dir_relative_to_root;
+		}
+		// No available index was found.
 		else if (lp->getAutoindex() == true)
 		{
 			try
@@ -403,29 +410,47 @@ void HTTPResponse::handle_get(const HTTPRequest &request, const Location *lp,
 				build_error_response();
 				return;
 			}
-			try
-			{
-				_headers["Connection"] = request.get_header_value(
-						"Connection");
-			}
-			catch (const std::range_error &e)
-			{
-				_headers["Connection"] = "keep-alive";
-			}
+			set_connection_header(request);
 			_response_ready = true;
 			print_log("Sent the autoindex at: ", resolved_path, "");
 			return;
 		}
+		// No available index was found AND autoindex is off.
+		else
+		{
+			_status_code = 403;
+			build_error_response();
+			return;
+		}
+	}
+	if (!pathExists(resolved_path))
+	{
+		_status_code = 404;
+		build_error_response();
+		return;
+	}
+	else if (access(resolved_path.c_str(), R_OK) == -1)
+	{
+		_status_code = 403;
+		build_error_response();
+		return;
 	}
 	// TODO (CGI part will start here).
-	_headers["Connection"] = "close";
+	try
+	{
+		_response_body = read_file(resolved_path);
+	}
+	catch (const std::ios_base::failure &e)
+	{
+		_status_code = 500;
+		build_error_response();
+		return;
+	}
+	_status_code = 200;
+	_headers["Content-Type"] = get_mime_type(resolved_path);
+	set_connection_header(request);
+	print_log("Sending ", resolved_path, " to the server");
 	_response_ready = true;
-}
-
-void HTTPResponse::append_required_headers()
-{
-	_headers["Server"] = "hlyshchu_asagymba";
-	_headers["Content-Length"] = to_string(_response_body.length());
 }
 
 std::string HTTPResponse::resolve_path(const std::string &root,
@@ -487,10 +512,52 @@ void HTTPResponse::generate_301(const std::string &redir_path)
 	_response_body += '\n';
 }
 
+int HTTPResponse::find_first_available_index(const Location *lp,
+		std::string &request_dir_root,
+		std::string &request_dir_relative_to_root) const
+{
+	const std::vector<std::string> *indexes = NULL;
+	std::string index_path;
+
+	if (lp != NULL)
+	{
+		indexes = &(lp->getIndexLocation());
+		if (indexes->size() == 0)
+		{
+			indexes = &(_server_cfg->getIndex());
+		}
+	}
+	else
+	{
+		indexes = &(_server_cfg->getIndex());
+	}
+	for (size_t i = 0; i < indexes->size(); i++)
+	{
+		if ((indexes->at(i)).compare(0,
+				request_dir_relative_to_root.length(),
+				request_dir_relative_to_root) == 0)
+		{
+			index_path = request_dir_root + indexes->at(i);
+			if (isRegFile(index_path)
+				&& access(index_path.c_str(), R_OK) == 0)
+			{
+				// Instead of writing an append logic,
+				// it's easier just to copy the whole index path.
+				request_dir_relative_to_root = indexes->at(i);
+				return 0;
+			}
+		}
+	}
+	return -1;
+}
+
 void HTTPResponse::generate_auto_index(const std::string &path)
 {
 	DIR *dir;
 	struct dirent *dir_ent;
+	// If there are no available entries (file or directories)
+	// in `path`, state that in the response clearly.
+	bool have_at_least_one_entry = false;
 
 	_status_code = 200;
 	_headers["Content-Type"] = "text/html";
@@ -519,6 +586,7 @@ void HTTPResponse::generate_auto_index(const std::string &path)
 		_response_body += "\">";
 		_response_body += dir_ent->d_name;
 		_response_body += "</a><br />\n";
+		have_at_least_one_entry = true;
 	}
 	if (errno != 0)
 	{
@@ -530,6 +598,23 @@ void HTTPResponse::generate_auto_index(const std::string &path)
 		throw std::ios_base::failure(std::string("HTTPResponse::generate_auto_index: ")
 				+ "Couldn't close the directory at: " + path);
 	}
+	if (!have_at_least_one_entry)
+	{
+		_response_body += "<b>No entries</b> in this directory.<br />\n";
+	}
 	_response_body += "</body>\n";
 	_response_body += "</html>\n";
+}
+
+void HTTPResponse::set_connection_header(const HTTPRequest &request)
+{
+	try
+	{
+		_headers["Connection"] = request.get_header_value(
+				"Connection");
+	}
+	catch (const std::range_error &e)
+	{
+		_headers["Connection"] = "keep-alive";
+	}
 }

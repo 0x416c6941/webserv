@@ -87,7 +87,22 @@ class HTTPResponse
 		std::string				_response_body;
 		bool 		  			_response_ready;
 
+		/**
+		 * Gets the mime type depending on extension
+		 * of the file in \p path.
+		 * @param	path	Path to a file.
+		 * @return	Appropriate mime type for file in \p path.
+		 */
 		std::string 	get_mime_type(const std::string &path);
+
+		/**
+		 * Appends "Server" and "Content-Length" headers
+		 * to `_headers`.
+		 * @warning	"Content-Type" and "Connection" headers
+		 * 		must be set in build_error_response() or
+		 * 		handle_response_routine() respective methods.
+		 */
+		void		append_required_headers();
 
 		/**
 		 * Handles the "GET" method:
@@ -111,7 +126,7 @@ class HTTPResponse
 		 * @param	request_dir_root		Root or alias
 		 * 						of \p lp
 		 * 						or `_server->Root()`
-		 * 						if \p lp is NULL
+		 * 						(if \p lp is NULL)
 		 * 						with trailing '/'.
 		 * @param	resolved_path			\p request_dir_root
 		 * 						concatenated with
@@ -128,15 +143,6 @@ class HTTPResponse
 				std::string &resolved_path);
 
 		// handle_post(), handle_delete(), handle_put().
-
-		/**
-		 * Appends "Server" and "Content-Length" headers
-		 * to `_headers`.
-		 * @warning	"Content-Type" and "Connection" headers
-		 * 		must be set in build_error_response() or
-		 * 		handle_response_routine() respective methods.
-		 */
-		void		append_required_headers();
 
 		/**
 		 * Resolves the request path by concatenating
@@ -172,6 +178,34 @@ class HTTPResponse
 		void		generate_301(const std::string &redir_path);
 
 		/**
+		 * Iterate through available indexes in \p lp or
+		 * `_server_cfg` (if \p lp is NULL)
+		 * and append the first available to
+		 * \p request_dir_relative_to_root
+		 * (only if that index's file name contains
+		 * file name of \p request_dir_relative_to_root in itself).
+		 * @param	lp				Pointer to a location
+		 * 						corresponding to request path
+		 * 						in \p request.
+		 * @param	request_dir_root		Root or alias
+		 * 						of \p lp
+		 * 						or `_server->Root()`
+		 * 						(if \p lp is NULL)
+		 * 						with trailing '/'.
+		 * @param	request_dir_relative_to_root	Request path to file
+		 * 						or directory
+		 * 						in \p request_dir_root.
+		 * @return	0, if got some index that exists and is readable
+		 * 		and that was appended to
+		 * 		\p request_dir_relative_to_root.
+		 * @return	-1, if no such index was found.
+		 */
+		int		find_first_available_index(
+				const Location *lp,
+				std::string &request_dir_root,
+				std::string &request_dir_relative_to_root) const;
+
+		/**
 		 * Generate directory listing page
 		 * with files and directories at \p path (excluding . and ..).
 		 * "Content-Type" will be "text/html"
@@ -181,4 +215,12 @@ class HTTPResponse
 		 * 			and directories in.
 		 */
 		void		generate_auto_index(const std::string &path);
+
+		/**
+		 * Sets the "Connection" header in `_headers`.
+		 * Basically tries to copy it from \p request,
+		 * however if it's missing there, sets it to "keep-alive".
+		 * @param	request		Request to handle.
+		 */
+		void		set_connection_header(const HTTPRequest &request);
 };
