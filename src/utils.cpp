@@ -72,6 +72,15 @@ bool		isDirectory(const std::string &path) {
 	return S_ISDIR(sb.st_mode);
 }
 
+bool		isRegFile(const std::string &path) {
+	struct stat sb;
+
+	if (stat(path.c_str(), &sb) != 0) {
+		return false;
+	}
+	return S_ISREG(sb.st_mode);
+}
+
 /**
  * @warning user responsible for providing non-empty param
  * @param param
@@ -131,7 +140,7 @@ std::string to_string(int value) {
 	std::sprintf(buf, "%d", value);
 	return std::string(buf);
 }
-
+!
 
 std::string to_string(size_t value) {
 	enum { BUF_SIZE = 21 }; // "18446744073709551615" + '\0'.
@@ -160,7 +169,7 @@ std::string read_file(const std::string &path)
 			throw std::ios_base::failure(std::string("read_file: ")
 					+ path + " is corrupted.");
 		}
-		else if (!file.eof())
+		else if (file.eof())
 		{
 			break;
 		}
