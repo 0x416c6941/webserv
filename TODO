@@ -37,3 +37,10 @@ REMAINING:
 	Location path is a request target redirection / configuration change.
 	We need to check for the optional root parameter in a location directive,
 		not the location path.
+
+
+Implement PUT method.
+	Without it, receiving and saving new files
+	from the client is hard to implement.
+	We can achieve this through CGI, but I'm not sure
+	if evalutors would be fine with it...
