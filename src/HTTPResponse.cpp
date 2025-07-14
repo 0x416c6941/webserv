@@ -423,7 +423,7 @@ void HTTPResponse::handle_get(const HTTPRequest &request, const Location *lp,
 			return;
 		}
 	}
-	if (!pathExists(resolved_path))
+	if (!isRegFile(resolved_path))
 	{
 		_status_code = 404;
 		build_error_response();
