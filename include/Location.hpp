@@ -16,7 +16,6 @@ private:
 	bool 				_autoindex;
 	std::vector<std::string> 	_index;
 	std::set<std::string>	 	_methods;
-	std::pair<int, std::string> 	_return;
 	std::string 			_alias;
 	uint64_t 			_client_max_body_size;
 
@@ -49,7 +48,6 @@ public:
 	void 						setRootLocation(const std::string& root);
 	void 						setAutoindex(bool value);
 	void 						addIndexLocation(const std::string& index);
-	void 						setReturn(const std::pair<int, std::string> _returnvalue);
 	void 						setAlias(const std::string& alias);
 	void 						addCgiPath(const std::string& path);
 	void 						addCgiExtension(const std::string& ext);
@@ -65,7 +63,6 @@ public:
 	const std::set<std::string>			&getMethods() const;
 	const bool 					&getAutoindex() const;
 	const std::vector<std::string> 			&getIndexLocation() const;
-	std::pair<int, std::string> 			getReturn() const;
 	const std::string 				&getAlias() const;
 	const std::vector<std::string> 			&getCgiPath() const;
 	const std::vector<std::string> 			&getCgiExtension() const;

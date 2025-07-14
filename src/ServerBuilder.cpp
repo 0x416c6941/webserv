@@ -400,40 +400,6 @@ static void handle_location_allow_methods(Location& loc, const std::vector<std::
 }
 
 /**
- * @brief Handles the 'return' directive inside a location block.
- *
- * @param loc The Location object being configured.
- * @param tokens Tokenized directive line.
- * @param i Current index in tokens; updated to skip parsed elements.
- * @throws ConfigParser::ErrorException if syntax is invalid.
- */
-static void handle_location_return(Location& loc, const std::vector<std::string>& tokens, size_t& i) {
-	if (i + 2 >= tokens.size())
-		throw ConfigParser::ErrorException("Invalid return directive in location block");
-
-	char* end;
-	long code = std::strtol(tokens[i+1].c_str(), &end, 10);
-	if (*end != '\0')
-		throw ConfigParser::ErrorException("Invalid status code: " + tokens[i+1]);
-
-	if (code < 100 || code > 599)
-		throw ConfigParser::ErrorException("Invalid HTTP status code in return directive");
-
-	std::string url;
-	if (tokens[i + 2] == ";") {
-		url = "";
-		i += 2;
-	} else if (i + 3 < tokens.size() && tokens[i + 3] == ";") {
-		url = tokens[i + 2];
-		i += 3;
-	} else {
-		throw ConfigParser::ErrorException("Invalid return directive syntax; expected: return <code> [url] ;");
-	}
-	loc.setReturn(std::make_pair(code, url));
-}
-
-
-/**
  * @brief Handles the 'alias' directive inside a location block.
  *
  * @param loc The Location object being configured.
@@ -575,7 +541,6 @@ static const std::map<std::string, LocationHandler>& getLocationHandlers() {
         handlers["index"] = handle_location_index;
         handlers["autoindex"] = handle_location_autoindex;
         handlers["allow_methods"] = handle_location_allow_methods;
-        handlers["return"] = handle_location_return;
         handlers["alias"] = handle_location_alias;
         handlers["cgi_path"] = handle_location_cgi_path;
         handlers["cgi_ext"] = handle_location_cgi_ext;

@@ -6,7 +6,6 @@ Location::Location()
           _autoindex(false),
           _index(),
           _methods(),
-          _return(std::make_pair(0, "")),
           _alias(""),
           _client_max_body_size(0),
           _client_max_body_size_set(false),
@@ -24,7 +23,6 @@ Location& Location::operator=(const Location& other) {
                 _autoindex = other._autoindex;
                 _index = other._index;
                 _methods = other._methods;
-                _return = other._return;
                 _alias = other._alias;
                 _client_max_body_size = other._client_max_body_size;
                 _client_max_body_size_set = other._client_max_body_size_set;
@@ -43,7 +41,6 @@ Location::Location(const Location& other)
           _autoindex(other._autoindex),
           _index(other._index),
           _methods(other._methods),
-          _return(other._return),
           _alias(other._alias),
           _client_max_body_size(other._client_max_body_size),
           _client_max_body_size_set(other._client_max_body_size_set),
@@ -71,7 +68,6 @@ void Location::setPath(const std::string& path)
 void 					Location::setRootLocation(const std::string& root) { _root = root; }
 void 					Location::setAutoindex(bool value) { _autoindex = value; }
 void 					Location::addIndexLocation(const std::string& index) { _index.push_back(index); }
-void 					Location::setReturn(const std::pair<int, std::string> returnValue) { _return = returnValue; }
 void 					Location::setAlias(const std::string& alias) { _alias = alias; }
 void 					Location::addCgiPath(const std::string& path) { _cgi_path.push_back(path); }
 void 					Location::addCgiExtension(const std::string& ext) { _cgi_ext.push_back(ext); }
@@ -91,7 +87,6 @@ const std::string& 			Location::getRootLocation() const { return _root; }
 const std::set<std::string>& 		Location::getMethods() const { return _methods; }
 const bool& 				Location::getAutoindex() const { return _autoindex; }
 const std::vector<std::string>& 	Location::getIndexLocation() const { return _index; }
-std::pair<int, std::string> 		Location::getReturn() const { return _return; }
 const std::string& 			Location::getAlias() const {	return _alias; }
 const std::vector<std::string>& 	Location::getCgiPath() const { return _cgi_path; }
 const std::vector<std::string>& 	Location::getCgiExtension() const { return _cgi_ext; }
@@ -129,7 +124,6 @@ void  Location::validateLocation() const {
         // 5. Ensure at least one way to handle the request
         bool has_handler =
                 (!_root.empty() || !_alias.empty()) ||          // static file serving
-                (_return.first != 0) ||                         // return directive
                 (!_cgi_ext.empty() && !_cgi_path.empty());    // CGI handler
 
         if (!has_handler)
@@ -197,10 +191,6 @@ void Location::printDebug() const {
         }
         std::cout << std::endl;
 
-        // Return
-        if (_return.first != 0 || !_return.second.empty())
-                std::cout << "Return: " << _return.first << " " << _return.second << std::endl;
-
         // CGI Paths
         std::cout << "CGI Paths: ";
         if (_cgi_path.empty()) {
@@ -242,6 +232,5 @@ void Location::printDebug() const {
                 }
         }
         std::cout << std::endl;
-
         std::cout << "===========================" << std::endl;
 }
