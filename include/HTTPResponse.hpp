@@ -97,15 +97,37 @@ class HTTPResponse
 		 * If any error is encountered,
 		 * respective error response is built.
 		 * @brief	Handle the "GET" request method.
-		 * @param	request		Request to handle.
-		 * @param	lp		Pointer to a location
-		 * 				corresponding to request path
-		 * 				in \p request.
+		 * @warning	Parameters' validity isn't checked.
+		 * 		It's up to the user to ensure their validity.
+		 * @param	request				Request to handle.
+		 * @param	lp				Pointer to a location
+		 * 						corresponding to request path
+		 * 						in \p request.
+		 * @param	request_dir_relative_to_root	Request path to file
+		 * 						or directory
+		 * 						in \p request_dir_root.
+		 * @param	request_location_path		`getPath() from \p lp
+		 * 						or "/" if \p lp is NULL.
+		 * @param	request_dir_root		Root or alias
+		 * 						of \p lp
+		 * 						or `_server->Root()`
+		 * 						if \p lp is NULL
+		 * 						with trailing '/'.
+		 * @param	resolved_path			\p request_dir_root
+		 * 						concatenated with
+		 * 						\p request_dir_relative_to_root
+		 * 						given that it's not
+		 * 						a directory traversal
+		 * 						attempt.
 		 */
 		void 		handle_get(const HTTPRequest& request,
-				const Location *lp);
+				const Location *lp,
+				std::string &request_dir_relative_to_root,
+				std::string &request_location_path,
+				std::string &request_dir_root,
+				std::string &resolved_path);
 
-		// handle_post(), handle_delete().
+		// handle_post(), handle_delete(), handle_put().
 
 		/**
 		 * Appends "Server" and "Content-Length" headers

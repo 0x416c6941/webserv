@@ -122,7 +122,16 @@ void HTTPResponse::handle_response_routine(const HTTPRequest &request)
 	const Location *lp;
 	// Request handler method.
 	void (HTTPResponse::*handler)(const HTTPRequest &request,
-			const Location *lp);
+			const Location *lp,
+			std::string &request_dir_relative_to_root,
+			std::string &request_location_path,
+			std::string &request_dir_root,
+			std::string &resolved_path);
+	// Request dirs, paths, etc.
+	std::string request_dir_relative_to_root;
+	std::string request_location_path;
+	std::string request_dir_root;
+	std::string resolved_path;
 
 	// Checking for usage errors.
 	if (_server_cfg == NULL)
@@ -151,25 +160,97 @@ void HTTPResponse::handle_response_routine(const HTTPRequest &request)
 	switch (request.get_method())
 	{
 		case HTTPRequest::GET:
+			if (lp != NULL
+				&& lp->getMethods().find("GET")
+					== lp->getMethods().end())
+			{
+				_status_code = 405;
+				build_error_response();
+				return;
+			}
 			handler = &HTTPResponse::handle_get;
 			break;
 		case HTTPRequest::POST:
+			if (lp == NULL
+				|| lp->getMethods().find("POST")
+					== lp->getMethods().end())
+			{
+				_status_code = 405;
+				build_error_response();
+				return;
+			}
 			// Temporary stub.
 			_status_code = 405;
 			this->build_error_response();
 			return;
+			break;
 		case HTTPRequest::DELETE:
+			if (lp == NULL
+				|| lp->getMethods().find("DELETE")
+					== lp->getMethods().end())
+			{
+				_status_code = 405;
+				build_error_response();
+				return;
+			}
 			// Temporary stub.
 			_status_code = 405;
 			this->build_error_response();
 			return;
+			break;
 		default:
 			// This should never occur.
 			_status_code = 500;
 			this->build_error_response();
 			return;
 	}
-	(this->*handler)(request, lp);
+	// Resolving request dirs, paths, etc.
+	// Ideally, this should be in it's own method...
+	if (lp != NULL)
+	{
+		request_dir_relative_to_root = request.get_request_path_decoded_strip_location_path(
+				lp->getPath());
+		request_location_path = lp->getPath();
+		if (!(lp->getRootLocation().empty()))
+		{
+			request_dir_root = lp->getRootLocation();
+		}
+		else if (!(lp->getAlias().empty()))
+		{
+			request_dir_root = lp->getAlias();
+		}
+		else
+		{
+			request_dir_root = _server_cfg->getRoot();
+		}
+	}
+	else
+	{
+		request_dir_relative_to_root = request.get_request_path_decoded();
+		// Request path initial '/'.
+		request_dir_relative_to_root.erase(0, 1);
+		request_location_path = '/';
+		request_dir_root = _server_cfg->getRoot();
+	}
+	if (request_dir_root.length() <= 0
+		|| request_dir_root.at(request_dir_root.length() - 1) != '/')
+	{
+			request_dir_root.push_back('/');
+	}
+	try
+	{
+		resolved_path = this->resolve_path(request_dir_root,
+				request_dir_relative_to_root);
+	}
+	catch (const directory_traversal_detected &e)
+	{
+		_status_code = 406;	// I guess 406 is good in this case?
+		build_error_response();
+		return;
+	}
+	(this->*handler)(request, lp,
+			request_dir_relative_to_root, request_location_path,
+			request_dir_root, resolved_path);
 }
 
 bool HTTPResponse::is_response_ready() const
@@ -279,70 +360,14 @@ std::string HTTPResponse::get_mime_type(const std::string &path)
 	return "application/octet-stream";
 }
 
-void HTTPResponse::handle_get(const HTTPRequest &request, const Location *lp)
+void HTTPResponse::handle_get(const HTTPRequest &request, const Location *lp,
+		std::string &request_dir_relative_to_root,
+		std::string &request_location_path,
+		std::string &request_dir_root,
+		std::string &resolved_path)
 {
-	std::string request_dir_relative_to_root;
-	std::string request_location_path;
-	std::string request_dir_root;
-	std::string resolved_path;
+	(void) request_dir_root;
 
-	// Checking if "GET" method is allowed.
-	if (lp != NULL
-		&& lp->getMethods().find("GET") == lp->getMethods().end())
-	{
-		_status_code = 405;
-		build_error_response();
-		return;
-	}
-	// Resolving request dirs, paths, etc.
-	if (lp != NULL)
-	{
-		request_dir_relative_to_root = request.get_request_path_decoded_strip_location_path(
-				lp->getPath());
-		request_location_path = lp->getPath();
-		if (!(lp->getRootLocation().empty()))
-		{
-			request_dir_root = lp->getRootLocation();
-		}
-		else if (!(lp->getAlias().empty()))
-		{
-			request_dir_root = lp->getAlias();
-		}
-		else
-		{
-			request_dir_root = _server_cfg->getRoot();
-		}
-	}
-	else
-	{
-		request_dir_relative_to_root = request.get_request_path_decoded();
-		// Request path initial '/'.
-		request_dir_relative_to_root.erase(0, 1);
-		request_location_path = '/';
-		request_dir_root = _server_cfg->getRoot();
-	}
-	if (request_dir_root.length() <= 0
-		|| request_dir_root.at(request_dir_root.length() - 1) != '/')
-	{
-			request_dir_root.push_back('/');
-	}
-	try
-	{
-		resolved_path = this->resolve_path(request_dir_root,
-				request_dir_relative_to_root);
-	}
-	catch (const directory_traversal_detected &e)
-	{
-		_status_code = 406;	// I guess 406 is good in this case?
-		build_error_response();
-		return;
-	}
-	// Every code up to this line will be copy-pasted
-	// in other (POST, DELETE) methods.
-	//
-	// This solution is not elegant,
-	// but it's sufficient for the evaluation.
-	// -------------------------------------------------------------------
 	if (isDirectory(resolved_path))
 	{
 		if (request_dir_relative_to_root.length() > 0
@@ -364,6 +389,8 @@ void HTTPResponse::handle_get(const HTTPRequest &request, const Location *lp)
 			print_log("Sent the 301: ", _response_body, "");
 			return;
 		}
+		// TODO: else go through all index files.
+		// If no index files are present, handle autoindex.
 		else if (lp->getAutoindex() == true)
 		{
 			try
@@ -389,7 +416,6 @@ void HTTPResponse::handle_get(const HTTPRequest &request, const Location *lp)
 			print_log("Sent the autoindex at: ", resolved_path, "");
 			return;
 		}
-		// else go through all index files.
 	}
 	// TODO (CGI part will start here).
 	_headers["Connection"] = "close";
