@@ -653,6 +653,18 @@ void HTTPResponse::generate_auto_index(const std::string &path)
 
 void HTTPResponse::set_connection_header(const HTTPRequest &request)
 {
+	// If we receive 1024 (FD limit on our GNU/Linux systems)
+	// parallel connections that don't close,
+	// then we won't be able to open file descriptors for new connections.
+	//
+	// We're not obliged to striclty follow the "Connection: keep-alive"
+	// request header by RFC, so to prevent this situation from happening
+	// we'll close connections after they're served.
+	//
+	// However, if you'd still like to test the "Connection: keep-alive"
+	// model, uncomment the following code and
+	// comment the last two lines in this method.
+	/*
 	try
 	{
 		_headers["Connection"] = request.get_header_value(
@@ -662,4 +674,7 @@ void HTTPResponse::set_connection_header(const HTTPRequest &request)
 	{
 		_headers["Connection"] = "keep-alive";
 	}
+	 */
+	(void) request;
+	_headers["Connection"] = "close";
 }
