@@ -664,6 +664,10 @@ void HTTPResponse::set_connection_header(const HTTPRequest &request)
 	// However, if you'd still like to test the "Connection: keep-alive"
 	// model, uncomment the following code and
 	// comment the last two lines in this method.
+	//
+	// The best solution to this though would be to implement
+	// a time limit for how long a connection could stay opened.
+	// Nevertheless, we're not required to do so by the subject's PDF file.
 	/*
 	try
 	{
