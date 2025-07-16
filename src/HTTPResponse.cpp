@@ -10,6 +10,10 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <errno.h>
+#include <algorithm>
+#include <ctime>
+#include <unistd.h>
+#include <sys/wait.h>
 
 HTTPResponse::HTTPResponse()
 	: _server_cfg(NULL),
@@ -327,8 +331,8 @@ void HTTPResponse::handle_response_routine(const HTTPRequest &request)
 		return;
 	}
 	(this->*handler)(request,
-			request_dir_relative_to_root, request_location_path,
-			request_dir_root, resolved_path);
+			request_dir_root, request_dir_relative_to_root,
+			request_location_path, resolved_path);
 }
 
 bool HTTPResponse::is_response_ready() const
@@ -418,11 +422,13 @@ void HTTPResponse::append_required_headers()
 }
 
 void HTTPResponse::handle_get(const HTTPRequest &request,
+		std::string &request_dir_root,
 		std::string &request_dir_relative_to_root,
 		std::string &request_location_path,
-		std::string &request_dir_root,
 		std::string &resolved_path)
 {
+	int cgi_status;
+
 	if (isDirectory(resolved_path))
 	{
 		if (request_dir_relative_to_root.length() > 0
@@ -486,7 +492,22 @@ void HTTPResponse::handle_get(const HTTPRequest &request,
 		build_error_response();
 		return;
 	}
-	// TODO (CGI part will start here).
+	if (_lp != NULL
+		&& std::find(_lp->getCgiExtension().begin(),
+			_lp->getCgiExtension().end(),
+			get_file_ext(resolved_path))
+			!= _lp->getCgiExtension().end())
+	{
+		cgi_status = handle_cgi(request,
+				request_dir_root, request_dir_relative_to_root,
+				request_location_path, resolved_path);
+		if (cgi_status != 0)
+		{
+			_status_code = cgi_status;
+			build_error_response();
+		}
+		return;
+	}
 	try
 	{
 		_response_body = read_file(resolved_path);
@@ -685,4 +706,132 @@ void HTTPResponse::set_connection_header(const HTTPRequest &request)
 	 */
 	(void) request;
 	_headers["Connection"] = "close";
+}
+
+int HTTPResponse::handle_cgi(const HTTPRequest &request,
+		std::string &request_dir_root,
+		std::string &request_dir_relative_to_root,
+		std::string &request_location_path,
+		std::string &resolved_path)
+{
+	time_t current_time;
+	pid_t waitpid_code;
+	int waitpid_status;
+	int child_exit_status;
+
+	if (pipe(_cgi_pipe) == -1)
+	{
+		return 500;
+	}
+	_cgi_launch_time = std::time(NULL);
+	if ((_cgi_pid = fork()) == -1)
+	{
+		(void) close(_cgi_pipe[0]);
+		(void) close(_cgi_pipe[1]);
+		return 500;
+	}
+	else if (_cgi_pid == 0)
+	{
+		// TODO: Temporarily do nothing as child.
+		(void) request;
+		(void) request_dir_root;
+		(void) request_dir_relative_to_root;
+		(void) request_location_path;
+		(void) resolved_path;
+		for (;;)
+		{
+		}
+	}
+	(void) close(_cgi_pipe[1]);
+	for (;;)
+	{
+		current_time = std::time(NULL);
+		waitpid_code = waitpid(_cgi_pid, &waitpid_status, WNOHANG);
+		// waitpid() fail.
+		if (waitpid_code == -1)
+		{
+			// TODO: Should we SIGKILL instead?
+			(void) kill(_cgi_pid, SIGTERM);
+			(void) close(_cgi_pipe[0]);
+			return 500;
+		}
+		// Child exited.
+		else if (waitpid_code == _cgi_pid
+			&& WIFEXITED(waitpid_status))
+		{
+			child_exit_status = WEXITSTATUS(waitpid_status);
+			if (child_exit_status != 0)
+			{
+				(void) close(_cgi_pipe[0]);
+				return 502;
+			}
+			break;
+		}
+		// Child is running for longer than it's allowed to.
+		else if (current_time - _cgi_launch_time > _MAX_CGI_TIME)
+		{
+			// TODO: Should we SIGKILL instead?
+			(void) kill(_cgi_pid, SIGTERM);
+			(void) close(_cgi_pipe[0]);
+			return 504;
+		}
+	}
+	try
+	{
+		this->copy_child_output_to_payload();
+	}
+	catch (const std::runtime_error &e)
+	{
+		print_err("Couldn't copy child's output to payload: ", e.what(), "");
+		(void) close(_cgi_pipe[0]);
+		return 500;
+	}
+	(void) close(_cgi_pipe[0]);
+	_headers["Connection"] = "close";
+	_payload_ready = true;
+	return 0;
+
+	/*
+	std::string request_file_ext;
+	size_t cgi_path_index;
+
+	request_file_ext = get_file_ext(resolved_path);
+	// It's up to ensure that `request_file_ext`
+	// exists in `_lp->_cgi_ext`.
+	for (cgi_path_index = 0; i < _lp->getCgiExtension.size(); i++)
+	{
+		const std::string &current_cgi_ext = _lp->getCgiExtension.at(
+				cgi_path_index);
+
+		if (current_cgi_ext.compare(0, request_file_ext,
+					request_file_ext.length()) == 0)
+		{
+			break;
+		}
+	}
+	 */
+}
+
+void HTTPResponse::copy_child_output_to_payload()
+{
+	// 2 KiB buffer to copy child's output to payload.
+	enum { BUFFER_SIZE = 2048 };
+	char buffer[BUFFER_SIZE];
+	ssize_t n;
+
+	for (;;)
+	{
+		n = read(_cgi_pipe[0], buffer, BUFFER_SIZE);
+		if (n == -1)
+		{
+			throw std::runtime_error(std::string("HTTPResponse::copy_child_output_to_payload(): ")
+					+ "read() fail.");
+		}
+		_payload.append(buffer, static_cast<size_t> (n));
+		if (n < BUFFER_SIZE)
+		{
+			// Finished reading.
+			return;
+		}
+	}
 }

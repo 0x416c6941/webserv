@@ -281,7 +281,7 @@ bool ClientConnection::handleReadEvent()
 	        print_log("DEBUG: Received request (normal): ", std::string(buffer, static_cast<size_t>(n)), "");
 
         }
-	_request_buffer.append(buffer, static_cast<size_t>(n));
+	_request_buffer.append(buffer, static_cast<size_t> (n));
 	// Parse received information.
 	int status = parseReadEvent(_request_buffer);
 	if (status != 0) {
