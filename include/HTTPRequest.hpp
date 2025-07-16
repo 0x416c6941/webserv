@@ -23,7 +23,7 @@ class HTTPRequest
 		{
 			GET,
 			POST,
-			DELETE
+			DELETE,
 		};
 
 		class method_not_allowed : public std::exception
@@ -133,6 +133,14 @@ class HTTPRequest
 		 * @return	Value of the requested header.
 		 */
 		const std::string &get_header_value(const std::string &key) const;
+
+		/**
+		 * Getter for `_header_fields`.
+		 * @throw	runtime_error	Request's isn't fully
+		 * 				parsed yet.
+		 * @return	`_header_fields`.
+		 */
+		const std::map<std::string, std::string> &get_header_fields() const;
 
 		/**
 		 * Process and save body part stored in \p buffer.

@@ -189,6 +189,16 @@ const std::string &HTTPRequest::get_header_value(const std::string &key) const
 	return this->_header_fields.at(key);
 }
 
+const std::map<std::string, std::string> &HTTPRequest::get_header_fields() const
+{
+	if (!(this->_header_complete))
+	{
+		throw std::runtime_error(std::string("HTTPRequest::get_header_fields(): ")
+				+ "Request's header isn't fully parsed yet.");
+	}
+	return this->_header_fields;
+}
+
 size_t HTTPRequest::process_body_part(const std::string &buffer)
 {
 	if (this->_body_complete)
