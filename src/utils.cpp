@@ -167,11 +167,13 @@ std::string read_file(const std::string &path)
 			throw std::ios_base::failure(std::string("read_file: ")
 					+ path + " is corrupted.");
 		}
-		else if (file.eof())
+		ret << line;
+		if (file.eof())
 		{
 			break;
 		}
-		ret << line << '\n';
+		ret << '\n';
+		line.clear();
 	}
 	return ret.str();
 }
