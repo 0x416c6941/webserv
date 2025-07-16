@@ -259,7 +259,7 @@ HTTPRequest& ClientConnection::getRequest()
 bool ClientConnection::handleReadEvent()
 {
 	// std::cout <<"Client header bytes: "<< _server->getLargeClientHeaderTotalBytes()<< std::endl;
-	enum { BUFFER_SIZE = 1048576 }; // 1 MiB bytes buffer size for reading data.
+	enum { BUFFER_SIZE = 65536 }; // 64 KiB buffer size for reading data.
 
         print_log("handleReadEvent() called for fd ", to_string(_client_socket), "");
 	char buffer[BUFFER_SIZE];
@@ -294,8 +294,8 @@ bool	ClientConnection::handleWriteEvent()
 	size_t total_size = response_msg.size();
 	const char * data_ptr = response_msg.c_str() + _bytes_sent;
 	size_t remaining = total_size - _bytes_sent;
-	// Let's send response in packets w/ size of 1 MiB.
-	enum { MAX_BYTES_TO_SEND = 1048576 };
+	// Let's send response in packets w/ size of 64 KiB.
+	enum { MAX_BYTES_TO_SEND = 65536 };
 	ssize_t n;
 
 	if (remaining <= MAX_BYTES_TO_SEND)
