@@ -379,6 +379,7 @@ static void handle_location_allow_methods(Location& loc, const std::vector<std::
 		kAllowedMethods.insert("GET");
 		kAllowedMethods.insert("POST");
 		kAllowedMethods.insert("DELETE");
+		kAllowedMethods.insert("PUT");
 	}
 
 	loc.resetMethods();

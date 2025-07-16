@@ -132,7 +132,7 @@ void  Location::validateLocation() const {
         // 6. Validate HTTP methods
         std::set<std::string>::const_iterator mit = _methods.begin();
         for (; mit != _methods.end(); ++mit) {
-                if (*mit != "GET" && *mit != "POST" && *mit != "DELETE")
+                if (*mit != "GET" && *mit != "POST" && *mit != "DELETE"  && *mit != "PUT")
                         throw std::runtime_error("Location validation error: invalid HTTP method '" + *mit + "'");
         }
 
