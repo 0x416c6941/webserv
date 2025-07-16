@@ -779,8 +779,9 @@ int HTTPResponse::handle_cgi(const HTTPRequest &request,
 		// Child is running for longer than it's allowed to.
 		else if (current_time - _cgi_launch_time > _MAX_CGI_TIME)
 		{
-			print_warning("HTTPResponse::handle_cgi(): CGI hangup",
-				"", "");
+			print_warning("HTTPResponse::handle_cgi(): CGI hangup at script: ",
+				 request_location_path + request_dir_relative_to_root,
+				 "");
 			(void) kill(_cgi_pid, SIGKILL);
 			(void) close(_cgi_pipe[0]);
 			return 504;
