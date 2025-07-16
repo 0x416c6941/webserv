@@ -1,10 +1,11 @@
 #pragma once
 
+#include <stdexcept>
 #include "ServerConfig.hpp"
 #include "HTTPRequest.hpp"
-#include <map>
 #include <string>
-#include <stdexcept>
+#include <map>
+#include <sys/types.h>
 
 /**
  * The HTTPResponse class is responsible for constructing a
@@ -96,6 +97,9 @@ class HTTPResponse
 		// to process received in `handle_response_routine()`.
 		// If set to NULL, `_server_cfg` ought to be used instead.
 		const Location				*_lp;
+
+		pid_t					_cgi_pid;
+		int					_cgi_pipe[2];
 
 		/**
 		 * Prepares `_payload` by combining

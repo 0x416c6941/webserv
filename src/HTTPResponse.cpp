@@ -1,8 +1,10 @@
 #include "HTTPResponse.hpp"
 #include "ServerConfig.hpp"
+#include <sys/types.h>
 #include <cstddef>
 #include <stdexcept>
 #include <map>
+#include <signal.h>
 #include "Webserv.hpp"
 #include "Location.hpp"
 #include <sys/types.h>
@@ -13,16 +15,22 @@ HTTPResponse::HTTPResponse()
 	: _server_cfg(NULL),
 	  _status_code(100),		// Temporary code.
 	  _payload_ready(false),
-	  _lp(NULL)
+	  _lp(NULL),
+	  _cgi_pid(-1)
 {
+	_cgi_pipe[0] = -1;
+	_cgi_pipe[1] = -1;
 }
 
 HTTPResponse::HTTPResponse(int status_code)
 	: _server_cfg(NULL),
 	  _status_code(status_code),
 	  _payload_ready(false),
-	  _lp(NULL)
+	  _lp(NULL),
+	  _cgi_pid(-1)
 {
+	_cgi_pipe[0] = -1;
+	_cgi_pipe[1] = -1;
 }
 
 HTTPResponse::HTTPResponse(const HTTPResponse &other)
@@ -32,8 +40,11 @@ HTTPResponse::HTTPResponse(const HTTPResponse &other)
 	  _response_body(other._response_body),
 	  _payload(other._payload),
 	  _payload_ready(other._payload_ready),
-	  _lp(other._lp)
+	  _lp(other._lp),
+	  _cgi_pid(-1)
 {
+	_cgi_pipe[0] = -1;
+	_cgi_pipe[1] = -1;
 }
 
 HTTPResponse& HTTPResponse::operator=(const HTTPResponse &other)
@@ -48,6 +59,18 @@ HTTPResponse& HTTPResponse::operator=(const HTTPResponse &other)
 	_response_body = other._response_body;
 	_payload = other._payload;
 	_payload_ready = other._payload_ready;
+	if (_cgi_pid != -1)
+	{
+		kill(_cgi_pid, SIGTERM);
+	}
+	if (_cgi_pipe[0] != -1)
+	{
+		close(_cgi_pipe[0]);
+	}
+	if (_cgi_pipe[1] != -1)
+	{
+		close(_cgi_pipe[1]);
+	}
 	_lp = other._lp;
 	return *this;
 }
