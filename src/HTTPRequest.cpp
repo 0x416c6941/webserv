@@ -261,12 +261,13 @@ bool HTTPRequest::is_body_complete() const
 
 bool HTTPRequest::is_complete() const
 {
-	if ((this->_method == GET || this->_method == DELETE)
+	if ((this->_method_is_set
+		&& (this->_method == GET || this->_method == DELETE))
 		&& this->_header_complete)
 	{
 		return true;
 	}
-	else if (this->_method == POST
+	else if ((this->_method_is_set && this->_method == POST)
 		&& (this->_header_complete && this->_body_complete))
 	{
 		return true;
