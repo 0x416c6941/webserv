@@ -278,7 +278,6 @@ size_t HTTPRequest::handle_start_line(const std::string &start_line)
 {
 	size_t i;
 	const std::string	START_LINE_END_HTTP_PREFIX = " HTTP/",
-				HTTP_VERSION_1_0 = "1.0",
 				HTTP_VERSION_1_1 = "1.1";
 
 	i = this->set_method(start_line);
@@ -303,25 +302,15 @@ size_t HTTPRequest::handle_start_line(const std::string &start_line)
 		throw std::invalid_argument("HTTPRequest::handle_start_line(): Start line is malformed.");
 	}
 	i += START_LINE_END_HTTP_PREFIX.length();
-	// Checking HTTP version.
-	if (start_line.length() == i + HTTP_VERSION_1_0.length()
-		&& start_line.compare(i, HTTP_VERSION_1_0.length(),
-			HTTP_VERSION_1_0) == 0)
-	{
-		i += HTTP_VERSION_1_0.length();
-	}
-	else if (start_line.length() == i + HTTP_VERSION_1_1.length()
-		&& start_line.compare(i, HTTP_VERSION_1_1.length(),
-			HTTP_VERSION_1_1) == 0)
-	{
-		i += HTTP_VERSION_1_1.length();
-	}
-	else
+	// Checking HTTP version (we support only HTTP/1.1).
+	if (start_line.length() != i + HTTP_VERSION_1_1.length()
+		|| start_line.compare(i, HTTP_VERSION_1_1.length(),
+			HTTP_VERSION_1_1) != 0)
 	{
 		throw http_ver_unsupported(std::string("HTTPRequest::handle_start_line(): ")
 				+ "Request's HTTP version is unsupported.");
 	}
-	return i;
+	return i + HTTP_VERSION_1_1.length();
 }
 
 size_t HTTPRequest::set_method(const std::string &start_line)
