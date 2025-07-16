@@ -6,6 +6,7 @@
 #include <string>
 #include <map>
 #include <sys/types.h>
+#include <ctime>
 
 /**
  * The HTTPResponse class is responsible for constructing a
@@ -98,8 +99,10 @@ class HTTPResponse
 		// If set to NULL, `_server_cfg` ought to be used instead.
 		const Location				*_lp;
 
+		// CGI-related data.
 		pid_t					_cgi_pid;
 		int					_cgi_pipe[2];
+		time_t					_cgi_launch_time;
 
 		/**
 		 * Prepares `_payload` by combining

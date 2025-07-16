@@ -1,6 +1,6 @@
 NAME = webserv
 
-CC = c++
+CC = g++
 FLAGS = -Wall -Wextra -Wsign-conversion -pedantic -Werror -Wreorder -std=c++98	\
 	-g -fsanitize=address
 
