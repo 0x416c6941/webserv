@@ -89,6 +89,12 @@ int ClientConnection::parseReadEvent(std::string &buffer)
 				print_err("Unsupported HTTP version: ", e.what(), "");
 				return 505;
 			}
+			catch (const HTTPRequest::non_ascii_request &e)
+			{
+				print_err("Caught non-ASCII character in request target: ",
+					e.what(), "");
+				return 500;
+			}
 			this->_header_buffer_bytes_exhausted += processed_bytes;
 			buffer.erase(0, processed_bytes);
 			if (this->_header_buffer_bytes_exhausted

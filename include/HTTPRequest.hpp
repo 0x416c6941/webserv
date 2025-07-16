@@ -52,6 +52,19 @@ class HTTPRequest
 				virtual const char * what() const throw();
 		};
 
+		class non_ascii_request : public std::exception
+		{
+			private:
+				const std::string _MSG;
+
+			public:
+				non_ascii_request(const char * msg);
+				non_ascii_request(const std::string &msg);
+				virtual ~non_ascii_request() throw();
+
+				virtual const char * what() const throw();
+		};
+
 		/**
 		 * Processes line in \p header_line
 		 * until the field terminator ("\r\n") is met:

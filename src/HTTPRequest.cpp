@@ -77,6 +77,25 @@ const char * HTTPRequest::http_ver_unsupported::what() const throw()
 	return _MSG.c_str();
 }
 
+HTTPRequest::non_ascii_request::non_ascii_request(const char * msg)
+	: _MSG(msg)
+{
+}
+
+HTTPRequest::non_ascii_request::non_ascii_request(const std::string &msg)
+	: _MSG(msg)
+{
+}
+
+HTTPRequest::non_ascii_request::~non_ascii_request() throw()
+{
+}
+
+const char * HTTPRequest::non_ascii_request::what() const throw()
+{
+	return _MSG.c_str();
+}
+
 size_t HTTPRequest::process_header_line(const std::string &header_line)
 {
 	size_t ft_pos;	// Field terminator position.
@@ -508,7 +527,8 @@ char HTTPRequest::decode_percent_encoded_character(const std::string &start_line
 			if (static_cast<char>(ret * BASE + (start_line.at(pos) - '0'))
 				< ret)
 			{
-				throw std::range_error("HTTPRequest::decode_percent_encoded_character(): Only ASCII characters are supported as percent-encoded characters.");
+				throw non_ascii_request(std::string("HTTPRequest::decode_percent_encoded_character(): ")
+						+ "Only ASCII characters are supported as percent-encoded characters.");
 			}
 			ret = ret * BASE + (start_line.at(pos) - '0');
 		}
@@ -518,7 +538,8 @@ char HTTPRequest::decode_percent_encoded_character(const std::string &start_line
 			if (static_cast<char>(ret * BASE + (std::toupper(start_line.at(pos)) - 'A' + 10))
 				< ret)
 			{
-				throw std::range_error("HTTPRequest::decode_percent_encoded_character(): Only ASCII characters are supported as percent-encoded characters.");
+				throw non_ascii_request(std::string("HTTPRequest::decode_percent_encoded_character(): ")
+						+ "Only ASCII characters are supported as percent-encoded characters.");
 			}
 			ret = ret * BASE + (std::toupper(start_line.at(pos)) - 'A' + 10);
 		}
