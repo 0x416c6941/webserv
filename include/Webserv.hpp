@@ -103,6 +103,17 @@ uint64_t 	validateGetMbs(std::string param);
  */
 std::string read_file(const std::string &path);
 
+/**
+ * Gets the extension in lowercase of \p path.
+ * @param	path	Path to some file.
+ * @return	If \p path does contain some extension,
+ * 		that extension in the lowercase and with the
+ * 		beginning '.'.
+ * @return	Empty string, if \p path doesn't have any extension
+ * 		or if '.' is the last character in it.
+ */
+std::string get_file_ext(const std::string &path);
+
 // Errors.
 std::string getReasonPhrase(int status_code);
 std::string generateErrorPage(int status_code);

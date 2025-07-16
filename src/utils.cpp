@@ -175,3 +175,21 @@ std::string read_file(const std::string &path)
 	}
 	return ret.str();
 }
+
+std::string get_file_ext(const std::string &path)
+{
+	std::string::size_type dot = path.find_last_of('.');
+	std::string ret;
+
+	if (dot == std::string::npos
+		|| dot + 1 >= path.length())
+	{
+		return "";
+	}
+	ret = path.substr(dot);
+	for (size_t i = 0; i < ret.size(); i++)
+	{
+		ret[i] = std::tolower(static_cast<unsigned char> (ret[i]));
+	}
+	return ret;
+}

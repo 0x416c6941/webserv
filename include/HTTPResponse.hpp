@@ -36,14 +36,14 @@ class HTTPResponse
 		 * Set the `_server_cfg`.
 		 * @param	server_cfg	New value for `_server_cfg`.
 		 */
-		void		set_server_cfg(ServerConfig *server_cfg);
+		void			set_server_cfg(ServerConfig *server_cfg);
 
 		/**
 		 * Build an error response based on `_status_code`.
 		 * @throw	runtime_error	`_server_cfg` wasn't set
 		 * 				or response is already prepared.
 		 */
-		void 		build_error_response();
+		void 			build_error_response();
 
 		/**
 		 * Handle \p request and generate response to it.
@@ -51,21 +51,21 @@ class HTTPResponse
 		 * 				or response is already prepared.
 		 * @param	request	Request to handle.
 		 */
-		void 		handle_response_routine(const HTTPRequest &request);
+		void 			handle_response_routine(
+				const HTTPRequest &request);
 
 		/**
-		 * Is response ready?
-		 * @return	true, if yes.
-		 * @return	false, if not.
+		 * Getter for `_payload_ready`.
+		 * @return	`_payload_ready` value.
 		 */
-		bool 		is_response_ready() const;
+		bool 			is_response_ready() const;
 
 		/**
 		 * Get the response to be sent with send().
 		 * @throw	runtime_error	Response isn't ready yet.
 		 * @return	Response ready to be sent with send().
 		 */
-		std::string	get_response_msg();
+		const std::string	&get_response_msg() const;
 
 		/**
 		 * Check if connection should be closed or not.
@@ -78,14 +78,24 @@ class HTTPResponse
 		 * @return	false, if connection should NOT be closed
 		 * 		after response is set.
 		 */
-		bool		should_close_connection() const;
+		bool			should_close_connection() const;
 
 	private:
 		ServerConfig				*_server_cfg;
 		int					_status_code;
 		std::map<std::string, std::string>	_headers;
 		std::string				_response_body;
-		bool 		  			_response_ready;
+		// `_status_code` + `_headers` + `_response_body` combined.
+		std::string				_payload;
+		// `_payload_ready` should only be set to true
+		// in `prep_payload()`.
+		// Don't set it manually.
+		bool 		  			_payload_ready;
+
+		// Pointer to Location corresponding to request
+		// to process received in `handle_response_routine()`.
+		// If set to NULL, `_server_cfg` ought to be used instead.
+		const Location				*_lp;
 
 		/**
 		 * Gets the mime type depending on extension
@@ -94,6 +104,15 @@ class HTTPResponse
 		 * @return	Appropriate mime type for file in \p path.
 		 */
 		std::string 	get_mime_type(const std::string &path);
+
+		/**
+		 * Prepares `_payload` by combining
+		 * `_status_code`, `_headers` and `_response_body`.
+		 * `_headers` shall also be appended
+		 * with `append_required_headers()`.
+		 * @throw	runtime_error	Payload is already prepared.
+		 */
+		void		prep_payload();
 
 		/**
 		 * Appends "Server" and "Content-Length" headers
@@ -115,18 +134,16 @@ class HTTPResponse
 		 * @warning	Parameters' validity isn't checked.
 		 * 		It's up to the user to ensure their validity.
 		 * @param	request				Request to handle.
-		 * @param	lp				Pointer to a location
-		 * 						corresponding to request path
 		 * 						in \p request.
 		 * @param	request_dir_relative_to_root	Request path to file
 		 * 						or directory
 		 * 						in \p request_dir_root.
-		 * @param	request_location_path		`getPath() from \p lp
-		 * 						or "/" if \p lp is NULL.
+		 * @param	request_location_path		`getPath()` from `_lp`
+		 * 						or "/" if `_lp` is NULL.
 		 * @param	request_dir_root		Root or alias
-		 * 						of \p lp
+		 * 						of `_lp`
 		 * 						or `_server->Root()`
-		 * 						(if \p lp is NULL)
+		 * 						(if p lp is NULL)
 		 * 						with trailing '/'.
 		 * @param	resolved_path			\p request_dir_root
 		 * 						concatenated with
@@ -136,7 +153,6 @@ class HTTPResponse
 		 * 						attempt.
 		 */
 		void 		handle_get(const HTTPRequest& request,
-				const Location *lp,
 				std::string &request_dir_relative_to_root,
 				std::string &request_location_path,
 				std::string &request_dir_root,
@@ -178,19 +194,16 @@ class HTTPResponse
 		void		generate_301(const std::string &redir_path);
 
 		/**
-		 * Iterate through available indexes in \p lp or
+		 * Iterate through available indexes in `_lp` or
 		 * `_server_cfg` (if \p lp is NULL)
 		 * and append the first available to
 		 * \p request_dir_relative_to_root
 		 * (only if that index's file name contains
 		 * file name of \p request_dir_relative_to_root in itself).
-		 * @param	lp				Pointer to a location
-		 * 						corresponding to request path
-		 * 						in \p request.
 		 * @param	request_dir_root		Root or alias
-		 * 						of \p lp
+		 * 						of `_lp`
 		 * 						or `_server->Root()`
-		 * 						(if \p lp is NULL)
+		 * 						(if `_lp` is NULL)
 		 * 						with trailing '/'.
 		 * @param	request_dir_relative_to_root	Request path to file
 		 * 						or directory
@@ -201,7 +214,6 @@ class HTTPResponse
 		 * @return	-1, if no such index was found.
 		 */
 		int		find_first_available_index(
-				const Location *lp,
 				std::string &request_dir_root,
 				std::string &request_dir_relative_to_root) const;
 

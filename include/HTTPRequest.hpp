@@ -23,7 +23,7 @@ class HTTPRequest
 		{
 			GET,
 			POST,
-			DELETE,
+			DELETE
 		};
 
 		class method_not_allowed : public std::exception

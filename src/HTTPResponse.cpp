@@ -12,14 +12,16 @@
 HTTPResponse::HTTPResponse()
 	: _server_cfg(NULL),
 	  _status_code(100),		// Temporary code.
-	  _response_ready(false)
+	  _payload_ready(false),
+	  _lp(NULL)
 {
 }
 
 HTTPResponse::HTTPResponse(int status_code)
 	: _server_cfg(NULL),
 	  _status_code(status_code),
-	  _response_ready(false)
+	  _payload_ready(false),
+	  _lp(NULL)
 {
 }
 
@@ -28,7 +30,9 @@ HTTPResponse::HTTPResponse(const HTTPResponse &other)
 	  _status_code(other._status_code),
 	  _headers(other._headers),
 	  _response_body(other._response_body),
-	  _response_ready(other._response_ready)
+	  _payload(other._payload),
+	  _payload_ready(other._payload_ready),
+	  _lp(other._lp)
 {
 }
 
@@ -42,7 +46,9 @@ HTTPResponse& HTTPResponse::operator=(const HTTPResponse &other)
 	_status_code = other._status_code;
 	_headers = other._headers;
 	_response_body = other._response_body;
-	_response_ready = other._response_ready;
+	_payload = other._payload;
+	_payload_ready = other._payload_ready;
+	_lp = other._lp;
 	return *this;
 }
 
@@ -84,24 +90,69 @@ void HTTPResponse::build_error_response()
 		throw std::runtime_error(std::string("HTTPResponse::build_error_response(): ")
 				+ "server_cfg can't be NULL.");
 	}
-	else if (_response_ready)
+	else if (_payload_ready)
 	{
 		throw std::runtime_error(std::string("HTTPResponse::build_error_response(): ")
 				+ "Response message is already prepared.");
 	}
 
-	std::map<int, std::string>::const_iterator it = _server_cfg->getErrorPages().find(_status_code);
+	// `it` is a helper to construct `error_page_path`.
+	std::map<int, std::string>::const_iterator it;
+	std::string error_page_path;
 
-	_headers["Connection"] = "close";
-	if (it != _server_cfg->getErrorPages().end())
+	// Resolving `error_page_path.
+	if (_lp != NULL)
+	{
+		it = _lp->getErrorPages().find(_status_code);
+		if (it != _lp->getErrorPages().end())
+		{
+			// This is so stupid, this is actually so stupid.
+			if (_lp->getRootLocation().length() != 0)
+			{
+				error_page_path = _lp->getRootLocation();
+			}
+			else
+			{
+				error_page_path = _lp->getAlias();
+			}
+			if (error_page_path.at(error_page_path.length() - 1)
+				!= '/')
+			{
+				error_page_path.push_back('/');
+			}
+			error_page_path += it->second;
+		}
+	}
+	// Still resolving `error_page_path.
+	if (_lp == NULL || it == _lp->getErrorPages().end())
+	{
+		it = _server_cfg->getErrorPages().find(_status_code);
+		if (it != _server_cfg->getErrorPages().end())
+		{
+			error_page_path = _server_cfg->getRoot();
+			if (error_page_path.at(error_page_path.length() - 1)
+				!= '/')
+			{
+				error_page_path.push_back('/');
+			}
+			error_page_path += it->second;
+		}
+	}
+	// "Connection" header.
+	if (_headers.find("Connection") == _headers.end())
+	{
+		_headers["Connection"] = "close";
+	}
+	// Sending the error page itself.
+	if (error_page_path.length() > 0)
 	{
 		try
 		{
-			_response_body = read_file(it->second);
+			_response_body = read_file(error_page_path);
 			// If MIME is not HTML,
 			// then something is definitely wrong.
-			_headers["Content-Type"] = get_mime_type(it->second);
-			_response_ready = true;
+			_headers["Content-Type"] = get_mime_type(error_page_path);
+			this->prep_payload();
 			return;
 		}
 		catch (const std::ios_base::failure &e)
@@ -113,16 +164,13 @@ void HTTPResponse::build_error_response()
 	// or file reading failed.
 	_response_body = generateErrorBody(_status_code);
 	_headers["Content-Type"] = "text/html";
-	_response_ready = true;
+	this->prep_payload();
 }
 
 void HTTPResponse::handle_response_routine(const HTTPRequest &request)
 {
-	// Pointer to Location corresponding to request path in `request`.
-	const Location *lp;
 	// Request handler method.
 	void (HTTPResponse::*handler)(const HTTPRequest &request,
-			const Location *lp,
 			std::string &request_dir_relative_to_root,
 			std::string &request_location_path,
 			std::string &request_dir_root,
@@ -139,7 +187,7 @@ void HTTPResponse::handle_response_routine(const HTTPRequest &request)
 		throw std::runtime_error(std::string("HTTPResponse::handle_response_routine(): ")
 				+ "server_cfg can't be NULL.");
 	}
-	else if (_response_ready)
+	else if (_payload_ready)
 	{
 		throw std::runtime_error(std::string("HTTPResponse::handle_response_routine(): ")
 				+ "Response message is already prepared.");
@@ -150,19 +198,19 @@ void HTTPResponse::handle_response_routine(const HTTPRequest &request)
 		const Location &loc = _server_cfg->determineLocation(
 				request.get_request_path_decoded());
 
-		lp = &loc;
+		_lp = &loc;
 	}
 	catch (const std::out_of_range &e)
 	{
-		lp = NULL;
+		_lp = NULL;
 	}
 	// Setting handler.
 	switch (request.get_method())
 	{
 		case HTTPRequest::GET:
-			if (lp != NULL
-				&& lp->getMethods().find("GET")
-					== lp->getMethods().end())
+			if (_lp != NULL
+				&& _lp->getMethods().find("GET")
+					== _lp->getMethods().end())
 			{
 				_status_code = 405;
 				build_error_response();
@@ -171,9 +219,9 @@ void HTTPResponse::handle_response_routine(const HTTPRequest &request)
 			handler = &HTTPResponse::handle_get;
 			break;
 		case HTTPRequest::POST:
-			if (lp == NULL
-				|| lp->getMethods().find("POST")
-					== lp->getMethods().end())
+			if (_lp == NULL
+				|| _lp->getMethods().find("POST")
+					== _lp->getMethods().end())
 			{
 				_status_code = 405;
 				build_error_response();
@@ -185,9 +233,9 @@ void HTTPResponse::handle_response_routine(const HTTPRequest &request)
 			return;
 			break;
 		case HTTPRequest::DELETE:
-			if (lp == NULL
-				|| lp->getMethods().find("DELETE")
-					== lp->getMethods().end())
+			if (_lp == NULL
+				|| _lp->getMethods().find("DELETE")
+					== _lp->getMethods().end())
 			{
 				_status_code = 405;
 				build_error_response();
@@ -206,22 +254,20 @@ void HTTPResponse::handle_response_routine(const HTTPRequest &request)
 	}
 	// Resolving request dirs, paths, etc.
 	// Ideally, this should be in it's own method...
-	if (lp != NULL)
+	if (_lp != NULL)
 	{
 		request_dir_relative_to_root = request.get_request_path_decoded_strip_location_path(
-				lp->getPath());
-		request_location_path = lp->getPath();
-		if (!(lp->getRootLocation().empty()))
+				_lp->getPath());
+		request_location_path = _lp->getPath();
+		// In Location, at least one of `_root` or `_alias`
+		// must be defined.
+		if (!(_lp->getRootLocation().empty()))
 		{
-			request_dir_root = lp->getRootLocation();
-		}
-		else if (!(lp->getAlias().empty()))
-		{
-			request_dir_root = lp->getAlias();
+			request_dir_root = _lp->getRootLocation();
 		}
 		else
 		{
-			request_dir_root = _server_cfg->getRoot();
+			request_dir_root = _lp->getAlias();
 		}
 	}
 	else
@@ -248,45 +294,29 @@ void HTTPResponse::handle_response_routine(const HTTPRequest &request)
 		build_error_response();
 		return;
 	}
-	(this->*handler)(request, lp,
+	(this->*handler)(request,
 			request_dir_relative_to_root, request_location_path,
 			request_dir_root, resolved_path);
 }
 
 bool HTTPResponse::is_response_ready() const
 {
-	return _response_ready;
+	return _payload_ready;
 }
 
-std::string HTTPResponse::get_response_msg()
+const std::string &HTTPResponse::get_response_msg() const
 {
-	std::ostringstream response;
-
-	if (!_response_ready)
+	if (!_payload_ready)
 	{
 		throw std::runtime_error(std::string("HTTPResponse::get_response_msg(): ")
-				+ "Response message isn't ready yet.");
+				+ "Response payload isn't ready yet.");
 	}
-	// Start line.
-	response << "HTTP/1.1 " << _status_code << " " << getReasonPhrase(_status_code) << "\r\n";
-	// Taking care of header fields that must always be present,
-	// but that may be not set by `build_error_response()`
-	// or `handle_response_routine()`.
-	this->append_required_headers();
-	// Headers.
-	for (std::map<std::string, std::string>::const_iterator it = _headers.begin();
-		it != _headers.end(); ++it)
-	{
-		response << it->first << ": " << it->second << "\r\n";
-	}
-	response << "\r\n";		// End of headers.
-	response << _response_body;	// Body content.
-	return response.str();
+	return _payload;
 }
 
 bool HTTPResponse::should_close_connection() const
 {
-	if (!_response_ready)
+	if (!_payload_ready)
 	{
 		throw std::runtime_error(std::string("HTTPResponse::should_close_connection(): ")
 				+ "Response message isn't ready yet.");
@@ -325,6 +355,7 @@ bool HTTPResponse::has_permission(const std::string& path, HTTPRequest::e_method
 std::string HTTPResponse::get_mime_type(const std::string &path)
 {
 	static std::map<std::string, std::string> mime_map;
+	std::string ext;
 
 	if (mime_map.empty())
 	{
@@ -335,6 +366,7 @@ std::string HTTPResponse::get_mime_type(const std::string &path)
 		mime_map.insert(std::make_pair(".png", "image/png"));
 		mime_map.insert(std::make_pair(".jpg", "image/jpeg"));
 		mime_map.insert(std::make_pair(".jpeg", "image/jpeg"));
+		mime_map.insert(std::make_pair(".webp", "image/webp"));
 		mime_map.insert(std::make_pair(".gif", "image/gif"));
 		mime_map.insert(std::make_pair(".svg", "image/svg+xml"));
 		mime_map.insert(std::make_pair(".json", "application/json"));
@@ -342,16 +374,7 @@ std::string HTTPResponse::get_mime_type(const std::string &path)
 		mime_map.insert(std::make_pair(".txt", "text/plain"));
 		mime_map.insert(std::make_pair(".xml", "application/xml"));
 	}
-	std::string::size_type dot = path.find_last_of('.');
-	if (dot == std::string::npos)
-	{
-		return "application/octet-stream";
-	}
-	std::string ext = path.substr(dot);
-	for (size_t i = 0; i < ext.size(); ++i)
-	{
-		ext[i] = std::tolower(static_cast<unsigned char> (ext[i]));
-	}
+	ext = get_file_ext(path);
 	std::map<std::string, std::string>::const_iterator it = mime_map.find(ext);
 	if (it != mime_map.end())
 	{
@@ -360,13 +383,40 @@ std::string HTTPResponse::get_mime_type(const std::string &path)
 	return "application/octet-stream";
 }
 
+void HTTPResponse::prep_payload()
+{
+	std::ostringstream payload;
+
+	if (_payload_ready)
+	{
+		throw std::runtime_error(std::string("HTTPResponse::prep_payload(): ")
+				+ "Response payload is already prepared.");
+	}
+	// Start line.
+	payload << "HTTP/1.1 " << _status_code << " " << getReasonPhrase(_status_code) << "\r\n";
+	// Taking care of header fields that must always be present,
+	// but that may be not set by `build_error_response()`
+	// or `handle_response_routine()`.
+	this->append_required_headers();
+	// Headers.
+	for (std::map<std::string, std::string>::const_iterator it = _headers.begin();
+		it != _headers.end(); ++it)
+	{
+		payload << it->first << ": " << it->second << "\r\n";
+	}
+	payload << "\r\n";		// End of headers.
+	payload << _response_body;	// Body content.
+	_payload = payload.str();
+	_payload_ready = true;
+}
+
 void HTTPResponse::append_required_headers()
 {
 	_headers["Server"] = "hlyshchu_asagymba";
 	_headers["Content-Length"] = to_string(_response_body.length());
 }
 
-void HTTPResponse::handle_get(const HTTPRequest &request, const Location *lp,
+void HTTPResponse::handle_get(const HTTPRequest &request,
 		std::string &request_dir_relative_to_root,
 		std::string &request_location_path,
 		std::string &request_dir_root,
@@ -381,11 +431,11 @@ void HTTPResponse::handle_get(const HTTPRequest &request, const Location *lp,
 			generate_301(request_location_path
 				+ request_dir_relative_to_root + '/');
 			set_connection_header(request);
-			_response_ready = true;
+			prep_payload();
 			print_log("Sent the 301: ", _response_body, "");
 			return;
 		}
-		else if (find_first_available_index(lp,
+		else if (find_first_available_index(
 					request_dir_root,
 					request_dir_relative_to_root) == 0)
 		{
@@ -398,7 +448,7 @@ void HTTPResponse::handle_get(const HTTPRequest &request, const Location *lp,
 				+ request_dir_relative_to_root;
 		}
 		// No available index was found.
-		else if (lp->getAutoindex() == true)
+		else if (_lp->getAutoindex() == true)
 		{
 			try
 			{
@@ -411,7 +461,7 @@ void HTTPResponse::handle_get(const HTTPRequest &request, const Location *lp,
 				return;
 			}
 			set_connection_header(request);
-			_response_ready = true;
+			prep_payload();
 			print_log("Sent the autoindex at: ", resolved_path, "");
 			return;
 		}
@@ -449,8 +499,8 @@ void HTTPResponse::handle_get(const HTTPRequest &request, const Location *lp,
 	_status_code = 200;
 	_headers["Content-Type"] = get_mime_type(resolved_path);
 	set_connection_header(request);
+	prep_payload();
 	print_log("Sending ", resolved_path, " to the server");
-	_response_ready = true;
 }
 
 std::string HTTPResponse::resolve_path(const std::string &root,
@@ -512,16 +562,16 @@ void HTTPResponse::generate_301(const std::string &redir_path)
 	_response_body += '\n';
 }
 
-int HTTPResponse::find_first_available_index(const Location *lp,
+int HTTPResponse::find_first_available_index(
 		std::string &request_dir_root,
 		std::string &request_dir_relative_to_root) const
 {
 	const std::vector<std::string> *indexes = NULL;
 	std::string index_path;
 
-	if (lp != NULL)
+	if (_lp != NULL)
 	{
-		indexes = &(lp->getIndexLocation());
+		indexes = &(_lp->getIndexLocation());
 		if (indexes->size() == 0)
 		{
 			indexes = &(_server_cfg->getIndex());

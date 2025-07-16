@@ -137,8 +137,6 @@ void ServerBuilder::handle_index(const std::vector<std::string>& parameters, Ser
 	}
 }
 
-
-
 /**
  * @brief Processes the 'autoindex' directive (on/off).
  *
