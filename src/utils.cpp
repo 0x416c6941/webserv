@@ -193,3 +193,34 @@ std::string get_file_ext(const std::string &path)
 	}
 	return ret;
 }
+
+std::string get_mime_type(const std::string &path)
+{
+	static std::map<std::string, std::string> mime_map;
+	std::string ext;
+
+	if (mime_map.empty())
+	{
+		mime_map.insert(std::make_pair(".html", "text/html"));
+		mime_map.insert(std::make_pair(".htm", "text/html"));
+		mime_map.insert(std::make_pair(".css", "text/css"));
+		mime_map.insert(std::make_pair(".js", "application/javascript"));
+		mime_map.insert(std::make_pair(".png", "image/png"));
+		mime_map.insert(std::make_pair(".jpg", "image/jpeg"));
+		mime_map.insert(std::make_pair(".jpeg", "image/jpeg"));
+		mime_map.insert(std::make_pair(".webp", "image/webp"));
+		mime_map.insert(std::make_pair(".gif", "image/gif"));
+		mime_map.insert(std::make_pair(".svg", "image/svg+xml"));
+		mime_map.insert(std::make_pair(".json", "application/json"));
+		mime_map.insert(std::make_pair(".pdf", "application/pdf"));
+		mime_map.insert(std::make_pair(".txt", "text/plain"));
+		mime_map.insert(std::make_pair(".xml", "application/xml"));
+	}
+	ext = get_file_ext(path);
+	std::map<std::string, std::string>::const_iterator it = mime_map.find(ext);
+	if (it != mime_map.end())
+	{
+		return it->second;
+	}
+	return "application/octet-stream";
+}

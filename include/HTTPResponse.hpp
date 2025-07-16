@@ -52,8 +52,7 @@ class HTTPResponse
 		 * 				or response is already prepared.
 		 * @param	request	Request to handle.
 		 */
-		void 			handle_response_routine(
-				const HTTPRequest &request);
+		void 			handle_response_routine(const HTTPRequest &request);
 
 		/**
 		 * Getter for `_payload_ready`.
@@ -97,14 +96,6 @@ class HTTPResponse
 		// to process received in `handle_response_routine()`.
 		// If set to NULL, `_server_cfg` ought to be used instead.
 		const Location				*_lp;
-
-		/**
-		 * Gets the mime type depending on extension
-		 * of the file in \p path.
-		 * @param	path	Path to a file.
-		 * @return	Appropriate mime type for file in \p path.
-		 */
-		std::string 	get_mime_type(const std::string &path);
 
 		/**
 		 * Prepares `_payload` by combining

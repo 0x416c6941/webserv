@@ -114,6 +114,14 @@ std::string read_file(const std::string &path);
  */
 std::string get_file_ext(const std::string &path);
 
+/**
+ * Gets the mime type depending on extension
+ * of the file in \p path.
+ * @param	path	Path to a file.
+ * @return	Appropriate mime type for file in \p path.
+ */
+std::string 	get_mime_type(const std::string &path);
+
 // Errors.
 std::string getReasonPhrase(int status_code);
 std::string generateErrorPage(int status_code);
