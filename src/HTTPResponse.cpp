@@ -120,6 +120,10 @@ void HTTPResponse::set_server_cfg(ServerConfig *server_cfg)
 
 void HTTPResponse::build_error_response()
 {
+	// `it` is a helper to construct `error_page_path`.
+	std::map<int, std::string>::const_iterator it;
+	std::string error_page_path;
+
 	if (_server_cfg == NULL)
 	{
 		throw std::runtime_error(std::string("HTTPResponse::build_error_response(): ")
@@ -130,12 +134,7 @@ void HTTPResponse::build_error_response()
 		throw std::runtime_error(std::string("HTTPResponse::build_error_response(): ")
 				+ "Response message is already prepared.");
 	}
-
-	// `it` is a helper to construct `error_page_path`.
-	std::map<int, std::string>::const_iterator it;
-	std::string error_page_path;
-
-	// Resolving `error_page_path.
+	// Resolving `error_page_path`.
 	if (_lp != NULL)
 	{
 		it = _lp->getErrorPages().find(_status_code);
@@ -489,6 +488,8 @@ void HTTPResponse::handle_get(const HTTPRequest &request,
 	else if (access(resolved_path.c_str(), R_OK) == -1)
 	{
 		_status_code = 403;
+		print_log("HTTPRequest::handle_get(): Can't read file at: ",
+			resolved_path, "");
 		build_error_response();
 		return;
 	}
@@ -515,6 +516,8 @@ void HTTPResponse::handle_get(const HTTPRequest &request,
 	catch (const std::ios_base::failure &e)
 	{
 		_status_code = 500;
+		print_warning("HTTPRequest::handle_get(): I/O error: ",
+			e.what(), "");
 		build_error_response();
 		return;
 	}
@@ -721,11 +724,13 @@ int HTTPResponse::handle_cgi(const HTTPRequest &request,
 
 	if (pipe(_cgi_pipe) == -1)
 	{
+		print_warning("HTTPResponse::handle_cgi(): pipe() fail", "", "");
 		return 500;
 	}
 	_cgi_launch_time = std::time(NULL);
 	if ((_cgi_pid = fork()) == -1)
 	{
+		print_warning("HTTPResponse::handle_cgi(): fork() fail", "", "");
 		(void) close(_cgi_pipe[0]);
 		(void) close(_cgi_pipe[1]);
 		return 500;
@@ -750,6 +755,8 @@ int HTTPResponse::handle_cgi(const HTTPRequest &request,
 		// waitpid() fail.
 		if (waitpid_code == -1)
 		{
+			print_warning("HTTPResponse::handle_cgi(): waitpid() fail",
+				"", "");
 			// SIGKILL is better than SIGTERM,
 			// since it may kill the process
 			// if it's frozen and doesn't respond to SIGTERM.
@@ -772,6 +779,8 @@ int HTTPResponse::handle_cgi(const HTTPRequest &request,
 		// Child is running for longer than it's allowed to.
 		else if (current_time - _cgi_launch_time > _MAX_CGI_TIME)
 		{
+			print_warning("HTTPResponse::handle_cgi(): CGI hangup",
+				"", "");
 			(void) kill(_cgi_pid, SIGKILL);
 			(void) close(_cgi_pipe[0]);
 			return 504;
@@ -783,7 +792,7 @@ int HTTPResponse::handle_cgi(const HTTPRequest &request,
 	}
 	catch (const std::runtime_error &e)
 	{
-		print_err("Couldn't copy child's output to payload: ", e.what(), "");
+		print_warning("Couldn't copy child's output to payload: ", e.what(), "");
 		(void) close(_cgi_pipe[0]);
 		return 500;
 	}
