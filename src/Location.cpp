@@ -1,4 +1,5 @@
 #include "../include/Location.hpp"
+#include <cctype>
 
 Location::Location()
         : _path(""),
@@ -70,7 +71,16 @@ void 					Location::setAutoindex(bool value) { _autoindex = value; }
 void 					Location::addIndexLocation(const std::string& index) { _index.push_back(index); }
 void 					Location::setAlias(const std::string& alias) { _alias = alias; }
 void 					Location::addCgiPath(const std::string& path) { _cgi_path.push_back(path); }
-void 					Location::addCgiExtension(const std::string& ext) { _cgi_ext.push_back(ext); }
+void 					Location::addCgiExtension(const std::string& ext)
+{
+	std::string ext_lowercase;
+
+	for (size_t i = 0; i < ext.length(); i++)
+	{
+		ext_lowercase.push_back(std::tolower(ext.at(i)));
+	}
+	_cgi_ext.push_back(ext_lowercase);
+}
 void 					Location::setMaxBodySize(uint64_t size) {
 	_client_max_body_size = size;
 	_client_max_body_size_set = true;
