@@ -58,19 +58,23 @@ HTTPResponse::~HTTPResponse()
 
 HTTPResponse::directory_traversal_detected::directory_traversal_detected(
 		const char * msg)
-	: m_msg(msg)
+	: _MSG(msg)
 {
 }
 
 HTTPResponse::directory_traversal_detected::directory_traversal_detected(
 		const std::string &msg)
-	: m_msg(msg.c_str())
+	: _MSG(msg)
+{
+}
+
+HTTPResponse::directory_traversal_detected::~directory_traversal_detected() throw()
 {
 }
 
 const char * HTTPResponse::directory_traversal_detected::what() const throw()
 {
-	return m_msg;
+	return _MSG.c_str();
 }
 
 void HTTPResponse::set_server_cfg(ServerConfig *server_cfg)
@@ -290,6 +294,7 @@ void HTTPResponse::handle_response_routine(const HTTPRequest &request)
 	}
 	catch (const directory_traversal_detected &e)
 	{
+		print_err("Detected directory traversal attempt: ", e.what(), "");
 		_status_code = 406;	// I guess 406 is good in this case?
 		build_error_response();
 		return;
@@ -528,9 +533,7 @@ std::string HTTPResponse::resolve_path(const std::string &root,
 			// Still, let's proceed as is...
 			if (depth-- == 0)
 			{
-				throw directory_traversal_detected(std::string(
-							"HTTPResponse::resolve_path(): ")
-						+ "Detected directory traversal.");
+				throw directory_traversal_detected("HTTPResponse::resolve_path(): Detected directory traversal.");
 			}
 			i++;	// Skip the second dot.
 		}

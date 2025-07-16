@@ -23,13 +23,14 @@ class HTTPResponse
 		class directory_traversal_detected : public std::exception
 		{
 			private:
-				const char * m_msg;
+				const std::string _MSG;
 
 			public:
 				directory_traversal_detected(const char * msg);
 				directory_traversal_detected(const std::string &msg);
+				virtual ~directory_traversal_detected() throw();
 
-				const char * what() const throw();
+				virtual const char * what() const throw();
 		};
 
 		/**

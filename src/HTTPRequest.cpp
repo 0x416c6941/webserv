@@ -40,19 +40,41 @@ void HTTPRequest::reset() {
 }
 
 HTTPRequest::method_not_allowed::method_not_allowed(const char * msg)
-	: m_msg(msg)
+	: _MSG(msg)
 {
 }
 
 HTTPRequest::method_not_allowed::method_not_allowed(const std::string &msg)
-	: m_msg(msg.c_str())
+	: _MSG(msg)
 {
 }
 
+HTTPRequest::method_not_allowed::~method_not_allowed() throw()
+{
+}
 
 const char * HTTPRequest::method_not_allowed::what() const throw()
 {
-	return m_msg;
+	return _MSG.c_str();
+}
+
+HTTPRequest::http_ver_unsupported::http_ver_unsupported(const char * msg)
+	: _MSG(msg)
+{
+}
+
+HTTPRequest::http_ver_unsupported::http_ver_unsupported(const std::string &msg)
+	: _MSG(msg)
+{
+}
+
+HTTPRequest::http_ver_unsupported::~http_ver_unsupported() throw()
+{
+}
+
+const char * HTTPRequest::http_ver_unsupported::what() const throw()
+{
+	return _MSG.c_str();
 }
 
 size_t HTTPRequest::process_header_line(const std::string &header_line)
@@ -255,7 +277,9 @@ bool HTTPRequest::is_complete() const
 size_t HTTPRequest::handle_start_line(const std::string &start_line)
 {
 	size_t i;
-	const std::string START_LINE_END = " HTTP/1.1";
+	const std::string	START_LINE_END_HTTP_PREFIX = " HTTP/",
+				HTTP_VERSION_1_0 = "1.0",
+				HTTP_VERSION_1_1 = "1.1";
 
 	i = this->set_method(start_line);
 	// ' ' after the request method.
@@ -271,13 +295,33 @@ size_t HTTPRequest::handle_start_line(const std::string &start_line)
 		throw std::invalid_argument("HTTPRequest::handle_start_line(): Start line is malformed.");
 	}
 	i += this->set_request_path_query_and_target(start_line, i);
-	// " HTTP/1.1" after request target.
-	if (start_line.length() != i + START_LINE_END.length()
-		|| start_line.compare(i, START_LINE_END.length(), START_LINE_END) != 0)
+	// " HTTP/" after request target.
+	if (start_line.length() <= i + START_LINE_END_HTTP_PREFIX.length()
+		|| start_line.compare(i, START_LINE_END_HTTP_PREFIX.length(),
+			START_LINE_END_HTTP_PREFIX) != 0)
 	{
 		throw std::invalid_argument("HTTPRequest::handle_start_line(): Start line is malformed.");
 	}
-	return i + START_LINE_END.length();
+	i += START_LINE_END_HTTP_PREFIX.length();
+	// Checking HTTP version.
+	if (start_line.length() == i + HTTP_VERSION_1_0.length()
+		&& start_line.compare(i, HTTP_VERSION_1_0.length(),
+			HTTP_VERSION_1_0) == 0)
+	{
+		i += HTTP_VERSION_1_0.length();
+	}
+	else if (start_line.length() == i + HTTP_VERSION_1_1.length()
+		&& start_line.compare(i, HTTP_VERSION_1_1.length(),
+			HTTP_VERSION_1_1) == 0)
+	{
+		i += HTTP_VERSION_1_1.length();
+	}
+	else
+	{
+		throw http_ver_unsupported(std::string("HTTPRequest::handle_start_line(): ")
+				+ "Request's HTTP version is unsupported.");
+	}
+	return i;
 }
 
 size_t HTTPRequest::set_method(const std::string &start_line)

@@ -84,6 +84,11 @@ int ClientConnection::parseReadEvent(std::string &buffer)
 				print_err("Unsupported method: ", e.what(), "");
 				return 405;
 			}
+			catch (const HTTPRequest::http_ver_unsupported &e)
+			{
+				print_err("Unsupported HTTP version: ", e.what(), "");
+				return 505;
+			}
 			this->_header_buffer_bytes_exhausted += processed_bytes;
 			buffer.erase(0, processed_bytes);
 			if (this->_header_buffer_bytes_exhausted

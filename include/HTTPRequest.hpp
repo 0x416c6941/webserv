@@ -29,13 +29,27 @@ class HTTPRequest
 		class method_not_allowed : public std::exception
 		{
 			private:
-				const char * m_msg;
+				const std::string _MSG;
 
 			public:
 				method_not_allowed(const char * msg);
 				method_not_allowed(const std::string &msg);
+				virtual ~method_not_allowed() throw();
 
-				const char * what() const throw();
+				virtual const char * what() const throw();
+		};
+
+		class http_ver_unsupported : public std::exception
+		{
+			private:
+				const std::string _MSG;
+
+			public:
+				http_ver_unsupported(const char * msg);
+				http_ver_unsupported(const std::string &msg);
+				virtual ~http_ver_unsupported() throw();
+
+				virtual const char * what() const throw();
 		};
 
 		/**
@@ -56,6 +70,8 @@ class HTTPRequest
 		 * 					wasn't set.
 		 * @throw	method_not_allowed	Got unsupported
 		 * 					request method.
+		 * @throw	http_ver_unsupported	Request's HTTP version
+		 * 					is not supported.
 		 * @param	header_line	Header line with information to process.
 		 * @return	Processed bytes in \p header_line (including "\r\n").
 		 */
@@ -240,6 +256,8 @@ class HTTPRequest
 		 * optional request query (if present) from \p start_line.
 		 * @throw	invalid_argument	The start line stored
 		 * 					in \p start_line is malformed.
+		 * @throw	http_ver_unsupported	Request's HTTP version
+		 * 					is not supported.
 		 * @param	start_line	The start line of the request
 		 * 				with the "\r\n" erased.
 		 * @return	Processed bytes in \p start_line.
