@@ -750,8 +750,10 @@ int HTTPResponse::handle_cgi(const HTTPRequest &request,
 		// waitpid() fail.
 		if (waitpid_code == -1)
 		{
-			// TODO: Should we SIGKILL instead?
-			(void) kill(_cgi_pid, SIGTERM);
+			// SIGKILL is better than SIGTERM,
+			// since it may kill the process
+			// if it's frozen and doesn't respond to SIGTERM.
+			(void) kill(_cgi_pid, SIGKILL);
 			(void) close(_cgi_pipe[0]);
 			return 500;
 		}
@@ -770,8 +772,7 @@ int HTTPResponse::handle_cgi(const HTTPRequest &request,
 		// Child is running for longer than it's allowed to.
 		else if (current_time - _cgi_launch_time > _MAX_CGI_TIME)
 		{
-			// TODO: Should we SIGKILL instead?
-			(void) kill(_cgi_pid, SIGTERM);
+			(void) kill(_cgi_pid, SIGKILL);
 			(void) close(_cgi_pipe[0]);
 			return 504;
 		}
