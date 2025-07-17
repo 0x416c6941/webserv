@@ -67,14 +67,28 @@ class HTTPRequest
 		};
 
 		/**
+		 * Set `_server_address` to \p server_address.
+		 * @param	server_address	Server's socket address.
+		 */
+		void set_server_address(const struct sockaddr_in &server_address);
+
+		/**
+		 * Get `_server_address`.
+		 * @throw	runtime_error	Server's socket address.
+		 * 				is not set yet.
+		 */
+		const struct sockaddr_in &get_server_address() const;
+
+		/**
 		 * Set `_client_address` to \p client_address.
-		 * @param	client_address	Socket address.
+		 * @param	client_address	Client's socket address.
 		 */
 		void set_client_address(const struct sockaddr_in &client_address);
 
 		/**
 		 * Get `_client_address`.
-		 * @throw	runtime_error	Socket address is not set yet.
+		 * @throw	runtime_error	Client's socket address
+		 * 				is not set yet.
 		 */
 		const struct sockaddr_in &get_client_address() const;
 
@@ -247,8 +261,12 @@ class HTTPRequest
 		HTTPRequest(const HTTPRequest &src);
 		HTTPRequest &operator = (const HTTPRequest &src);
 
-		// Required to determine IP of the remote host
-		// making the request for CGI later.
+		// Required to determine the port
+		// on which request was received
+		// and IP of the remote host
+		// to set up the CGI environment variables in response later.
+		struct sockaddr_in _server_address;
+		bool _server_address_is_set;
 		struct sockaddr_in _client_address;
 		bool _client_address_is_set;
 

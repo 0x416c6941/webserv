@@ -12,7 +12,8 @@
 #include <iomanip>		// Debug.
 
 HTTPRequest::HTTPRequest()
-	:	_client_address_is_set(false),
+	:	_server_address_is_set(false),
+		_client_address_is_set(false),
 		_method_is_set(false),
 		_request_path_is_set(false),
 		_request_query_is_set(false),
@@ -20,6 +21,7 @@ HTTPRequest::HTTPRequest()
 		_header_complete(false),
 		_body_complete(false)
 {
+	(void) memset(&_server_address, 0, sizeof(struct sockaddr_in));
 	(void) memset(&_client_address, 0, sizeof(struct sockaddr_in));
 }
 
@@ -29,6 +31,8 @@ HTTPRequest::~HTTPRequest()
 
 void HTTPRequest::reset()
 {
+	(void) memset(&_server_address, 0, sizeof(struct sockaddr_in));
+	_server_address_is_set = false;
 	(void) memset(&_client_address, 0, sizeof(struct sockaddr_in));
 	_client_address_is_set = false;
 	_method_is_set = false;
@@ -101,6 +105,23 @@ HTTPRequest::non_ascii_request::~non_ascii_request() throw()
 const char * HTTPRequest::non_ascii_request::what() const throw()
 {
 	return _MSG.c_str();
+}
+
+void HTTPRequest::set_server_address(const struct sockaddr_in &server_address)
+{
+	(void) memcpy(&_server_address, &server_address,
+		sizeof(struct sockaddr_in));
+	this->_server_address_is_set = true;
+}
+
+const struct sockaddr_in &HTTPRequest::get_server_address() const
+{
+	if (!_server_address_is_set)
+	{
+		throw std::runtime_error(std::string("HTTPRequest::get_client_address(): ")
+				+ "_server_address is not set yet.");
+	}
+	return _server_address;
 }
 
 void HTTPRequest::set_client_address(const struct sockaddr_in &client_address)
