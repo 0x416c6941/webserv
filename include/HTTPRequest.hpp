@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdexcept>
+#include <netinet/in.h>
 #include <vector>
 #include <string>
 #include <map>
@@ -64,6 +65,18 @@ class HTTPRequest
 
 				virtual const char * what() const throw();
 		};
+
+		/**
+		 * Set `_client_address` to \p client_address.
+		 * @param	client_address	Socket address.
+		 */
+		void set_client_address(const struct sockaddr_in &client_address);
+
+		/**
+		 * Get `_client_address`.
+		 * @throw	runtime_error	Socket address is not set yet.
+		 */
+		const struct sockaddr_in &get_client_address() const;
 
 		/**
 		 * Processes line in \p header_line
@@ -233,6 +246,11 @@ class HTTPRequest
 		// or have an ::operator =() available.
 		HTTPRequest(const HTTPRequest &src);
 		HTTPRequest &operator = (const HTTPRequest &src);
+
+		// Required to determine IP of the remote host
+		// making the request for CGI later.
+		struct sockaddr_in _client_address;
+		bool _client_address_is_set;
 
 		// All possible information from the start line.
 		enum e_method _method;

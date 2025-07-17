@@ -10,10 +10,9 @@ ClientConnection::ClientConnection(int fd)
 	  _bytes_sent(0),
 	  _request_buffer(),
 	  _header_buffer_bytes_exhausted(0),
-	  _body_buffer_bytes_exhausted(0),
-	  _response()
+	  _body_buffer_bytes_exhausted(0)
 {
-    std::memset(&_client_address, 0, sizeof(_client_address));
+	std::memset(&_client_address, 0, sizeof(_client_address));
 }
 
 ClientConnection::ClientConnection()
@@ -26,12 +25,15 @@ ClientConnection::ClientConnection()
 	  _bytes_sent(0),
 	  _request_buffer(),
 	  _header_buffer_bytes_exhausted(0),
-	  _body_buffer_bytes_exhausted(0),
-	  _response()
+	  _body_buffer_bytes_exhausted(0)
 {
-    std::memset(&_client_address, 0, sizeof(_client_address));
+	std::memset(&_client_address, 0, sizeof(_client_address));
 }
 
+// NEVER use copy constructor of this class.
+// It's here due to some complicated reasons
+// (I'm too lazy to fix compilation errors without it,
+// some logic is really weird).
 ClientConnection::ClientConnection(const ClientConnection &other)
 	: _client_socket(other._client_socket),
 	  _client_address(other._client_address),
@@ -199,6 +201,7 @@ void ClientConnection::setSocket(int socket)
 void ClientConnection::setAddress(const struct sockaddr_in &addr)
 {
 	_client_address = addr;
+	_request.set_client_address(addr);
 }
 
 void ClientConnection::setServer(ServerConfig &server)
@@ -341,13 +344,14 @@ void ClientConnection::printDebugRequestParse()
 
 void ClientConnection::reset()
 {
-	_request_error = false; // Reset request error state
-	_msg_sent = false; // Reset message sent flag
-	_bytes_sent = 0; // Reset bytes sent counter
+	_request_error = false;	// Reset request error state.
+	_msg_sent = false;	// Reset message sent flag.
+	_bytes_sent = 0;	// Reset bytes sent counter.
 	_request_buffer.clear();
 	_header_buffer_bytes_exhausted = 0;
 	_body_buffer_bytes_exhausted = 0;
-	_request.reset(); // Clear request data
+	_request.reset();
+	_request.set_client_address(_client_address);
 	_response = HTTPResponse();
 	_response.set_server_cfg(_server);
 }

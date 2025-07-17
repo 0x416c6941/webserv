@@ -2,6 +2,8 @@
 #include <cstddef>
 #include <string>
 #include <stdexcept>
+#include <netinet/in.h>
+#include <cstring>
 #include "Webserv.hpp"		// utils.
 #include <cctype>
 #include <inttypes.h>
@@ -10,20 +12,25 @@
 #include <iomanip>		// Debug.
 
 HTTPRequest::HTTPRequest()
-	:	_method_is_set(false),
+	:	_client_address_is_set(false),
+		_method_is_set(false),
 		_request_path_is_set(false),
 		_request_query_is_set(false),
 		_request_target_is_set(false),
 		_header_complete(false),
 		_body_complete(false)
 {
+	(void) memset(&_client_address, 0, sizeof(struct sockaddr_in));
 }
 
 HTTPRequest::~HTTPRequest()
 {
 }
 
-void HTTPRequest::reset() {
+void HTTPRequest::reset()
+{
+	(void) memset(&_client_address, 0, sizeof(struct sockaddr_in));
+	_client_address_is_set = false;
 	_method_is_set = false;
 	_request_path_original.clear();
 	_request_path_decoded.clear();
@@ -94,6 +101,22 @@ HTTPRequest::non_ascii_request::~non_ascii_request() throw()
 const char * HTTPRequest::non_ascii_request::what() const throw()
 {
 	return _MSG.c_str();
+}
+
+void HTTPRequest::set_client_address(const struct sockaddr_in &client_address)
+{
+	(void) memcpy(&_client_address, &client_address,
+		sizeof(struct sockaddr_in));
+}
+
+const struct sockaddr_in &HTTPRequest::get_client_address() const
+{
+	if (!_client_address_is_set)
+	{
+		throw std::runtime_error(std::string("HTTPRequest::get_client_address(): ")
+				+ "_client_address is not set yet.");
+	}
+	return _client_address;
 }
 
 size_t HTTPRequest::process_header_line(const std::string &header_line)
