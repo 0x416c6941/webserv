@@ -17,6 +17,9 @@
 #include <cstdlib>
 #include <cstring>
 
+// To set up envp() for CGI.
+extern char **environ;
+
 HTTPResponse::HTTPResponse()
 	: _server_cfg(NULL),
 	  _status_code(100),		// Temporary code.
@@ -418,7 +421,7 @@ void HTTPResponse::prep_payload()
 
 void HTTPResponse::append_required_headers()
 {
-	_headers["Server"] = "hlyshchu_asagymba";
+	_headers["Server"] = SERVER_NAME;
 	_headers["Content-Length"] = to_string(_response_body.length());
 }
 
@@ -843,7 +846,7 @@ void HTTPResponse::cgi(const HTTPRequest &request, std::string &resolved_path)
 	size_t cgi_path_index;
 	// std::auto_ptr may be unreliable
 	// and std::unique_ptr in unavailable in C++98.
-	char ** argv;
+	char ** argv, ** envp;
 
 	if (pipe(redir_stdin) == -1)
 	{
@@ -884,12 +887,18 @@ void HTTPResponse::cgi(const HTTPRequest &request, std::string &resolved_path)
 		print_err("HTTPResponse::cgi(): cgi_prep_argv() failed", "", "");
 		std::exit(EXIT_FAILURE);
 	}
-	// TODO: set up environment variables.
-	(void) request;
-	if (execve(_lp->getCgiPath().at(cgi_path_index).c_str(), argv, NULL) == -1)
+	else if ((envp = cgi_prep_envp(request)) == NULL)
+	{
+		print_err("HTTPResponse::cgi(): cgi_prep_envp() failed", "", "");
+		this->cgi_free_argv_like_array(argv);
+		std::exit(EXIT_FAILURE);
+	}
+	else if (execve(_lp->getCgiPath().at(cgi_path_index).c_str(),
+			argv, envp) == -1)
 	{
 		print_err("HTTPResponse::cgi(): execve() failed", "", "");
-		this->cgi_free_argv(argv);
+		this->cgi_free_argv_like_array(argv);
+		this->cgi_free_argv_like_array(envp);
 		std::exit(EXIT_FAILURE);
 	}
 }
@@ -937,7 +946,7 @@ char ** HTTPResponse::cgi_prep_argv(const std::string &interpreter_path,
 	// `interpreter_path`.
 	try
 	{
-		ret[0] = new char[interpreter_path.length() + 1];
+		ret[0] = new char [interpreter_path.length() + 1];
 	}
 	catch (const std::bad_alloc &e)
 	{
@@ -949,7 +958,7 @@ char ** HTTPResponse::cgi_prep_argv(const std::string &interpreter_path,
 	// `script_path`.
 	try
 	{
-		ret[1] = new char[script_path.length() + 1];
+		ret[1] = new char [script_path.length() + 1];
 	}
 	catch (const std::bad_alloc &e)
 	{
@@ -964,9 +973,63 @@ char ** HTTPResponse::cgi_prep_argv(const std::string &interpreter_path,
 	return ret;
 }
 
-void HTTPResponse::cgi_free_argv(char ** argv) const
+char ** HTTPResponse::cgi_prep_envp(const HTTPRequest & request) const
 {
-	delete [] argv[0];
-	delete [] argv[1];
+	// We'll first append all variables to std::vector of std::strings
+	// and later convert them to char **.
+	std::vector<std::string> vars;
+	char ** ret;
+
+	for (size_t i = 0; environ[i] != NULL; i++)
+	{
+		vars.push_back(std::string(environ[i]));
+	}
+	// CGI-specific variables.
+	// Not the most elegant solution, but stil...
+	vars.push_back(std::string("SERVER_SOFTWARE=") + SERVER_NAME + "/1.0");
+	vars.push_back(std::string("SERVER_NAME=") + SERVER_NAME);
+	vars.push_back(std::string("GATEWAY_INERFACE=CGI/1.1"));
+	vars.push_back(std::string("SERVER_PROTOCOL=HTTP/1.1"));
+	vars.push_back(std::string("SERVER_PORT=")
+		+ to_string(request.get_client_address().sin_port));
+	// TODO: Finish the variable list (that's not all).
+	try
+	{
+		// +1 for trailing NULL.
+		ret = new char * [vars.size() + 1];
+	}
+	catch (const std::bad_alloc &e)
+	{
+		return NULL;
+	}
+	for (size_t i = 0; i < vars.size(); i++)
+	{
+		// +1 for '\0' in each string.
+		try
+		{
+			ret[i] = new char [vars.at(i).length() + 1];
+		}
+		catch (const std::bad_alloc &e)
+		{
+			for (size_t j = 0; j < i; j++)
+			{
+				delete [] ret[j];
+				delete [] ret;
+				return NULL;
+			}
+		}
+		(void) memcpy(ret[i], vars.at(i).c_str(), vars.at(i).length());
+		ret[i][vars.at(i).length()] = '\0';
+	}
+	ret[vars.size()] = NULL;
+	return ret;
+}
+
+void HTTPResponse::cgi_free_argv_like_array(char ** argv) const
+{
+	for (size_t i = 0; argv[i] != NULL; i++)
+	{
+		delete [] argv[i];
+	}
 	delete [] argv;
 }

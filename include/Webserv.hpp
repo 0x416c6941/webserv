@@ -39,6 +39,9 @@
 #define GREEN   "\033[32m"
 #define YELLOW  "\033[33m"
 
+// We don't support custom server names in configs.
+// So the server name will always be static and it will be this:
+#define SERVER_NAME "hlyshchu_asagymba"
 
 // Utils.
 

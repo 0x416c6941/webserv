@@ -361,10 +361,22 @@ class HTTPResponse
 				const std::string &script_path) const;
 
 		/**
-		 * Helper for `cgi()` to free() \p argv
-		 * in case of a system error.
-		 * @param	argv	argv for execve() received
-		 * 			from `cgi_prep_argv()`.
+		 * Returns an "argv"-like array (that is NULL-terminated)
+		 * of `environ` and additionally
+		 * CGI-specific envrionment variables.
+		 * @param	request	CGI request to handle.
+		 * @return	"argv-like" array of `environ`
+		 * 		and additionally CGI-specific
+		 * 		environment variables on success.
+		 * @return	NULL on some failure.
 		 */
-		void		cgi_free_argv(char ** argv) const;
+		char **		cgi_prep_envp(const HTTPRequest & request) const;
+
+		/**
+		 * Helper for `cgi()` to free() \p arr
+		 * in case of a system error.
+		 * @param	arr	"argv"-like (NULL-terminated)
+		 * 			array of C strings.
+		 */
+		void		cgi_free_argv_like_array(char ** arr) const;
 };

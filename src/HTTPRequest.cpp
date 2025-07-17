@@ -107,6 +107,7 @@ void HTTPRequest::set_client_address(const struct sockaddr_in &client_address)
 {
 	(void) memcpy(&_client_address, &client_address,
 		sizeof(struct sockaddr_in));
+	this->_client_address_is_set = true;
 }
 
 const struct sockaddr_in &HTTPRequest::get_client_address() const
