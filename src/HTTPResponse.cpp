@@ -849,7 +849,7 @@ void HTTPResponse::cgi(const HTTPRequest &request, std::string &resolved_path)
 	{
 		print_err("HTTPResponse::cgi(): pipe() failed", "", "");
 		(void) close(_cgi_pipe[1]);
-		exit(EXIT_FAILURE);
+		std::exit(EXIT_FAILURE);
 	}
 	while (static_cast<size_t> (n) < _response_body.length())
 	{
@@ -862,7 +862,7 @@ void HTTPResponse::cgi(const HTTPRequest &request, std::string &resolved_path)
 			(void) close(_cgi_pipe[1]);
 			(void) close(redir_stdin[0]);
 			(void) close(redir_stdin[1]);
-			exit(EXIT_FAILURE);
+			std::exit(EXIT_FAILURE);
 		}
 		n += written;
 	}
@@ -873,7 +873,7 @@ void HTTPResponse::cgi(const HTTPRequest &request, std::string &resolved_path)
 		print_err("HTTPResponse::cgi(): dup2() failed", "", "");
 		(void) close(_cgi_pipe[1]);
 		(void) close(redir_stdin[0]);
-		exit(EXIT_FAILURE);
+		std::exit(EXIT_FAILURE);
 	}
 	(void) close(_cgi_pipe[1]);
 	(void) close(redir_stdin[0]);
@@ -882,7 +882,7 @@ void HTTPResponse::cgi(const HTTPRequest &request, std::string &resolved_path)
 	if (argv == NULL)
 	{
 		print_err("HTTPResponse::cgi(): cgi_prep_argv() failed", "", "");
-		exit(EXIT_FAILURE);
+		std::exit(EXIT_FAILURE);
 	}
 	// TODO: set up environment variables.
 	(void) request;
@@ -890,7 +890,7 @@ void HTTPResponse::cgi(const HTTPRequest &request, std::string &resolved_path)
 	{
 		print_err("HTTPResponse::cgi(): execve() failed", "", "");
 		this->cgi_free_argv(argv);
-		exit(EXIT_FAILURE);
+		std::exit(EXIT_FAILURE);
 	}
 }
 
