@@ -880,7 +880,16 @@ void HTTPResponse::cgi(const HTTPRequest &request, std::string &resolved_path)
 	}
 	(void) close(_cgi_pipe[1]);
 	(void) close(redir_stdin[0]);
-	cgi_path_index = this->cgi_get_path_index(resolved_path);
+	// We don't check if std::find() returns `_lp->getCgiExtension().end()`
+	// to us, since this method is called by `handle_cgi()`,
+	// which in turn should only be called when it's found out
+	// that the extension of a file at \p resolved_path
+	// belongs to `_lp->_cgi_ext`.
+	cgi_path_index = static_cast<size_t> (
+			std::find(_lp->getCgiExtension().begin(),
+				_lp->getCgiExtension().end(),
+				get_file_ext(resolved_path))
+			- _lp->getCgiExtension().begin());
 	argv = cgi_prep_argv(_lp->getCgiPath().at(cgi_path_index), resolved_path);
 	if (argv == NULL)
 	{
@@ -903,6 +912,7 @@ void HTTPResponse::cgi(const HTTPRequest &request, std::string &resolved_path)
 	}
 }
 
+/*
 size_t HTTPResponse::cgi_get_path_index(const std::string &resolved_path) const
 {
 	std::string request_file_ext;
@@ -924,6 +934,7 @@ size_t HTTPResponse::cgi_get_path_index(const std::string &resolved_path) const
 	}
 	return ret;
 }
+ */
 
 char ** HTTPResponse::cgi_prep_argv(const std::string &interpreter_path,
 		const std::string &script_path) const
@@ -991,7 +1002,7 @@ char ** HTTPResponse::cgi_prep_envp(const HTTPRequest & request) const
 	vars.push_back(std::string("GATEWAY_INERFACE=CGI/1.1"));
 	vars.push_back(std::string("SERVER_PROTOCOL=HTTP/1.1"));
 	vars.push_back(std::string("SERVER_PORT=")
-		+ to_string(request.get_client_address().sin_port));
+		+ to_string(htons(request.get_server_address().sin_port)));
 	// TODO: Finish the variable list (that's not all).
 	try
 	{

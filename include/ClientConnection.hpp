@@ -67,7 +67,7 @@ public:
 
 	// Accessors
 	int                     getSocket() const;
-	const struct sockaddr_in& getAddress() const;
+	const struct sockaddr_in &getAddress() const;	// _client_address.
 	time_t                  getLastTime() const;
 	ServerConfig*           getServer() const;
 	bool			getRequestIsComplete() const;
@@ -77,11 +77,12 @@ public:
 	size_t			getRequestHeaderBufferBytesExhaustion() const;
 	size_t			getRequestBodyBufferBytesExhaustion() const;
 	HTTPRequest&          	getRequest();
-	sockaddr_in&		getServerAddress();
+	const struct sockaddr_in &getServerAddress();
 
 	// Mutators
 	void                    setSocket(int socket);
 	void  			setServerAddress(const struct sockaddr_in &server_address);
+	// This is for _client_address.
 	void                    setAddress(const struct sockaddr_in &addr);
 	void                    setServer(ServerConfig &server);
 	void                    updateTime();

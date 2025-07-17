@@ -1,4 +1,5 @@
 #include "../include/ServerManager.hpp"
+#include <algorithm>	// For std::find() in ServerManager::handleNewConnection().
 
 static volatile sig_atomic_t g_shutdown_requested = 0;
 
@@ -248,7 +249,18 @@ void ServerManager::handleNewConnection(int server_fd)
 
 	std::map<int, ServerConfig*>::iterator sit = _fd_to_server.find(server_fd);
 	if (sit != _fd_to_server.end())
+	{
+		// This looks scary, but trust me,
+		// if we got here, then this would never return
+		// in out of bounds access!
+		conn.setServerAddress(sit->second->getServerAddresses().at(
+				static_cast<size_t> (
+					std::find(sit->second->getListenFds().begin(),
+						sit->second->getListenFds().end(),
+						server_fd)
+					- sit->second->getListenFds().begin())));
 		conn.setServer(*sit->second);
+	}
 	print_log("Accepted connection: fd ", to_string(client_fd), "");
 }
 

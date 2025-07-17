@@ -196,7 +196,7 @@ size_t ClientConnection::getMaxBodySize(const std::string &request_path) const {
 	}
 }
 
-struct sockaddr_in& ClientConnection::getServerAddress()
+const struct sockaddr_in &ClientConnection::getServerAddress()
 {
 	return _server_address;
 }
@@ -204,6 +204,7 @@ struct sockaddr_in& ClientConnection::getServerAddress()
 void ClientConnection::setServerAddress(const struct sockaddr_in &server_address)
 {
 	_server_address = server_address;
+	_request.set_server_address(server_address);
 }
 
 void ClientConnection::setSocket(int socket)
@@ -233,7 +234,7 @@ int ClientConnection::getSocket() const
 	return _client_socket;
 }
 
-const struct sockaddr_in& ClientConnection::getAddress() const
+const struct sockaddr_in &ClientConnection::getAddress() const
 {
 	return _client_address;
 }
@@ -364,6 +365,7 @@ void ClientConnection::reset()
 	_header_buffer_bytes_exhausted = 0;
 	_body_buffer_bytes_exhausted = 0;
 	_request.reset();
+	_request.set_server_address(_server_address);
 	_request.set_client_address(_client_address);
 	_response = HTTPResponse();
 	_response.set_server_cfg(_server);

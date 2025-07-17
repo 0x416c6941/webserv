@@ -341,8 +341,10 @@ class HTTPResponse
 		 * @param	resolved_path	Path to the script to process
 		 * 				with CGI.
 		 */
+		/*
 		size_t		cgi_get_path_index(
 				const std::string &resolved_path) const;
+		 */
 
 		/**
 		 * Returns an "argv"-like array (that is NULL-terminated)

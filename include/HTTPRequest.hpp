@@ -24,7 +24,11 @@ class HTTPRequest
 		{
 			GET,
 			POST,
-			DELETE
+			DELETE,
+			// PUT is not the required by the subject,
+			// but is really handsome for receiving files.
+			// CGI will be not implemented for it.
+			PUT
 		};
 
 		class method_not_allowed : public std::exception

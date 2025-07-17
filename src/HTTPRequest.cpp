@@ -118,7 +118,7 @@ const struct sockaddr_in &HTTPRequest::get_server_address() const
 {
 	if (!_server_address_is_set)
 	{
-		throw std::runtime_error(std::string("HTTPRequest::get_client_address(): ")
+		throw std::runtime_error(std::string("HTTPRequest::get_server_address(): ")
 				+ "_server_address is not set yet.");
 	}
 	return _server_address;

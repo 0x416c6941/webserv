@@ -18,10 +18,10 @@
  */
 class ServerManager {
 private:
-	std::vector<ServerConfig> 	_servers;  		//Configurations for all servers 
-	int 				_epoll_fd;		//Epoll instance file descriptor
-	std::map<int, ServerConfig*> 	_fd_to_server;  	//Map of socket FD to server config
-	std::map<int, ClientConnection> _client_connections;	//Map of client FD to connection object
+	std::vector<ServerConfig> 	_servers;  		// Configurations for all servers.
+	int 				_epoll_fd;		// Epoll instance file descriptor.
+	std::map<int, ServerConfig*> 	_fd_to_server;  	// Map of socket FD to server config.
+	std::map<int, ClientConnection> _client_connections;	// Map of client FD to connection object.
 
 	/**
 	 * @brief Accepts and registers a new client connection for a server socket.
