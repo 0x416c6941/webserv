@@ -14,6 +14,8 @@
 #include <ctime>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <cstdlib>
+#include <cstring>
 
 HTTPResponse::HTTPResponse()
 	: _server_cfg(NULL),
@@ -741,9 +743,12 @@ int HTTPResponse::handle_cgi(const HTTPRequest &request,
 		(void) request_dir_root;
 		(void) request_dir_relative_to_root;
 		(void) request_location_path;
+		(void) close(_cgi_pipe[0]);
+		_cgi_pipe[0] = -1;
 		this->cgi(request, resolved_path);
 	}
 	(void) close(_cgi_pipe[1]);
+	_cgi_pipe[1] = -1;
 	for (;;)
 	{
 		current_time = std::time(NULL);
@@ -757,13 +762,16 @@ int HTTPResponse::handle_cgi(const HTTPRequest &request,
 			// since it may kill the process
 			// if it's frozen and doesn't respond to SIGTERM.
 			(void) kill(_cgi_pid, SIGKILL);
+			_cgi_pid = -1;
 			(void) close(_cgi_pipe[0]);
+			_cgi_pipe[0] = -1;
 			return 500;
 		}
 		// Child exited.
 		else if (waitpid_code == _cgi_pid
 			&& WIFEXITED(waitpid_status))
 		{
+			_cgi_pid = -1;
 			child_exit_status = WEXITSTATUS(waitpid_status);
 			if (child_exit_status != 0)
 			{
@@ -779,7 +787,9 @@ int HTTPResponse::handle_cgi(const HTTPRequest &request,
 				 request_location_path + request_dir_relative_to_root,
 				 "");
 			(void) kill(_cgi_pid, SIGKILL);
+			_cgi_pid = -1;
 			(void) close(_cgi_pipe[0]);
+			_cgi_pipe[0] = -1;
 			return 504;
 		}
 	}
@@ -794,29 +804,10 @@ int HTTPResponse::handle_cgi(const HTTPRequest &request,
 		return 500;
 	}
 	(void) close(_cgi_pipe[0]);
+	_cgi_pipe[0] = -1;
 	_headers["Connection"] = "close";
 	_payload_ready = true;
 	return 0;
-
-	/*
-	std::string request_file_ext;
-	size_t cgi_path_index;
-
-	request_file_ext = get_file_ext(resolved_path);
-	// It's up to ensure that `request_file_ext`
-	// exists in `_lp->_cgi_ext`.
-	for (cgi_path_index = 0; i < _lp->getCgiExtension.size(); i++)
-	{
-		const std::string &current_cgi_ext = _lp->getCgiExtension.at(
-				cgi_path_index);
-
-		if (current_cgi_ext.compare(0, request_file_ext,
-					request_file_ext.length()) == 0)
-		{
-			break;
-		}
-	}
-	 */
 }
 
 void HTTPResponse::copy_child_output_to_payload()
@@ -845,7 +836,137 @@ void HTTPResponse::copy_child_output_to_payload()
 
 void HTTPResponse::cgi(const HTTPRequest &request, std::string &resolved_path)
 {
-	// TODO.
+	// To redirect `_response_body` to stdin.
+	int redir_stdin[2];
+	ssize_t n = 0, written;
+	// Actual data required for CGI execution.
+	size_t cgi_path_index;
+	// std::auto_ptr may be unreliable
+	// and std::unique_ptr in unavailable in C++98.
+	char ** argv;
+
+	if (pipe(redir_stdin) == -1)
+	{
+		print_err("HTTPResponse::cgi(): pipe() failed", "", "");
+		(void) close(_cgi_pipe[1]);
+		exit(EXIT_FAILURE);
+	}
+	while (static_cast<size_t> (n) < _response_body.length())
+	{
+		written = write(redir_stdin[1], _response_body.c_str() + n,
+				_response_body.length() - static_cast<size_t> (n));
+		if (written == -1)
+		{
+			print_err("HTTPResponse::cgi(): write() failed: ",
+				"Couldn't copy _response_body to stdin", "");
+			(void) close(_cgi_pipe[1]);
+			(void) close(redir_stdin[0]);
+			(void) close(redir_stdin[1]);
+			exit(EXIT_FAILURE);
+		}
+		n += written;
+	}
+	(void) close(redir_stdin[1]);
+	if (dup2(redir_stdin[0], STDIN_FILENO) == -1
+		|| dup2(_cgi_pipe[1], STDOUT_FILENO) == -1)
+	{
+		print_err("HTTPResponse::cgi(): dup2() failed", "", "");
+		(void) close(_cgi_pipe[1]);
+		(void) close(redir_stdin[0]);
+		exit(EXIT_FAILURE);
+	}
+	(void) close(_cgi_pipe[1]);
+	(void) close(redir_stdin[0]);
+	cgi_path_index = this->cgi_get_path_index(resolved_path);
+	argv = cgi_prep_argv(_lp->getCgiPath().at(cgi_path_index), resolved_path);
+	if (argv == NULL)
+	{
+		print_err("HTTPResponse::cgi(): cgi_prep_argv() failed", "", "");
+		exit(EXIT_FAILURE);
+	}
+	// TODO: set up environment variables.
 	(void) request;
-	(void) resolved_path;
+	if (execve(_lp->getCgiPath().at(cgi_path_index).c_str(), argv, NULL) == -1)
+	{
+		print_err("HTTPResponse::cgi(): execve() failed", "", "");
+		this->cgi_free_argv(argv);
+		exit(EXIT_FAILURE);
+	}
+}
+
+size_t HTTPResponse::cgi_get_path_index(const std::string &resolved_path) const
+{
+	std::string request_file_ext;
+	size_t ret;
+
+	request_file_ext = get_file_ext(resolved_path);
+	// It's up to you to ensure that `request_file_ext`
+	// exists in `_lp->_cgi_ext`.
+	for (ret= 0; ret < _lp->getCgiExtension().size(); ret++)
+	{
+		const std::string &current_cgi_ext = _lp->getCgiExtension().at(
+				ret);
+
+		if (current_cgi_ext.compare(0, request_file_ext.length(),
+					request_file_ext) == 0)
+		{
+			break;
+		}
+	}
+	return ret;
+}
+
+char ** HTTPResponse::cgi_prep_argv(const std::string &interpreter_path,
+		const std::string &script_path) const
+{
+	// `interpreter_path`, `script_path` and terminating NULL.
+	enum { POINTERS_IN_RET = 3 };
+	char ** ret;
+
+	try
+	{
+		ret = new char * [POINTERS_IN_RET];
+	}
+	catch (const std::bad_alloc &e)
+	{
+		return NULL;
+	}
+	ret[0] = NULL;
+	ret[1] = NULL;
+	ret[2] = NULL;
+	// `interpreter_path`.
+	try
+	{
+		ret[0] = new char[interpreter_path.length() + 1];
+	}
+	catch (const std::bad_alloc &e)
+	{
+		delete [] ret;
+		return NULL;
+	}
+	(void) memcpy(ret[0], interpreter_path.c_str(), interpreter_path.length());
+	ret[0][interpreter_path.length()] = '\0';
+	// `script_path`.
+	try
+	{
+		ret[1] = new char[script_path.length() + 1];
+	}
+	catch (const std::bad_alloc &e)
+	{
+		delete [] ret[0];
+		delete [] ret;
+		return NULL;
+	}
+	(void) memcpy(ret[1], script_path.c_str(), script_path.length());
+	ret[1][script_path.length()] = '\0';
+	// Terminating NULL.
+	ret[2] = NULL;
+	return ret;
+}
+
+void HTTPResponse::cgi_free_argv(char ** argv) const
+{
+	delete [] argv[0];
+	delete [] argv[1];
+	delete [] argv;
 }

@@ -328,4 +328,43 @@ class HTTPResponse
 		 */
 		void		cgi(const HTTPRequest &request,
 				std::string &resolved_path);
+
+		/**
+		 * Get index of extension of \p resolved_path in
+		 * `_lp->_cgi_ext`.
+		 * This is needed for `cgi()` to determine
+		 * the index of CGI interpreter.
+		 * @warning	It's up to you to ensure that
+		 * 		`request_file_ext` exists in `_lp->cgi_ext`.
+		 * 		If it doesn't, no exception will be thrown
+		 * 		and index in `_lp->_cgi_path` will be invalid.
+		 * @param	resolved_path	Path to the script to process
+		 * 				with CGI.
+		 */
+		size_t		cgi_get_path_index(
+				const std::string &resolved_path) const;
+
+		/**
+		 * Returns an "argv"-like array (that is NULL-terminated)
+		 * of \p interpreter_path and \p script_path
+		 * required for `cgi()` to execve() into interpreter.
+		 * @param	interpreter_path	Path to interpreter
+		 * 					for \p script_path.
+		 * @param	script_path		Path to the script
+		 * 					to process with CGI.
+		 * @return	"argv-like" array of \p interpreter_path
+		 * 		and \p script_path on success.
+		 * @return	NULL on some failure.
+		 */
+		char **		cgi_prep_argv(
+				const std::string &interpreter_path,
+				const std::string &script_path) const;
+
+		/**
+		 * Helper for `cgi()` to free() \p argv
+		 * in case of a system error.
+		 * @param	argv	argv for execve() received
+		 * 			from `cgi_prep_argv()`.
+		 */
+		void		cgi_free_argv(char ** argv) const;
 };
