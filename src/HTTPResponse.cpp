@@ -737,15 +737,11 @@ int HTTPResponse::handle_cgi(const HTTPRequest &request,
 	}
 	else if (_cgi_pid == 0)
 	{
-		// TODO: Temporarily do nothing as child.
-		(void) request;
+		// TODO: Remove those later if they're not used in `cgi()`.
 		(void) request_dir_root;
 		(void) request_dir_relative_to_root;
 		(void) request_location_path;
-		(void) resolved_path;
-		for (;;)
-		{
-		}
+		this->cgi(request, resolved_path);
 	}
 	(void) close(_cgi_pipe[1]);
 	for (;;)
@@ -845,4 +841,11 @@ void HTTPResponse::copy_child_output_to_payload()
 			return;
 		}
 	}
+}
+
+void HTTPResponse::cgi(const HTTPRequest &request, std::string &resolved_path)
+{
+	// TODO.
+	(void) request;
+	(void) resolved_path;
 }

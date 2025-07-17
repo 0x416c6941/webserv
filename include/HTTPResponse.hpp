@@ -140,7 +140,6 @@ class HTTPResponse
 		 * @warning	Parameters' validity isn't checked.
 		 * 		It's up to the user to ensure their validity.
 		 * @param	request				Request to handle.
-		 * 						in \p request.
 		 * @param	request_dir_root		Root or alias
 		 * 						of `_lp`
 		 * 						or `_server->Root()`
@@ -249,7 +248,8 @@ class HTTPResponse
 		 * and wait at maximum for `_MAX_CGI_TIME` seconds
 		 * for child (CGI) process to finish execution.
 		 *
-		 * Child process will redirect `_request_body` to it's stdin
+		 * Child process will redirect `_request_body` to it's stdin,
+		 * stdout to `_cgi_pipe[1]`,
 		 * and execve() into the the CGI handler
 		 * with the request path as argument for processing.
 		 * All CGI-specific environment variables
@@ -312,4 +312,20 @@ class HTTPResponse
 		 * @throw	runtime_error	read() fail.
 		 */
 		void		copy_child_output_to_payload();
+
+		/**
+		 * Child routine of executing CGI in \p request.
+		 * Redirect `_request_body` to stdin, stdout to `_cgi_pipe[1]`,
+		 * and execve() into the the CGI handler.
+		 * All CGI-specific environment variables
+		 * will also be set up.
+		 *
+		 * If execve() fails, exit()'s with "EXIT_FAILURE".
+		 * @warning	This method never returns.
+		 * @param	request		Request to handle.
+		 * @param	resolved_path	Path to the script to process
+		 * 				with CGI.
+		 */
+		void		cgi(const HTTPRequest &request,
+				std::string &resolved_path);
 };
