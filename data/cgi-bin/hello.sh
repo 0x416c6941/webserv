@@ -1,4 +1,11 @@
 #!/bin/sh
-echo "Content-type: text/html"
-echo ""
-echo "<html><body><h1>Hello from CGI Script!</h1></body></html>"
+
+RESPONSE_BODY="<html><body><h1>Hello from shell!</h1></body></html>\n"
+
+echo -ne "HTTP/1.1 200 OK\r\n"
+echo -ne "Connection: close\r\n"
+echo -ne "Content-Length: ${#RESPONSE_BODY}\r\n"
+echo -ne "Content-Type: text/html\r\n"
+echo -ne "Server: $SERVER_NAME\r\n"
+echo -ne "\r\n"
+echo -ne "$RESPONSE_BODY"
