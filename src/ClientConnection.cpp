@@ -13,6 +13,7 @@ ClientConnection::ClientConnection(int fd)
 	  _body_buffer_bytes_exhausted(0)
 {
 	std::memset(&_client_address, 0, sizeof(_client_address));
+	std::memset(&_server_address, 0, sizeof(_server_address));
 }
 
 ClientConnection::ClientConnection()
@@ -28,6 +29,7 @@ ClientConnection::ClientConnection()
 	  _body_buffer_bytes_exhausted(0)
 {
 	std::memset(&_client_address, 0, sizeof(_client_address));
+	std::memset(&_server_address, 0, sizeof(_server_address));
 }
 
 // NEVER use copy constructor of this class.
@@ -45,6 +47,7 @@ ClientConnection::ClientConnection(const ClientConnection &other)
 	  _request_buffer(other._request_buffer),
 	  _header_buffer_bytes_exhausted(other._header_buffer_bytes_exhausted),
 	  _body_buffer_bytes_exhausted(other._body_buffer_bytes_exhausted),
+	  _server_address(other._server_address),
 	  _response(other._response)
 {
 }
@@ -191,6 +194,16 @@ size_t ClientConnection::getMaxBodySize(const std::string &request_path) const {
 		throw std::domain_error(std::string("ClientConnection::getMaxBodySize(): ")
 				+ "POST method isn't allowed on the requested Location.");
 	}
+}
+
+struct sockaddr_in& ClientConnection::getServerAddress()
+{
+	return _server_address;
+}
+
+void ClientConnection::setServerAddress(const struct sockaddr_in &server_address)
+{
+	_server_address = server_address;
 }
 
 void ClientConnection::setSocket(int socket)

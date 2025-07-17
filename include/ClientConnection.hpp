@@ -30,6 +30,7 @@ private:
 	// we have already exhausted.
 	size_t			_header_buffer_bytes_exhausted;
 	size_t			_body_buffer_bytes_exhausted;
+	struct sockaddr_in	_server_address;
 
 	/**
 	 * Reads and processes request information from \p buffer.
@@ -76,9 +77,11 @@ public:
 	size_t			getRequestHeaderBufferBytesExhaustion() const;
 	size_t			getRequestBodyBufferBytesExhaustion() const;
 	HTTPRequest&          	getRequest();
+	sockaddr_in&		getServerAddress();
 
 	// Mutators
 	void                    setSocket(int socket);
+	void  			setServerAddress(const struct sockaddr_in &server_address);
 	void                    setAddress(const struct sockaddr_in &addr);
 	void                    setServer(ServerConfig &server);
 	void                    updateTime();
