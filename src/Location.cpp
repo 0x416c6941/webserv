@@ -135,45 +135,41 @@ static void validateOptionalDir(const std::string &label, const std::string &pat
 }
 
 void  Location::validateLocation() const {
-        // 1. Path must not be empty
+        // Path must not be empty
         if (_path.empty())
                 throw std::runtime_error("Location validation error: path is empty.");
 
-        // 2. root and alias must not be used together
-        if (!_root.empty() && !_alias.empty())
-                throw std::runtime_error("Location validation error: cannot use both root and alias in the same location block.");
+        // root and alias must not be used together
+        if ((!_root.empty() && !_alias.empty()) || (_root.empty() && _alias.empty()))
+                throw std::runtime_error("Location '" + _path + "' validation error: either root or alias must be set, but not both.");
 
-        // 4. If upload_path is relative, ensure root exists to resolve it
-        if (!_upload_path.empty() && _upload_path[0] != '/') {
-                if (_root.empty())
-                        throw std::runtime_error("Location validation error: upload_path is relative but root is not set.");
-        }
-
-        // 5. Ensure at least one way to handle the request
+        // Ensure at least one way to handle the request
         bool has_handler =
                 (!_root.empty() || !_alias.empty()) ||          // static file serving
                 (!_cgi_ext.empty() && !_cgi_path.empty());    // CGI handler
 
         if (!has_handler)
-                throw std::runtime_error("Location validation error: no valid handling strategy defined (no root, alias, return, cgi, or upload).");
+                throw std::runtime_error("Location '" + _path + "' validation error: no valid handling strategy defined (no root, alias, return, cgi, or upload).");
 
-        // 6. Validate HTTP methods
+        // Validate HTTP methods
         std::set<std::string>::const_iterator mit = _methods.begin();
         for (; mit != _methods.end(); ++mit) {
                 if (*mit != "GET" && *mit != "POST" && *mit != "DELETE"  && *mit != "PUT")
-                        throw std::runtime_error("Location validation error: invalid HTTP method '" + *mit + "'");
+                        throw std::runtime_error("Location '" + _path + "' validation error: invalid HTTP method '" + *mit + "'");
+                if  (*mit == "PUT" && _upload_path.empty())
+                        throw std::runtime_error("Location '" + _path + "' validation error: PUT method requires a valid upload_path.");
         }
 
-        // 7. Validate error_page codes
+        // Validate error_page codes
         std::map<int, std::string>::const_iterator eit = _error_pages.begin();
         for (; eit != _error_pages.end(); ++eit) {
                 if (eit->first < 400 || eit->first > 599)
-                        throw std::runtime_error("Location validation error: invalid error_page code: " + to_string(eit->first));
+                        throw std::runtime_error("Location '" + _path + "' validation error: invalid error_page code: " + to_string(eit->first));
                 if (eit->second.empty())
-                        throw std::runtime_error("Location validation error: error_page for code " + to_string(eit->first) + " has empty path.");
+                        throw std::runtime_error("Location '" + _path + "' validation error: error_page for code " + to_string(eit->first) + " has empty path.");
         }
 
-        //8. Validate path
+        // Validate path
         if (!_root.empty())
                 validateOptionalDir("root", _root);
         if (!_alias.empty())
@@ -181,13 +177,13 @@ void  Location::validateLocation() const {
         if (!_upload_path.empty()) {
                 validateOptionalDir("upload_path", _upload_path);
                 if (access(_upload_path.c_str(), R_OK | X_OK | W_OK) != 0)
-                        throw std::runtime_error("Location validation error: upload_path '" + _upload_path + "' must be readable, writable, and executable.");
+                        throw std::runtime_error("Location '" + _path + "' validation error: upload_path '" + _upload_path + "' must be readable, writable, and executable.");
         }
 
         // Optional: validate CGI ext format (should start with '.')
         for (size_t i = 0; i < _cgi_ext.size(); ++i) {
                 if (_cgi_ext[i].empty() || _cgi_ext[i][0] != '.')
-                        throw std::runtime_error("Location validation error: CGI extension '" + _cgi_ext[i] + "' must start with a dot.");
+                        throw std::runtime_error("Location '" + _path + "' validation error: CGI extension '" + _cgi_ext[i] + "' must start with a dot.");
         }
 }
 
