@@ -573,6 +573,14 @@ void ServerBuilder::handle_location(const std::vector<std::string>& parameters, 
     	Location location;
     	location.setPath(parameters[1]);
 
+	 // Check for duplicate location path
+    	const std::vector<Location>& existing_locations = server_cfg.getLocations(); // adjust return type as needed
+    	for (std::vector<Location>::const_iterator it = existing_locations.begin(); it != existing_locations.end(); ++it) {
+        	if (it->getPath() == location.getPath()) {
+            		throw ConfigParser::ErrorException("Duplicate location path: " + location.getPath());
+        	}
+    	}
+
     	const std::map<std::string, LocationHandler>& handlers = getLocationHandlers();
 
     	for (size_t i = 3; i < parameters.size(); ++i) {
@@ -610,7 +618,6 @@ HandlerFunc ServerBuilder::getHandler(const std::string& directive) {
 	if (handlers.empty()) {
 		handlers["listen"] = &ServerBuilder::handle_listen;
 		handlers["host"] = &ServerBuilder::handle_host;
-		// handlers["server_name"] = &ServerBuilder::handle_server_name;
 		handlers["root"] = &ServerBuilder::handle_root;
 		handlers["client_max_body_size"] = &ServerBuilder::handle_mbs;
 		handlers["autoindex"] = &ServerBuilder::handle_autoindex;

@@ -19,7 +19,6 @@ class ServerBuilder {
 private:
 
 	static void 		handle_listen(const std::vector<std::string>& parameters, ServerConfig& server_cfg);
-	static void 		handle_server_name(const std::vector<std::string>& parameters, ServerConfig& server_cfg);
 	static void 		handle_root(const std::vector<std::string>& parameters, ServerConfig& server_cfg);
 	static void 		handle_index(const std::vector<std::string>& parameters, ServerConfig& server_cfg);
 	static void 		handle_host(const std::vector<std::string>& parameters, ServerConfig& server_cfg);
