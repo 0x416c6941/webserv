@@ -190,17 +190,17 @@ class HTTPResponse
 		/**
 		 * Handles the "POST" method:
 		 * sets the `_status_code`, required headers in `_headers`,
-		 * reads the request data to `_response_body`
 		 * and generates the response to `_payload`.
 		 *
 		 * If the requested path if CGI script,
 		 * launches it with the received data,
 		 * otherwise appends the data to existing file.
-		 * If file doesn't exist, data simply get discarded.
+		 * If file doesn't exist, data simply get discarded
+		 * (and 204 will be returned).
 		 *
 		 * If any error is encountered,
 		 * respective error response is built.
-		 * @brief	Handle the "GET" request method.
+		 * @brief	Handle the "POST" request method.
 		 * @warning	Parameters' validity isn't checked.
 		 * 		It's up to the user to ensure their validity.
 		 * @param	request				Request to handle.
@@ -227,7 +227,57 @@ class HTTPResponse
 				std::string &request_location_path,
 				std::string &resolved_path);
 
-		// TODO: handle_delete(), handle_put().
+		/**
+		 * Handles the "DELETE" method:
+		 * sets the `_status_code`, required headers in `_headers`,
+		 * and generates the response to `_payload`.
+		 *
+		 * If the requested path is a directory
+		 * and doesn't end with '/', client will be redirected
+		 * to the same path but with '/' at the end.
+		 * If the requested path is a directory and ends with '/',
+		 * 403 will be returned (std::remove() can only delete files
+		 * and we don't have any available syscall
+		 * to delete directories).
+		 *
+		 * If the requested path doesn't exist, 404 will be returned.
+		 * If the requested path does exist but couldn't be deleted
+		 * due to permission denial (errno is EACCES),
+		 * 403 will be returned.
+		 * If the requested path does exist but couldn't be deleted
+		 * due to any other reason, 500 will be returned.
+		 *
+		 * If the requested path exists and was deleted,
+		 * 204 will be returned.
+		 * @brief	Handle the "POST" request method.
+		 * @warning	Parameters' validity isn't checked.
+		 * 		It's up to the user to ensure their validity.
+		 * @param	request				Request to handle.
+		 * @param	request_dir_root		Root or alias
+		 * 						of `_lp`
+		 * 						or `_server->Root()`
+		 * 						(if p lp is NULL)
+		 * 						with trailing '/'.
+		 * @param	request_dir_relative_to_root	Request path to file
+		 * 						or directory
+		 * 						in \p request_dir_root.
+		 * @param	request_location_path		`getPath()` from `_lp`
+		 * 						or "/" if `_lp` is NULL.
+		 * @param	resolved_path			\p request_dir_root
+		 * 						concatenated with
+		 * 						\p request_dir_relative_to_root
+		 * 						given that it's not
+		 * 						a directory traversal
+		 * 						attempt.
+		 */
+		void		handle_delete(const HTTPRequest &request,
+				std::string &request_dir_root,
+				std::string &request_dir_relative_to_root,
+				std::string &request_location_path,
+				std::string &resolved_path);
+
+
+		// TODO: handle_put().
 
 		/**
 		 * We don't have to support custom return pages.

@@ -7,9 +7,10 @@
 #include <csignal>
 #include "Webserv.hpp"
 #include "Location.hpp"
+#include <cstdio>
+#include <cerrno>
 #include <sys/types.h>
 #include <dirent.h>
-#include <errno.h>
 #include <algorithm>
 #include <ctime>
 #include <unistd.h>
@@ -278,12 +279,7 @@ void HTTPResponse::handle_response_routine(const HTTPRequest &request)
 				build_error_response();
 				return;
 			}
-			// Temporary stub.
-			_status_code = 405;
-			this->build_error_response();
-			print_warning("HTTPResponse: DELETE isn't implemented yet",
-				"", "");
-			return;
+			handler = &HTTPResponse::handle_delete;
 			break;
 		case HTTPRequest::PUT:
 			if (_lp == NULL
@@ -697,6 +693,90 @@ void HTTPResponse::handle_post(const HTTPRequest &request,
 			e.what(), "");
 		build_error_response();
 		return;
+	}
+	generate_204('/' + request_dir_relative_to_root);
+	set_connection_header(request);
+	prep_payload();
+	print_log("Sending the 204:\n", _payload, "\n");
+}
+
+void HTTPResponse::handle_delete(const HTTPRequest &request,
+		std::string &request_dir_root,
+		std::string &request_dir_relative_to_root,
+		std::string &request_location_path,
+		std::string &resolved_path)
+{
+	(void) request_dir_root;
+
+	if (isDirectory(resolved_path))
+	{
+		if (request_dir_relative_to_root.length() > 0
+			&& request_dir_relative_to_root.at(
+				request_dir_relative_to_root.length() - 1) != '/')
+		{
+			generate_301(request_location_path
+				+ request_dir_relative_to_root + '/');
+			set_connection_header(request);
+			prep_payload();
+			print_log("Sent the 301: ", _response_body, "");
+			return;
+		}
+		// Let's rather NOT delete any indexes in this case
+		// and just return 403
+		// (std::remove() can only delete files,
+		// and we don't have any available syscall
+		// to delete directories).
+		/*
+		else if (find_first_available_index(
+					request_dir_root,
+					request_dir_relative_to_root) == 0)
+		{
+			// find_first_available_index() found
+			// an available index and appended it's location
+			// relative to `request_dir_root`
+			// to `request_dir_relative_to_root`.
+			// Update `resolved_path` in this case.
+			resolved_path = request_dir_root
+				+ request_dir_relative_to_root;
+		}
+		// No available index was found.
+		 */
+		else
+		{
+			_status_code = 403;
+			print_log("Got DELETE request to delete: ",
+				resolved_path, " - can't delete directory");
+			build_error_response();
+			return;
+		}
+	}
+	if (!pathExists(resolved_path))
+	{
+		// Should it be 204 in this case?
+		_status_code = 404;
+		print_log("Got DELETE request to delete: ",
+			resolved_path, " - path doesn't exist");
+		build_error_response();
+		return;
+	}
+	else if (std::remove(resolved_path.c_str()) != 0)
+	{
+		if (errno == EACCES)
+		{
+			_status_code = 403;
+			print_log("Got DELETE request to delete: ",
+				resolved_path, " - permission denied");
+			build_error_response();
+			return;
+		}
+		else
+		{
+			_status_code = 500;
+			print_log("Got DELETE request to delete: ",
+				resolved_path, " - error other than EACCES");
+			build_error_response();
+			return;
+		}
 	}
 	generate_204('/' + request_dir_relative_to_root);
 	set_connection_header(request);
