@@ -684,28 +684,22 @@ void HTTPResponse::handle_post(const HTTPRequest &request,
 		build_error_response();
 		return;
 	}
-	/* TODO:
 	try
 	{
-		_response_body = read_file(resolved_path);
+		append_file(resolved_path, request.get_body());
 	}
 	catch (const std::ios_base::failure &e)
 	{
 		_status_code = 500;
-		print_warning("HTTPResponse::handle_get(): I/O error: ",
+		print_warning("HTTPResponse::handle_post(): I/O error: ",
 			e.what(), "");
 		build_error_response();
 		return;
 	}
-	_status_code = 200;
-	_headers["Content-Type"] = get_mime_type(resolved_path);
+	generate_204('/' + request_dir_relative_to_root);
 	set_connection_header(request);
 	prep_payload();
-	print_log("Sending ", resolved_path, " to the server");
-	 */
-	_status_code = 501;
-	build_error_response();
-	return;
+	print_log("Sending the 204:\n", _payload, "\n");
 }
 
 void HTTPResponse::generate_301(const std::string &redir_path)

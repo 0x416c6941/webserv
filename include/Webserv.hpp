@@ -107,6 +107,15 @@ uint64_t 	validateGetMbs(std::string param);
 std::string read_file(const std::string &path);
 
 /**
+ * Append file stored at \p path with \p with_what.
+ * If file at \p path doesn't exist, it will be created.
+ * @throw	std::ios_base::failure	Got IO error.
+ * @param	path		File to append.
+ * @param	with_what	Content to append to \p path.
+ */
+void append_file(const std::string &path, const std::string &with_what);
+
+/**
  * Gets the extension in lowercase of \p path.
  * @param	path	Path to some file.
  * @return	If \p path does contain some extension,

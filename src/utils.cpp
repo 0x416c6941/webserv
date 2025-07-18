@@ -2,7 +2,7 @@
 #include "ConfigParser.hpp"
 #include <inttypes.h>	// <cinttypes> is available from C++11 onwards, but we use C++98.
 #include <string>
-#include <istream>
+#include <fstream>
 #include <sstream>
 #include <stdexcept>
 
@@ -176,6 +176,24 @@ std::string read_file(const std::string &path)
 		line.clear();
 	}
 	return ret.str();
+}
+
+void append_file(const std::string &path, const std::string &with_what)
+{
+	std::ofstream file;
+
+	file.open(path.c_str(), std::ios_base::app);	// Open for appending.
+	if (!file.is_open())
+	{
+		throw std::ios_base::failure(std::string("append_file(): Couldn't open file: ")
+				+ path + '.');
+	}
+	file << with_what;
+	if (!file.good())
+	{
+		throw std::ios_base::failure(std::string("append_file(): Couldn't append file: ")
+				+ path + '.');
+	}
 }
 
 std::string get_file_ext(const std::string &path)
