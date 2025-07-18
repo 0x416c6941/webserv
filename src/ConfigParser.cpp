@@ -185,6 +185,13 @@ void ConfigParser::parse() {
 			}
 		}
 		ServerConfig server = ServerBuilder::build(directives);
+		// need to validate locations here cause we need server root path
+		std::vector<Location> locs = server.getLocations();
+
+		for (std::vector<Location>::iterator it = locs.begin(); it != locs.end(); ++it) {
+		    	it->validateLocation(server.getRoot());
+		}
+
 		_servers.push_back(server);
 	}
 }

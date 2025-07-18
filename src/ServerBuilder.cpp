@@ -605,7 +605,6 @@ void ServerBuilder::handle_location(const std::vector<std::string>& parameters, 
         		handler(location, parameters, i);
 		}
     	}
-	location.validateLocation();
     	server_cfg.addLocation(location);
 }
 
