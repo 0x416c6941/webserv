@@ -1,6 +1,6 @@
 #!/bin/sh
 
-RESPONSE_BODY="<html><body><h1>Hello from shell!</h1></body></html>\n"
+RESPONSE_BODY="<html><body>Hello from shell!</body></html>\n"
 
 echo -ne "HTTP/1.1 200 OK\r\n"
 echo -ne "Connection: close\r\n"
