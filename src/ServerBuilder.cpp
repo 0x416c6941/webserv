@@ -82,8 +82,13 @@ void ServerBuilder::handle_root(const std::vector<std::string>& parameters, Serv
     	if (parameters.size() != 3 || parameters[2] != ";")
         	throw ConfigParser::ErrorException("Invalid syntax for 'root' directive");
 	if (!pathExists(parameters[1])) {
-		print_warning ("root path '", parameters[1], "' does not exist at parse time.");
+		throw ConfigParser::ErrorException ("root path '" +  parameters[1] +"' does not exist at parse time.");
 	}
+	if (!isDirectory(parameters[1])) {
+		throw ConfigParser::ErrorException ("root path '" +  parameters[1] +"' is not a directory.");
+	}
+	if (access(parameters[1].c_str(), R_OK | X_OK) != 0)
+		throw ConfigParser::ErrorException ("root path '" +  parameters[1] +"' is not readable or executable.");
     	server_cfg.setRoot(parameters[1]);
 }
 
@@ -605,6 +610,7 @@ void ServerBuilder::handle_location(const std::vector<std::string>& parameters, 
         		handler(location, parameters, i);
 		}
     	}
+	location.validateLocation();
     	server_cfg.addLocation(location);
 }
 
