@@ -236,9 +236,8 @@ class HTTPResponse
 		 * and doesn't end with '/', client will be redirected
 		 * to the same path but with '/' at the end.
 		 * If the requested path is a directory and ends with '/',
-		 * 403 will be returned (std::remove() can only delete files
-		 * and we don't have any available syscall
-		 * to delete directories).
+		 * 403 will be returned (we don't have to handle
+		 * directory removal, it's not stated anywhere in RFC).
 		 *
 		 * If the requested path doesn't exist, 404 will be returned.
 		 * If the requested path does exist but couldn't be deleted

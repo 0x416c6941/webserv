@@ -723,10 +723,8 @@ void HTTPResponse::handle_delete(const HTTPRequest &request,
 			return;
 		}
 		// Let's rather NOT delete any indexes in this case
-		// and just return 403
-		// (std::remove() can only delete files,
-		// and we don't have any available syscall
-		// to delete directories).
+		// and just return 403 (we don't have to handle directory
+		// removal, it's not stated anywhere in RFC).
 		/*
 		else if (find_first_available_index(
 					request_dir_root,
