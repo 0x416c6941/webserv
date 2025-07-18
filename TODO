@@ -13,31 +13,13 @@ HTTPResponse:
 
 - probable it should be beneficial to add map header:value and then when building a header it just add everything to the response header (I don't now for now how our header will vary)
 
-
-HTTPResponse.cpp:
-190: std::string::size_type pos = path.find_first_of("?#");
-	?
-201: if (!realpath(full_path.c_str(), resolved)) {
-	realpath() isn't on the allowed syscalls list.
-
 inet_pton():
 	Syscall is forbidden. Rewrite.
-
-HTTPResponse:: mime.
-	Connection: close?
-
-HTTPResponse:: handle_response_routine.
 
 REMAINING:
 	ClientConnection (handleWriteEvent())
 	HTTPResponse
 	ServerManager
-
-"Warning: location path ... does not exist at parse time."
-	Location path is a request target redirection / configuration change.
-	We need to check for the optional root parameter in a location directive,
-		not the location path.
-
 
 Implement PUT method.
 	Without it, receiving and saving new files
