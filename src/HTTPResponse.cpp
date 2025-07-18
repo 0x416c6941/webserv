@@ -267,12 +267,7 @@ void HTTPResponse::handle_response_routine(const HTTPRequest &request)
 				build_error_response();
 				return;
 			}
-			// Temporary stub.
-			_status_code = 405;
-			this->build_error_response();
-			print_warning("HTTPResponse: POST isn't implemented yet",
-				"", "");
-			return;
+			handler = &HTTPResponse::handle_post;
 			break;
 		case HTTPRequest::DELETE:
 			if (_lp == NULL
@@ -446,6 +441,55 @@ void HTTPResponse::append_required_headers()
 	_headers["Content-Length"] = to_string(_response_body.length());
 }
 
+std::string HTTPResponse::resolve_path(const std::string &root,
+		const std::string &request_relative_path) const
+{
+	// Checking for possible directory traversal in `request_relative_path`.
+	size_t depth = 0;
+	bool in_directory = false;
+
+	if (request_relative_path.length() > 0
+		&& request_relative_path.at(0) == '/')
+	{
+		throw std::invalid_argument(std::string("HTTPResponse::resolve_path(): ")
+				+ "Provided request path is not relative: "
+				+ request_relative_path);
+	}
+	for (size_t i = 0; i < request_relative_path.length(); i++)
+	{
+		if (request_relative_path.at(i) == '.'
+			&& !in_directory
+			&& (i + 1 < request_relative_path.length()
+				&& request_relative_path.at(i + 1) == '.'))
+		{
+			// More than 3 levels of indentation is bad.
+			// Still, let's proceed as is...
+			if (depth-- == 0)
+			{
+				throw directory_traversal_detected(std::string("HTTPResponse::resolve_path(): ")
+						+ "Detected directory traversal.");
+			}
+			i++;	// Skip the second dot.
+		}
+		else if (request_relative_path.at(i) == '/')
+		{
+			// Not checking for double slashes.
+			// Double slashes in the request path
+			// are already checked for during HTTPRequest parsing.
+			if (in_directory)
+			{
+				depth++;
+			}
+			in_directory = false;
+		}
+		else
+		{
+			in_directory = true;
+		}
+	}
+	return root + request_relative_path;
+}
+
 void HTTPResponse::handle_get(const HTTPRequest &request,
 		std::string &request_dir_root,
 		std::string &request_dir_relative_to_root,
@@ -505,12 +549,14 @@ void HTTPResponse::handle_get(const HTTPRequest &request,
 			return;
 		}
 	}
-	if (!isRegFile(resolved_path))
+	if (!pathExists(resolved_path))
 	{
 		_status_code = 404;
 		build_error_response();
 		return;
 	}
+	// At this point, `resolved_path` must be a file
+	// (at least not a directory).
 	else if (access(resolved_path.c_str(), R_OK) == -1)
 	{
 		_status_code = 403;
@@ -554,62 +600,129 @@ void HTTPResponse::handle_get(const HTTPRequest &request,
 	print_log("Sending ", resolved_path, " to the server");
 }
 
-std::string HTTPResponse::resolve_path(const std::string &root,
-		const std::string &request_relative_path) const
+void HTTPResponse::handle_post(const HTTPRequest &request,
+		std::string &request_dir_root,
+		std::string &request_dir_relative_to_root,
+		std::string &request_location_path,
+		std::string &resolved_path)
 {
-	// Checking for possible directory traversal in `request_relative_path`.
-	size_t depth = 0;
-	bool in_directory = false;
+	int cgi_status;
 
-	if (request_relative_path.length() > 0
-		&& request_relative_path.at(0) == '/')
+	if (isDirectory(resolved_path))
 	{
-		throw std::invalid_argument(std::string("HTTPResponse::resolve_path(): ")
-				+ "Provided request path is not relative: "
-				+ request_relative_path);
-	}
-	for (size_t i = 0; i < request_relative_path.length(); i++)
-	{
-		if (request_relative_path.at(i) == '.'
-			&& !in_directory
-			&& (i + 1 < request_relative_path.length()
-				&& request_relative_path.at(i + 1) == '.'))
+		if (request_dir_relative_to_root.length() > 0
+			&& request_dir_relative_to_root.at(
+				request_dir_relative_to_root.length() - 1) != '/')
 		{
-			// More than 3 levels of indentation is bad.
-			// Still, let's proceed as is...
-			if (depth-- == 0)
-			{
-				throw directory_traversal_detected(std::string("HTTPResponse::resolve_path(): ")
-						+ "Detected directory traversal.");
-			}
-			i++;	// Skip the second dot.
+			generate_301(request_location_path
+				+ request_dir_relative_to_root + '/');
+			set_connection_header(request);
+			prep_payload();
+			print_log("Sent the 301: ", _response_body, "");
+			return;
 		}
-		else if (request_relative_path.at(i) == '/')
+		else if (find_first_available_index(
+					request_dir_root,
+					request_dir_relative_to_root) == 0)
 		{
-			// Not checking for double slashes.
-			// Double slashes in the request path
-			// are already checked for during HTTPRequest parsing.
-			if (in_directory)
-			{
-				depth++;
-			}
-			in_directory = false;
+			// find_first_available_index() found
+			// an available index and appended it's location
+			// relative to `request_dir_root`
+			// to `request_dir_relative_to_root`.
+			// Update `resolved_path` in this case.
+			resolved_path = request_dir_root
+				+ request_dir_relative_to_root;
 		}
+		// No available index was found.
 		else
 		{
-			in_directory = true;
+			generate_204('/' + request_dir_relative_to_root);
+			set_connection_header(request);
+			prep_payload();
+			print_log("Sending the 204:\n", _payload, "\n");
+			return;
 		}
 	}
-	return root + request_relative_path;
+	if (!pathExists(resolved_path))
+	{
+		// Should it be 204 in this case?
+		_status_code = 404;
+		build_error_response();
+		return;
+	}
+	// At this point, `resolved_path` must be a file
+	// (at least not a directory).
+	else if (access(resolved_path.c_str(), R_OK) == -1)
+	{
+		_status_code = 403;
+		print_log("HTTPResponse::handle_post(): Can't read file at: ",
+			resolved_path, "");
+		build_error_response();
+		return;
+	}
+	if (_lp != NULL
+		&& std::find(_lp->getCgiExtension().begin(),
+			_lp->getCgiExtension().end(),
+			get_file_ext(resolved_path))
+			!= _lp->getCgiExtension().end())
+	{
+		cgi_status = handle_cgi(request,
+				request_dir_root, request_dir_relative_to_root,
+				request_location_path, resolved_path);
+		if (cgi_status != 0)
+		{
+			_status_code = cgi_status;
+			build_error_response();
+		}
+		return;
+	}
+	else if (access(resolved_path.c_str(), W_OK) == -1)
+	{
+		_status_code = 403;
+		print_log("HTTPResponse::handle_post(): Can't write to file at: ",
+			resolved_path, "");
+		build_error_response();
+		return;
+	}
+	/* TODO:
+	try
+	{
+		_response_body = read_file(resolved_path);
+	}
+	catch (const std::ios_base::failure &e)
+	{
+		_status_code = 500;
+		print_warning("HTTPResponse::handle_get(): I/O error: ",
+			e.what(), "");
+		build_error_response();
+		return;
+	}
+	_status_code = 200;
+	_headers["Content-Type"] = get_mime_type(resolved_path);
+	set_connection_header(request);
+	prep_payload();
+	print_log("Sending ", resolved_path, " to the server");
+	 */
+	_status_code = 501;
+	build_error_response();
+	return;
 }
 
 void HTTPResponse::generate_301(const std::string &redir_path)
 {
 	_status_code = 301;
+	_headers["Content-Type"] = "plain/text; charset=UTF-8";
 	_headers["Location"] = redir_path;
 	_response_body = "Moved_permanently to ";
 	_response_body += redir_path;
 	_response_body += '\n';
+}
+
+void HTTPResponse::generate_204(const std::string &content_location)
+{
+	_status_code = 204;
+	_headers["Content-Type"] = "plain/text; charset=UTF-8";
+	_headers["Content-Location"] = content_location;
 }
 
 int HTTPResponse::find_first_available_index(
@@ -876,10 +989,11 @@ void HTTPResponse::cgi(const HTTPRequest &request, std::string &resolved_path)
 		(void) close(_cgi_pipe[1]);
 		std::exit(EXIT_FAILURE);
 	}
-	while (static_cast<size_t> (n) < _response_body.length())
+	while (static_cast<size_t> (n) < request.get_body().length())
 	{
-		written = write(redir_stdin[1], _response_body.c_str() + n,
-				_response_body.length() - static_cast<size_t> (n));
+		written = write(redir_stdin[1], request.get_body().c_str() + n,
+				request.get_body().length() -
+					static_cast<size_t> (n));
 		if (written == -1)
 		{
 			print_err("HTTPResponse::cgi(): write() failed: ",

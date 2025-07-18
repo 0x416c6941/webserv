@@ -130,9 +130,33 @@ class HTTPResponse
 		void		append_required_headers();
 
 		/**
+		 * Resolves the request path by concatenating
+		 * \p root and \p request_relative_path
+		 * while detecting directory traversal.
+		 * @throw	directory_traversal_detected	Detected
+		 * 						an attempt
+		 * 						of directory
+		 * 						traversal.
+		 * @throw	std::invalid_argument		\p
+		 * 						request_relative_path
+		 * 						starts
+		 * 						with '/'.
+		 * @param	root			Location or server root
+		 * 					(may be relative).
+		 * @param	request_relative_path	Request path relative
+		 * 					to \p root (must NOT
+		 * 					start with '/').
+		 * @return	Resolved request path.
+		 */
+		std::string	resolve_path(const std::string &root,
+				const std::string &request_relative_path) const;
+
+		/**
 		 * Handles the "GET" method:
-		 * sets the `_status_code`, required headers in `_headers`
-		 * and reads the requested file to `_response_body`.
+		 * sets the `_status_code`, required headers in `_headers`,
+		 * reads the requested file to `_response_body`
+		 * (or, if it's CGI, launches it)
+		 * and generates the response to `_payload`.
 		 *
 		 * If any error is encountered,
 		 * respective error response is built.
@@ -157,35 +181,53 @@ class HTTPResponse
 		 * 						a directory traversal
 		 * 						attempt.
 		 */
-		void 		handle_get(const HTTPRequest& request,
+		void 		handle_get(const HTTPRequest &request,
 				std::string &request_dir_root,
 				std::string &request_dir_relative_to_root,
 				std::string &request_location_path,
 				std::string &resolved_path);
 
-		// handle_post(), handle_delete(), handle_put().
-
 		/**
-		 * Resolves the request path by concatenating
-		 * \p root and \p request_relative_path
-		 * while detecting directory traversal.
-		 * @throw	directory_traversal_detected	Detected
-		 * 						an attempt
-		 * 						of directory
-		 * 						traversal.
-		 * @throw	std::invalid_argument		\p
-		 * 						request_relative_path
-		 * 						starts
-		 * 						with '/'.
-		 * @param	root			Location or server root
-		 * 					(may be relative).
-		 * @param	request_relative_path	Request path relative
-		 * 					to \p root (must NOT
-		 * 					start with '/').
-		 * @return	Resolved request path.
+		 * Handles the "POST" method:
+		 * sets the `_status_code`, required headers in `_headers`,
+		 * reads the request data to `_response_body`
+		 * and generates the response to `_payload`.
+		 *
+		 * If the requested path if CGI script,
+		 * launches it with the received data,
+		 * otherwise appends the data to existing file.
+		 * If file doesn't exist, data simply get discarded.
+		 *
+		 * If any error is encountered,
+		 * respective error response is built.
+		 * @brief	Handle the "GET" request method.
+		 * @warning	Parameters' validity isn't checked.
+		 * 		It's up to the user to ensure their validity.
+		 * @param	request				Request to handle.
+		 * @param	request_dir_root		Root or alias
+		 * 						of `_lp`
+		 * 						or `_server->Root()`
+		 * 						(if p lp is NULL)
+		 * 						with trailing '/'.
+		 * @param	request_dir_relative_to_root	Request path to file
+		 * 						or directory
+		 * 						in \p request_dir_root.
+		 * @param	request_location_path		`getPath()` from `_lp`
+		 * 						or "/" if `_lp` is NULL.
+		 * @param	resolved_path			\p request_dir_root
+		 * 						concatenated with
+		 * 						\p request_dir_relative_to_root
+		 * 						given that it's not
+		 * 						a directory traversal
+		 * 						attempt.
 		 */
-		std::string	resolve_path(const std::string &root,
-				const std::string &request_relative_path) const;
+		void		handle_post(const HTTPRequest &request,
+				std::string &request_dir_root,
+				std::string &request_dir_relative_to_root,
+				std::string &request_location_path,
+				std::string &resolved_path);
+
+		// TODO: handle_delete(), handle_put().
 
 		/**
 		 * We don't have to support custom return pages.
@@ -197,6 +239,15 @@ class HTTPResponse
 		 * @param	redir_path	Redirection path.
 		 */
 		void		generate_301(const std::string &redir_path);
+
+		/**
+		 * Generate the "No Content" headers
+		 * ("Content-Type" and "Content-Location")
+		 * and set `_status_code`.
+		 * @param	content_location	"Content-Location"
+		 * 					header's value.
+		 */
+		void		generate_204(const std::string &content_location);
 
 		/**
 		 * Iterate through available indexes in `_lp` or
