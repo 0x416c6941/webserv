@@ -873,10 +873,7 @@ int HTTPResponse::handle_cgi(const HTTPRequest &request,
 	}
 	else if (_cgi_pid == 0)
 	{
-		// TODO: Remove those later if they're not used in `cgi()`.
 		(void) request_dir_root;
-		(void) request_dir_relative_to_root;
-		(void) request_location_path;
 		(void) close(_cgi_pipe[0]);
 		_cgi_pipe[0] = -1;
 		this->cgi(request, resolved_path);
