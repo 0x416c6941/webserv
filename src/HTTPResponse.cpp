@@ -16,6 +16,7 @@
 #include <sys/wait.h>
 #include <cstdlib>
 #include <cstring>
+#include <arpa/inet.h>
 
 // To set up envp() for CGI.
 extern char **environ;
@@ -989,6 +990,8 @@ char ** HTTPResponse::cgi_prep_envp(const HTTPRequest & request) const
 	// We'll first append all variables to std::vector of std::strings
 	// and later convert them to char **.
 	std::vector<std::string> vars;
+	char client_ip[INET_ADDRSTRLEN];
+	std::string header_key;	// For `request`'s header fields.
 	char ** ret;
 
 	for (size_t i = 0; environ[i] != NULL; i++)
@@ -997,13 +1000,114 @@ char ** HTTPResponse::cgi_prep_envp(const HTTPRequest & request) const
 	}
 	// CGI-specific variables.
 	// Not the most elegant solution, but stil...
+	// Environment variables for all CGI requests:
 	vars.push_back(std::string("SERVER_SOFTWARE=") + SERVER_NAME + "/1.0");
 	vars.push_back(std::string("SERVER_NAME=") + SERVER_NAME);
 	vars.push_back(std::string("GATEWAY_INERFACE=CGI/1.1"));
+	// Environment variables for specific CGI requests:
 	vars.push_back(std::string("SERVER_PROTOCOL=HTTP/1.1"));
 	vars.push_back(std::string("SERVER_PORT=")
 		+ to_string(htons(request.get_server_address().sin_port)));
-	// TODO: Finish the variable list (that's not all).
+	switch (request.get_method())
+	{
+		case HTTPRequest::GET:
+			vars.push_back(std::string("REQUEST_METHOD=GET"));
+			break;
+		case HTTPRequest::POST:
+			vars.push_back(std::string("REQUEST_METHOD=POST"));
+			break;
+		case HTTPRequest::DELETE:
+			vars.push_back(std::string("REQUEST_METHOD=DELETE"));
+			break;
+		case HTTPRequest::PUT:
+			vars.push_back(std::string("REQUEST_METHOD=PUT"));
+			break;
+	}
+	vars.push_back(std::string("SCRIPT_NAME=")
+		+ request.get_request_path_decoded());
+	try
+	{
+		vars.push_back(std::string("QUERY_STRING=")
+			+ request.get_request_query_original());
+	}
+	catch (const std::runtime_error &e)
+	{
+		// There is no query in the request.
+		vars.push_back(std::string("QUERY_STRING="));
+	}
+	// There's no point for us to implement our own inet_ntop().
+	// We surely could write a translator from uint32_t
+	// (what we receive from accept() and which is basically
+	// an IP address, for example: 01111111.00000000.00000000.00000001
+	// is "127.0.0.1") to char * and backwards, but...
+	// Why? That would be a redundant overkill.
+	// We surely don't need to do that, especially that we know
+	// how IP addresses are expressed in binary form.
+	if (inet_ntop(AF_INET,
+		&(request.get_client_address()), client_ip, INET_ADDRSTRLEN)
+		== NULL)
+	{
+		print_err("HTTPResponse::cgi_prep_env(): ",
+			"inet_ntop() fail", "");
+		return NULL;
+	}
+	vars.push_back(std::string("REMOTE_ADDR=") + client_ip);
+	// CONTENT_TYPE and CONTENT_LENGTH.
+	// Again, we support only GET and POST for CGI,
+	// hence not checking if `request`'s method may be PUT.
+	if (request.get_method() == HTTPRequest::POST)
+	{
+		try
+		{
+			vars.push_back(std::string("CONTENT_TYPE=")
+				+ request.get_header_value("Content-Type"));
+		}
+		catch (const std::range_error &e)
+		{
+			print_warning("HTTPResponse::cgi_prep_env(): ",
+				"Request method is POST, but \"Content-Type\" isn't set",
+				"");
+			vars.push_back(std::string("CONTENT_TYPE="));
+		}
+		try
+		{
+			vars.push_back(std::string("CONTENT_LENGTH=")
+				+ request.get_header_value("Content-Length"));
+		}
+		catch (const std::range_error &e)
+		{
+			print_warning("HTTPResponse::cgi_prep_env(): ",
+				"Request method is POST, but \"Content-Length\" isn't set",
+				"");
+			vars.push_back(std::string("CONTENT_LENGTH="));
+		}
+	}
+	// `request`'s header fields.
+	for (std::map<std::string, std::string>::const_iterator it = request.get_header_fields().begin();
+			it != request.get_header_fields().end(); ++it)
+	{
+		// In cast of POST, those are already set.
+		// In case of GET, they're not needed either way.
+		if (it->first == "Content-Type" || it->first == "Content-Length")
+		{
+			continue;
+		}
+		header_key = it->first;
+		for (size_t i = 0; i < header_key.size(); i++)
+		{
+			if (std::islower(header_key.at(i)))
+			{
+				header_key.at(i) = std::toupper(header_key.at(i));
+			}
+			else if (header_key.at(i) == '-')
+			{
+				header_key.at(i) = '_';
+			}
+		}
+		header_key.insert(0, "HTTP_");
+		vars.push_back(header_key + "=" + it->second);
+	}
+	// Building "envp".
 	try
 	{
 		// +1 for trailing NULL.
