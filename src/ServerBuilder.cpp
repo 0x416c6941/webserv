@@ -573,13 +573,15 @@ void ServerBuilder::handle_location(const std::vector<std::string>& parameters, 
     	Location location;
     	location.setPath(parameters[1]);
 
-	 // Check for duplicate location path
-    	const std::vector<Location>& existing_locations = server_cfg.getLocations(); // adjust return type as needed
-    	for (std::vector<Location>::const_iterator it = existing_locations.begin(); it != existing_locations.end(); ++it) {
-        	if (it->getPath() == location.getPath()) {
-            		throw ConfigParser::ErrorException("Duplicate location path: " + location.getPath());
-        	}
-    	}
+	// Check for duplicate location path.
+	const std::vector<Location>& existing_locations = server_cfg.getLocations(); // Adjust return type as needed.
+	for (std::vector<Location>::const_iterator it = existing_locations.begin(); it != existing_locations.end(); ++it)
+	{
+		if (it->getPath() == location.getPath())
+		{
+			throw ConfigParser::ErrorException("Duplicate location path: " + location.getPath());
+		}
+	}
 
     	const std::map<std::string, LocationHandler>& handlers = getLocationHandlers();
 
