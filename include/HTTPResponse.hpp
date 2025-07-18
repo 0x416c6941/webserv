@@ -249,7 +249,7 @@ class HTTPResponse
 		 *
 		 * If the requested path exists and was deleted,
 		 * 204 will be returned.
-		 * @brief	Handle the "POST" request method.
+		 * @brief	Handle the "DELETE" request method.
 		 * @warning	Parameters' validity isn't checked.
 		 * 		It's up to the user to ensure their validity.
 		 * @param	request				Request to handle.
@@ -275,7 +275,6 @@ class HTTPResponse
 				std::string &request_dir_relative_to_root,
 				std::string &request_location_path,
 				std::string &resolved_path);
-
 
 		// TODO: handle_put().
 

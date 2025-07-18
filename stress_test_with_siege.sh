@@ -1,9 +1,0 @@
-#!/bin/sh
-
-DOMAIN="0.0.0.0:9010"
-TEST_PAGE="test_cgi.html"
-TIME_IN_SECONDS=10
-CONCURRENT_REQUESTS=100
-
-siege http://${DOMAIN}/${TEST_PAGE}			\
-	-t${TIME_IN_SECONDS}S -c${CONCURRENT_REQUESTS}
