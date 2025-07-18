@@ -116,7 +116,25 @@ std::string 				Location::getErrorPage(int code) const {
     return "";
 }
 
-void  Location::validateLocation() const {
+
+/**
+ * @brief Validates a non-empty directory path or throws.
+ *
+ * If @p path is not empty and invalid, throws with a message
+ * including the given @p label.
+ *
+ * @param label Context label for the error (e.g., "root").
+ * @param path The directory path to check.
+ *
+ * @throws std::runtime_error if the path is non-empty and invalid.
+ */
+static void validateOptionalDir(const std::string &label, const std::string &path)
+{
+        if (!validateDirPath(path))
+                throw std::runtime_error("Location validation error: " + label + " '" + path + "' is not a valid directory path.");
+}
+
+void  Location::validateLocation(const std::string &root) const {
         // 1. Path must not be empty
         if (_path.empty())
                 throw std::runtime_error("Location validation error: path is empty.");
@@ -154,6 +172,24 @@ void  Location::validateLocation() const {
                 if (eit->second.empty())
                         throw std::runtime_error("Location validation error: error_page for code " + to_string(eit->first) + " has empty path.");
         }
+
+        //8. Validate path
+        std::string server_root = root;
+        if (server_root.empty()) {
+                server_root = "."; // Default to current directory if root is not set
+        }
+        if (server_root[server_root.size() - 1] == '/')
+                server_root.erase(server_root.size() - 1);
+        if (!validateDirPath(server_root + _path))
+                throw std::runtime_error("Location validation error: path '" + _path + "' is not a valid directory path.");
+
+        if (!_root.empty())
+                validateOptionalDir("root", server_root + _root);
+        if (!_alias.empty())
+                validateOptionalDir("alias", server_root + _alias);
+        if (!_upload_path.empty())
+                validateOptionalDir("upload_path", server_root + _upload_path);
+
 
         // Optional: validate CGI ext format (should start with '.')
         for (size_t i = 0; i < _cgi_ext.size(); ++i) {
