@@ -263,7 +263,6 @@ std::string get_mime_type(const std::string &path)
 bool validateDirPath(const std::string &path)
 {
         return !path.empty()
-                && path[path.length() - 1] == '/'
                 && pathExists(path)
                 && isDirectory(path)
                 && access(path.c_str(), R_OK | X_OK) == 0;
