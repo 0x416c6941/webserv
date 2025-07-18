@@ -244,3 +244,27 @@ std::string get_mime_type(const std::string &path)
 	}
 	return "application/octet-stream";
 }
+
+/**
+ * @brief Validates whether a given path is a valid, accessible directory path.
+ *
+ * This function checks that the input path:
+ *   - is not empty,
+ *   - ends with a '/',
+ *   - exists in the filesystem,
+ *   - is a directory,
+ *   - and has both read and execute permissions.
+ *
+ * @param path The directory path to validate.
+ * @return true if the path is non-empty, ends with '/', exists,
+ *         is a directory, and is accessible (read + execute).
+ * @return false otherwise.
+ */
+bool validateDirPath(const std::string &path)
+{
+        return !path.empty()
+                && path[path.length() - 1] == '/'
+                && pathExists(path)
+                && isDirectory(path)
+                && access(path.c_str(), R_OK | X_OK) == 0;
+}

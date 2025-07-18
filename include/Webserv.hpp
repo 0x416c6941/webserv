@@ -144,3 +144,20 @@ std::string generateErrorBody(int status_code);
 class ServerConfig;
 void printServerConfig(const ServerConfig& config);
 std::string escape_string(const std::string &input);
+
+/**
+ * @brief Validates whether a given path is a valid, accessible directory path.
+ *
+ * This function checks that the input path:
+ *   - is not empty,
+ *   - ends with a '/',
+ *   - exists in the filesystem,
+ *   - is a directory,
+ *   - and has both read and execute permissions.
+ *
+ * @param path The directory path to validate.
+ * @return true if the path is non-empty, ends with '/', exists,
+ *         is a directory, and is accessible (read + execute).
+ * @return false otherwise.
+ */
+bool validateDirPath(const std::string &path);
