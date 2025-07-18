@@ -205,7 +205,7 @@ class HTTPRequest
 		/**
 		 * Process and save body part stored in \p buffer.
 		 * @warning	It's up to you to ensure
-		 * 		that request's method is "POST".
+		 * 		that request's method is "POST" or "PUT".
 		 * @throw	invalid_argument	"Transfer-Encoding" field
 		 * 					is set, however \p buffer
 		 * 					isn't a complete chunk.
@@ -238,10 +238,11 @@ class HTTPRequest
 
 		/**
 		 * Check if request's body was fully parsed yet.
-		 * @warning	If request's method isn't "POST",
+		 * @warning	If request's method isn't "POST" neither "PUT",
 		 * 		presence of "Content-Length"
 		 *		or "Transfer-Encoding" wouldn't matter.
-		 * @throw	domain_error	Request's method isn't "POST".
+		 * @throw	domain_error	Request's method isn't "POST"
+		 * 				neither "PUT".
 		 * @return	true, if yes;
 		 * 		false otherwise.
 		 */

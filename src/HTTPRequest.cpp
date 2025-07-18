@@ -316,9 +316,11 @@ bool HTTPRequest::is_header_complete() const
 
 bool HTTPRequest::is_body_complete() const
 {
-	if (!(this->_method_is_set) || this->_method != POST)
+	if (!(this->_method_is_set)
+		|| (this->_method != POST && this->_method != PUT))
 	{
-		throw std::domain_error("HTTPRequest::is_body_complete(): Request's method isn't \"POST\".");
+		throw std::domain_error(std::string("HTTPRequest::is_body_complete(): ")
+				+ "Request's method isn't \"POST\" neither \"PUT\".");
 	}
 	return this->_body_complete;
 }
@@ -331,7 +333,8 @@ bool HTTPRequest::is_complete() const
 	{
 		return true;
 	}
-	else if ((this->_method_is_set && this->_method == POST)
+	else if ((this->_method_is_set
+		&& (this->_method == POST || this->_method == PUT))
 		&& (this->_header_complete && this->_body_complete))
 	{
 		return true;
@@ -380,7 +383,10 @@ size_t HTTPRequest::handle_start_line(const std::string &start_line)
 
 size_t HTTPRequest::set_method(const std::string &start_line)
 {
-	const std::string GET_STR = "GET", POST_STR = "POST", DELETE_STR = "DELETE";
+	const std::string	GET_STR = "GET",
+				POST_STR = "POST",
+				DELETE_STR = "DELETE",
+				PUT_STR = "PUT";
 
 	if (start_line.compare(0, GET_STR.length(), GET_STR) == 0)
 	{
@@ -399,6 +405,12 @@ size_t HTTPRequest::set_method(const std::string &start_line)
 		_method = DELETE;
 		_method_is_set = true;
 		return DELETE_STR.length();
+	}
+	else if (start_line.compare(0, PUT_STR.length(), PUT_STR) == 0)
+	{
+		_method = PUT;
+		_method_is_set = true;
+		return PUT_STR.length();
 	}
 	throw method_not_allowed(std::string("HTTPRequest::set_method(): ")
 			+ "Request method isn't supported.");
@@ -764,6 +776,7 @@ void HTTPRequest::printDebug() const {
 			case GET:    method_str = "GET"; break;
 			case POST:   method_str = "POST"; break;
 			case DELETE: method_str = "DELETE"; break;
+			case PUT:    method_str = "PUT"; break;
 			default:     method_str = "UNKNOWN"; break;
 		}
 		std::cout << "Method:          " << method_str << std::endl;

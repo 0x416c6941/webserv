@@ -46,12 +46,16 @@ private:
 	int                  	parseReadEvent(std::string &buffer);
 
 	/**
-	 * Determines the max body size of files sent to us with "POST" method
+	 * Determines the max body size of content sent to us
 	 * depending on \p request_path.
-	 * @throw	domain_error	Saving a received file at \p path
-	 * 				is forbidden.
+	 * @warning	Permission to save (append, if talking about "POST")
+	 * 		is determined whether the request's method is allowed.
+	 * 		This method doesn't check allowance
+	 * 		of either "POST" or "PUT" methods.
+	 * 		You should check it on later stages
+	 * 		when processing the request.
 	 * @param	request_path	Request path parsed in request header.
-	 * @return	Max body size of received file.
+	 * @return	Max body size for received content.
 	 */
 	size_t			getMaxBodySize(const std::string &request_path) const;
 

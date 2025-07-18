@@ -270,6 +270,8 @@ void HTTPResponse::handle_response_routine(const HTTPRequest &request)
 			// Temporary stub.
 			_status_code = 405;
 			this->build_error_response();
+			print_warning("HTTPResponse: POST isn't implemented yet",
+				"", "");
 			return;
 			break;
 		case HTTPRequest::DELETE:
@@ -284,6 +286,24 @@ void HTTPResponse::handle_response_routine(const HTTPRequest &request)
 			// Temporary stub.
 			_status_code = 405;
 			this->build_error_response();
+			print_warning("HTTPResponse: DELETE isn't implemented yet",
+				"", "");
+			return;
+			break;
+		case HTTPRequest::PUT:
+			if (_lp == NULL
+				|| _lp->getMethods().find("PUT")
+					== _lp->getMethods().end())
+			{
+				_status_code = 405;
+				build_error_response();
+				return;
+			}
+			// Temporary stub.
+			_status_code = 405;
+			this->build_error_response();
+			print_warning("HTTPResponse: PUT isn't implemented yet",
+				"", "");
 			return;
 			break;
 		default:
@@ -494,7 +514,7 @@ void HTTPResponse::handle_get(const HTTPRequest &request,
 	else if (access(resolved_path.c_str(), R_OK) == -1)
 	{
 		_status_code = 403;
-		print_log("HTTPRequest::handle_get(): Can't read file at: ",
+		print_log("HTTPResponse::handle_get(): Can't read file at: ",
 			resolved_path, "");
 		build_error_response();
 		return;
@@ -522,7 +542,7 @@ void HTTPResponse::handle_get(const HTTPRequest &request,
 	catch (const std::ios_base::failure &e)
 	{
 		_status_code = 500;
-		print_warning("HTTPRequest::handle_get(): I/O error: ",
+		print_warning("HTTPResponse::handle_get(): I/O error: ",
 			e.what(), "");
 		build_error_response();
 		return;
@@ -559,7 +579,8 @@ std::string HTTPResponse::resolve_path(const std::string &root,
 			// Still, let's proceed as is...
 			if (depth-- == 0)
 			{
-				throw directory_traversal_detected("HTTPResponse::resolve_path(): Detected directory traversal.");
+				throw directory_traversal_detected(std::string("HTTPResponse::resolve_path(): ")
+						+ "Detected directory traversal.");
 			}
 			i++;	// Skip the second dot.
 		}

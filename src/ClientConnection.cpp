@@ -110,7 +110,8 @@ int ClientConnection::parseReadEvent(std::string &buffer)
 				return 431;
 			}
 		}
-		else if (this->_request.get_method() == HTTPRequest::POST
+		else if ((this->_request.get_method() == HTTPRequest::POST
+			|| this->_request.get_method() == HTTPRequest::PUT)
 			&& !(this->_request.is_body_complete())) {
 			// Before processing all body parts,
 			// we should ideally check if "Content-Length" field
@@ -141,20 +142,13 @@ int ClientConnection::parseReadEvent(std::string &buffer)
 			}
 			this->_body_buffer_bytes_exhausted += processed_bytes;
 			buffer.erase(0, processed_bytes);
-			try {
-				max_body_size = this->getMaxBodySize(
-						this->_request.get_request_target());
-				if (this->_body_buffer_bytes_exhausted > max_body_size) {
-					// Request's body buffer bytes are exhausted.
-					print_err("Request's body is too large, currently processed: ",
-						to_string(_body_buffer_bytes_exhausted), "");
-					return 413;
-				}
-			}
-			catch (const std::domain_error &e) {
-				print_err("Saving a file is forbidden at: ",
-					this->_request.get_request_target(), "");
-				return 403;
+			max_body_size = this->getMaxBodySize(
+					this->_request.get_request_target());
+			if (this->_body_buffer_bytes_exhausted > max_body_size) {
+				// Request's body buffer bytes are exhausted.
+				print_err("Request's body is too large, currently processed: ",
+					to_string(_body_buffer_bytes_exhausted), "");
+				return 413;
 			}
 		}
 		else {
@@ -170,29 +164,18 @@ int ClientConnection::parseReadEvent(std::string &buffer)
 }
 
 size_t ClientConnection::getMaxBodySize(const std::string &request_path) const {
-	try {
+	try
+	{
 		const Location &loc = _server->determineLocation(request_path);
 
-		if (loc.getMethods().find("POST") == loc.getMethods().end()) {
-			throw std::domain_error(std::string("ClientConnection::getMaxBodySize(): ")
-					+ "POST method isn't allowed on the requested Location.");
-		}
-		try {
-			return loc.getMaxBodySize();
-		}
-		catch (const std::domain_error &e) {
-			// Max body size wasn't defined for that location.
-			// Using a generic one.
-			return this->_server->getClientMaxBodySize();
-		}
+		return loc.getMaxBodySize();
 	}
-	catch (const std::out_of_range &e) {
-		// Location with such path wasn't found.
-		//
-		// We don't support "allow_methods" directive for "server" blocks
-		// and instead directly support only GET methods.
-		throw std::domain_error(std::string("ClientConnection::getMaxBodySize(): ")
-				+ "POST method isn't allowed on the requested Location.");
+	catch (...)
+	{
+		// Location with such path wasn't found
+		// or max body wize wasn't defined for that location.
+		// Using a generic one.
+		return this->_server->getClientMaxBodySize();
 	}
 }
 
