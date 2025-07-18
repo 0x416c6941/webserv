@@ -77,7 +77,7 @@ class Location {
 		std::string 					getErrorPage(int code) const;
 		const std::string 				&getUploadPath() const;
 
-		void 						validateLocation(const std::string &root) const;
+		void 						validateLocation() const;
 
 		void 						printDebug() const;
 };

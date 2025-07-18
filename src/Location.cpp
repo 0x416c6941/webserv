@@ -134,7 +134,7 @@ static void validateOptionalDir(const std::string &label, const std::string &pat
                 throw std::runtime_error("Location validation error: " + label + " '" + path + "' is not a valid directory path.");
 }
 
-void  Location::validateLocation(const std::string &root) const {
+void  Location::validateLocation() const {
         // 1. Path must not be empty
         if (_path.empty())
                 throw std::runtime_error("Location validation error: path is empty.");
@@ -174,22 +174,15 @@ void  Location::validateLocation(const std::string &root) const {
         }
 
         //8. Validate path
-        std::string server_root = root;
-        if (server_root.empty()) {
-                server_root = "."; // Default to current directory if root is not set
-        }
-        if (server_root[server_root.size() - 1] == '/')
-                server_root.erase(server_root.size() - 1);
-        if (!validateDirPath(server_root + _path))
-                throw std::runtime_error("Location validation error: path '" + _path + "' is not a valid directory path.");
-
         if (!_root.empty())
-                validateOptionalDir("root", server_root + _root);
+                validateOptionalDir("root", _root);
         if (!_alias.empty())
-                validateOptionalDir("alias", server_root + _alias);
-        if (!_upload_path.empty())
-                validateOptionalDir("upload_path", server_root + _upload_path);
-
+                validateOptionalDir("alias", _alias);
+        if (!_upload_path.empty()) {
+                validateOptionalDir("upload_path", _upload_path);
+                if (access(_upload_path.c_str(), R_OK | X_OK | W_OK) == 0)
+                        throw std::runtime_error("Location validation error: upload_path '" + _upload_path + "' must be readable, writable, and executable.");
+        }
 
         // Optional: validate CGI ext format (should start with '.')
         for (size_t i = 0; i < _cgi_ext.size(); ++i) {
