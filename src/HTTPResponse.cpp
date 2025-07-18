@@ -645,9 +645,11 @@ void HTTPResponse::handle_post(const HTTPRequest &request,
 	}
 	if (!pathExists(resolved_path))
 	{
-		// Should it be 204 in this case?
-		_status_code = 404;
-		build_error_response();
+		// Should it be 404 in this case?
+		generate_204('/' + request_dir_relative_to_root);
+		set_connection_header(request);
+		prep_payload();
+		print_log("Sending the 204:\n", _payload, "\n");
 		return;
 	}
 	// At this point, `resolved_path` must be a file
