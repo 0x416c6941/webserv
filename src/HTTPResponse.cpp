@@ -707,6 +707,7 @@ void HTTPResponse::handle_delete(const HTTPRequest &request,
 		std::string &resolved_path)
 {
 	(void) request_dir_root;
+	int remove_status;
 
 	if (isDirectory(resolved_path))
 	{
@@ -759,9 +760,10 @@ void HTTPResponse::handle_delete(const HTTPRequest &request,
 		build_error_response();
 		return;
 	}
-	else if (std::remove(resolved_path.c_str()) != 0)
+	errno = 0;
+	if ((remove_status = std::remove(resolved_path.c_str())) != 0)
 	{
-		if (errno == EACCES)
+		if (remove_status == EACCES || errno == EACCES)
 		{
 			_status_code = 403;
 			print_log("Got DELETE request to delete: ",
