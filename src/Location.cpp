@@ -180,7 +180,7 @@ void  Location::validateLocation() const {
                 validateOptionalDir("alias", _alias);
         if (!_upload_path.empty()) {
                 validateOptionalDir("upload_path", _upload_path);
-                if (access(_upload_path.c_str(), R_OK | X_OK | W_OK) == 0)
+                if (access(_upload_path.c_str(), R_OK | X_OK | W_OK) != 0)
                         throw std::runtime_error("Location validation error: upload_path '" + _upload_path + "' must be readable, writable, and executable.");
         }
 
