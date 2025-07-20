@@ -276,7 +276,7 @@ class HTTPResponse
 				std::string &resolved_path);
 
 		/**
-		 * Handles the "DELETE" method:
+		 * Handles the "PUT" method:
 		 * sets the `_status_code`, required headers in `_headers`,
 		 * and generates the response to `_payload`.
 		 *
