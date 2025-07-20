@@ -700,6 +700,15 @@ void HTTPResponse::handle_post(const HTTPRequest &request,
 	print_log("Sending the 204:\n", _payload, "\n");
 }
 
+// RFC:
+// ... If the target resource has one or more current representations,
+// they might or might not be destroyed by the origin server,
+// and the associated storage might or might not be reclaimed,
+// depending entirely on the nature of the resource and
+// its implementation by the origin server
+// (which are beyond the scope of this specification). ...
+//
+// We therefore can safely drop the implementation of directory deletion.
 void HTTPResponse::handle_delete(const HTTPRequest &request,
 		std::string &request_dir_root,
 		std::string &request_dir_relative_to_root,
