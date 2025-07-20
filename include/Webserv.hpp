@@ -132,7 +132,18 @@ std::string get_file_ext(const std::string &path);
  * @param	path	Path to a file.
  * @return	Appropriate mime type for file in \p path.
  */
-std::string 	get_mime_type(const std::string &path);
+std::string get_mime_type(const std::string &path);
+
+/**
+ * Our implementation of inet_ntop() for AF_INET.
+ * @param	src	Pointer to uint32_t from `struct sockaddr_in`.
+ * @param	dst	Where to write the text form of \p src.
+ * @param	size	Size in bytes of \p dst.
+ * @return	\p dst, if everything went fine.
+ * @return	NULL, if \p size isn't sufficient to store text form of \p src
+ * 		in \p dst (errno will be set to ENOSPC in this case).
+ */
+const char * our_inet_ntop4(const void * src, char * dst, socklen_t size);
 
 // Errors.
 std::string getReasonPhrase(int status_code);

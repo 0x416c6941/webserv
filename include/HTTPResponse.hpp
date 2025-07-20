@@ -275,7 +275,54 @@ class HTTPResponse
 				std::string &request_location_path,
 				std::string &resolved_path);
 
-		// TODO: handle_put().
+		/**
+		 * Handles the "DELETE" method:
+		 * sets the `_status_code`, required headers in `_headers`,
+		 * and generates the response to `_payload`.
+		 *
+		 * If the requested path is a directory
+		 * and doesn't end with '/', client will be redirected
+		 * to the same path but with '/' at the end.
+		 * If the requested path is a directory and ends with '/',
+		 * 403 will be returned (we'd rather NOT resolve
+		 * the index page in this case).
+		 *
+		 * If file at requested path was successfully created
+		 * (or opened for writing, if exists)
+		 * and all the data was successfully written,
+		 * 204 will be returned.
+		 * If file at requested path exists and couldn't be opened
+		 * for writing due to insufficient permissions,
+		 * 403 will be returned.
+		 *
+		 * If file couldn't be created or opened for writing
+		 * for any other reason, 500 will be returned.
+		 * @brief	Handle the "PUT" request method.
+		 * @warning	Parameters' validity isn't checked.
+		 * 		It's up to the user to ensure their validity.
+		 * @param	request				Request to handle.
+		 * @param	request_dir_root		Root or alias
+		 * 						of `_lp`
+		 * 						or `_server->Root()`
+		 * 						(if p lp is NULL)
+		 * 						with trailing '/'.
+		 * @param	request_dir_relative_to_root	Request path to file
+		 * 						or directory
+		 * 						in \p request_dir_root.
+		 * @param	request_location_path		`getPath()` from `_lp`
+		 * 						or "/" if `_lp` is NULL.
+		 * @param	resolved_path			\p request_dir_root
+		 * 						concatenated with
+		 * 						\p request_dir_relative_to_root
+		 * 						given that it's not
+		 * 						a directory traversal
+		 * 						attempt.
+		 */
+		void		handle_put(const HTTPRequest &request,
+				std::string &request_dir_root,
+				std::string &request_dir_relative_to_root,
+				std::string &request_location_path,
+				std::string &resolved_path);
 
 		/**
 		 * We don't have to support custom return pages.

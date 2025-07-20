@@ -5,6 +5,10 @@
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
+#include <arpa/inet.h>
+#include <cstddef>
+#include <cerrno>
+#include <cstdio>
 
 /**
 * @brief Trims whitespace from both ends of the input string.
@@ -243,6 +247,24 @@ std::string get_mime_type(const std::string &path)
 		return it->second;
 	}
 	return "application/octet-stream";
+}
+
+const char * our_inet_ntop4(const void * src, char * dst, socklen_t size)
+{
+	// "255.255.255.255" => 15 bytes + 1 for '\0'.
+	const size_t MIN_LENGTH = 16;
+	const unsigned char * b_src;
+
+	if (static_cast<size_t> (size) < MIN_LENGTH)
+	{
+		errno = ENOSPC;
+		return NULL;
+	}
+	// Thanks to OpenBSD!
+	b_src = reinterpret_cast<const unsigned char *> (src);
+	(void) snprintf(dst, static_cast<size_t> (size),
+		"%u.%u.%u.%u", b_src[0], b_src[1], b_src[2], b_src[3]);
+	return dst;
 }
 
 /**

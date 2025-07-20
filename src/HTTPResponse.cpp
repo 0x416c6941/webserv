@@ -18,6 +18,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <arpa/inet.h>
+#include <fstream>
 
 // To set up envp() for CGI.
 extern char **environ;
@@ -290,12 +291,7 @@ void HTTPResponse::handle_response_routine(const HTTPRequest &request)
 				build_error_response();
 				return;
 			}
-			// Temporary stub.
-			_status_code = 405;
-			this->build_error_response();
-			print_warning("HTTPResponse: PUT isn't implemented yet",
-				"", "");
-			return;
+			handler = &HTTPResponse::handle_put;
 			break;
 		default:
 			// This should never occur.
@@ -342,7 +338,8 @@ void HTTPResponse::handle_response_routine(const HTTPRequest &request)
 	catch (const directory_traversal_detected &e)
 	{
 		print_err("Detected directory traversal attempt: ", e.what(), "");
-		_status_code = 406;	// I guess 406 is good in this case?
+		// I guess 403 or 406 is good in this case?
+		_status_code = 403;
 		build_error_response();
 		return;
 	}
@@ -380,29 +377,6 @@ bool HTTPResponse::should_close_connection() const
 	}
 	return false;
 }
-
-/*
-bool HTTPResponse::has_permission(const std::string& path, HTTPRequest::e_method method) const
-{
-	int mode = 0;
-
-	switch (method)
-	{
-		case HTTPRequest::GET:
-			mode = R_OK; // Read permission.
-			break;
-		case HTTPRequest::POST:
-			mode = W_OK; // Write permission (for appending/uploading).
-			break;
-		case HTTPRequest::DELETE:
-			mode = W_OK; // Need write access to the directory (delete op).
-			break;
-		default:
-			return false;
-	}
-	return (access(path.c_str(), mode) == 0);
-}
- */
 
 void HTTPResponse::prep_payload()
 {
@@ -787,6 +761,96 @@ void HTTPResponse::handle_delete(const HTTPRequest &request,
 			return;
 		}
 	}
+	generate_204('/' + request_dir_relative_to_root);
+	set_connection_header(request);
+	prep_payload();
+	print_log("Sending the 204:\n", _payload, "\n");
+}
+
+void HTTPResponse::handle_put(const HTTPRequest &request,
+		std::string &request_dir_root,
+		std::string &request_dir_relative_to_root,
+		std::string &request_location_path,
+		std::string &resolved_path)
+{
+	std::ofstream file;
+
+	// Handling "upload_path" config directive.
+	if (!_lp->getUploadPath().empty())
+	{
+		// This is kinda weird to set
+		// `request_dir_root` to `_lp->_upload_path`,
+		// but everything works, so...
+		request_dir_root = _lp->getUploadPath();
+		if (request_dir_root.at(request_dir_root.length() - 1) != '/')
+		{
+			request_dir_root.push_back('/');
+		}
+		try
+		{
+			resolved_path = this->resolve_path(request_dir_root,
+					request_dir_relative_to_root);
+		}
+		catch (const directory_traversal_detected &e)
+		{
+			print_err("Detected directory traversal attempt: ",
+				e.what(), "");
+			// I guess 403 or 406 is good in this case?
+			_status_code = 403;
+			build_error_response();
+			return;
+		}
+	}
+	if (isDirectory(resolved_path))
+	{
+		if (request_dir_relative_to_root.length() > 0
+			&& request_dir_relative_to_root.at(
+				request_dir_relative_to_root.length() - 1) != '/')
+		{
+			generate_301(request_location_path
+				+ request_dir_relative_to_root + '/');
+			set_connection_header(request);
+			prep_payload();
+			print_log("Sent the 301: ", _response_body, "");
+			return;
+		}
+		else
+		{
+			_status_code = 403;
+			print_log("Got PUT request to: ",
+				resolved_path.c_str(), " - is a directory");
+			build_error_response();
+			return;
+		}
+	}
+	if (pathExists(resolved_path)
+		&& access(resolved_path.c_str(), W_OK) == -1)
+	{
+		_status_code = 403;
+		print_log("Got PUT request to: ",
+			resolved_path.c_str(), " - insufficient permissions");
+		build_error_response();
+		return;
+	}
+	file.open(resolved_path.c_str(), std::ios::trunc);
+	if (!file.is_open())
+	{
+		_status_code = 500;
+		print_warning("PUT: Couldn't create or write open w/ trunc: ",
+			resolved_path.c_str(), "");
+		build_error_response();
+		return;
+	}
+	file << request.get_body();
+	if (!file.good())
+	{
+		_status_code = 500;
+		print_warning("PUT: Got I/O error while writing to: ",
+			resolved_path.c_str(), "");
+		build_error_response();
+		return;
+	}
+	file.close();
 	generate_204('/' + request_dir_relative_to_root);
 	set_connection_header(request);
 	prep_payload();
@@ -1252,20 +1316,22 @@ char ** HTTPResponse::cgi_prep_envp(const HTTPRequest & request) const
 		// There is no query in the request.
 		vars.push_back(std::string("QUERY_STRING="));
 	}
-	// There's no point for us to implement our own inet_ntop().
-	// We surely could write a translator from uint32_t
-	// (what we receive from accept() and which is basically
-	// an IP address, for example: 01111111.00000000.00000000.00000001
-	// is "127.0.0.1") to char * and backwards, but...
-	// Why? That would be a redundant overkill.
-	// We surely don't need to do that, especially that we know
-	// how IP addresses are expressed in binary form.
-	if (inet_ntop(AF_INET,
-		&(request.get_client_address()), client_ip, INET_ADDRSTRLEN)
+	// Here's a proof of our working implementation of inet_ntop4(),
+	// although we believed writing a translator from `in_addr`
+	// to it's text form (for example 01111111.00000000.00000000.00000001
+	// is "127.0.0.1") is a redundant overkill (and we still do).
+	//
+	// We surely do know how to translate "127.0.0.1"
+	// back to `uint32_t` (typedef of `in_addr`),
+	// so please don't mark this w/ -42.
+	// We just don't want to implement our own inet_pton(),
+	// because we find it pointless by now.
+	if (our_inet_ntop4(&(request.get_client_address().sin_addr), client_ip,
+		INET_ADDRSTRLEN)
 		== NULL)
 	{
 		print_err("HTTPResponse::cgi_prep_env(): ",
-			"inet_ntop() fail", "");
+			"our_inet_ntop4() fail", "");
 		return NULL;
 	}
 	vars.push_back(std::string("REMOTE_ADDR=") + client_ip);
