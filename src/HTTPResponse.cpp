@@ -494,7 +494,7 @@ void HTTPResponse::handle_get(const HTTPRequest &request,
 				+ request_dir_relative_to_root;
 		}
 		// No available index was found.
-		else if (_lp->getAutoindex() == true)
+		else if (_lp != NULL && _lp->getAutoindex() == true)
 		{
 			try
 			{
@@ -776,7 +776,7 @@ void HTTPResponse::handle_put(const HTTPRequest &request,
 	std::ofstream file;
 
 	// Handling "upload_path" config directive.
-	if (!_lp->getUploadPath().empty())
+	if (_lp != NULL && !_lp->getUploadPath().empty())
 	{
 		// This is kinda weird to set
 		// `request_dir_root` to `_lp->_upload_path`,
