@@ -12,6 +12,13 @@
  * The HTTPResponse class is responsible for constructing a
  * HTTP response message (status line, headers, and body)
  * based on the request and server configuration.
+ * ...
+ * Response won't contain a "Date" field.
+ * According to subject:
+ * "Your server must be compatible with standard web browsers of your choice."
+ * The lack of "Date" field doesn't break anything in
+ * latest Firefox (140 as of this moment), which is our chosen web browser.
+ * Therefore, we believe it's not an issue.
  */
 class HTTPResponse
 {
