@@ -1173,6 +1173,7 @@ void HTTPResponse::cgi(const HTTPRequest &request, std::string &resolved_path)
 				get_file_ext(resolved_path))
 			- _lp->getCgiExtension().begin());
 	argv = cgi_prep_argv(_lp->getCgiPath().at(cgi_path_index), resolved_path);
+	print_log("About to execve() from child. Bye-bye world!", "", "");
 	if (argv == NULL)
 	{
 		print_err("HTTPResponse::cgi(): cgi_prep_argv() failed", "", "");
