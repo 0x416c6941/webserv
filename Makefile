@@ -1,8 +1,8 @@
 NAME = webserv
 
-CC = g++
+CC = c++
 FLAGS = -Wall -Wextra -Wsign-conversion -pedantic -Werror -Wreorder -std=c++98	\
-	-g -fsanitize=address
+	-g
 
 SRC_DIR  = src
 INC_DIR  = include
