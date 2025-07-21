@@ -773,6 +773,7 @@ void HTTPResponse::handle_put(const HTTPRequest &request,
 		std::string &request_location_path,
 		std::string &resolved_path)
 {
+	bool file_exists = false;
 	std::ofstream file;
 
 	// Handling "upload_path" config directive.
@@ -823,14 +824,18 @@ void HTTPResponse::handle_put(const HTTPRequest &request,
 			return;
 		}
 	}
-	if (pathExists(resolved_path)
-		&& access(resolved_path.c_str(), W_OK) == -1)
+	if (pathExists(resolved_path))
 	{
-		_status_code = 403;
-		print_log("Got PUT request to: ",
-			resolved_path.c_str(), " - insufficient permissions");
-		build_error_response();
-		return;
+		file_exists = true;
+		if (access(resolved_path.c_str(), W_OK) == -1)
+		{
+			_status_code = 403;
+			print_log("Got PUT request to: ",
+				resolved_path.c_str(),
+				" - insufficient permissions");
+				build_error_response();
+			return;
+		}
 	}
 	file.open(resolved_path.c_str(), std::ios::trunc);
 	if (!file.is_open())
@@ -852,6 +857,10 @@ void HTTPResponse::handle_put(const HTTPRequest &request,
 	}
 	file.close();
 	generate_204('/' + request_dir_relative_to_root);
+	if (!file_exists)
+	{
+		_status_code = 201;
+	}
 	set_connection_header(request);
 	prep_payload();
 	print_log("Sending the 204:\n", _payload, "\n");

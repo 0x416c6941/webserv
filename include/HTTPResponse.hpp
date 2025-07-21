@@ -297,6 +297,9 @@ class HTTPResponse
 		 * If file at requested path was successfully created
 		 * (or opened for writing, if exists)
 		 * and all the data was successfully written,
+		 * 201 will be returned.
+		 * If file at requested path existed, was truncated,
+		 * and all the data was successfully written,
 		 * 204 will be returned.
 		 * If file at requested path exists and couldn't be opened
 		 * for writing due to insufficient permissions,
