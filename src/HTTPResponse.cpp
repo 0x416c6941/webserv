@@ -514,6 +514,10 @@ void HTTPResponse::handle_get(const HTTPRequest &request,
 		// No available index was found AND autoindex is off.
 		else
 		{
+			// If nothing exists in the root folder,
+			// 403 will be basically returned
+			// upon every addressation
+			// of directory. We believe it's not an issue.
 			_status_code = 403;
 			build_error_response();
 			return;
